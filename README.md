@@ -1,5 +1,12 @@
 # 🚀 Universal CAN-Bus Diagnostic & Telemetry Platform (v13.0)
 
+[![CI Pipeline](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions/workflows/ci.yml/badge.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions/workflows/ci.yml)
+[![Tests: 274 passed](https://img.shields.io/badge/tests-274%20passed-success.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions)
+[![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows%20WebView2-lightgrey.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic)
+
 > **Endüstriyel Otomotiv, Ağır Vasıta, İş Makinesi & Marin Telemetri, Teşhis ve Yapay Zeka Destekli Copilot Platformu**  
 > *ISO 11898-1:2015/2024 (CAN / CAN-FD) • SAE J1939-21/71/73/81 • ISO 14229-1 UDS • ISO 15765-2 DoCAN • NMEA 2000 (ISO 11783-3) • TMC RP1210 (A/B/C) • Volvo Penta EDC/EVC*
 
@@ -331,8 +338,8 @@ Derlenmiş taşınabilir sürümü çalıştırmak için `dist/Universal_CAN_Dia
 
 ```bash
 # 1. Depoyu klonlayın ve sanal ortam oluşturun
-git clone https://github.com/username/universal-can-bus-diagnostic.git
-cd "Universal CAN-Bus Diagnostic & Telemetry Tool"
+git clone https://github.com/si6n/Universal-CAN-Bus-Diagnostic.git
+cd Universal-CAN-Bus-Diagnostic
 python -m venv venv
 venv\Scripts\activate
 
