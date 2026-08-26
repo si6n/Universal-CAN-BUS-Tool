@@ -60,6 +60,8 @@ class AntiTamperGuard:
 
         elapsed_ms = (t1 - t0) * 1000.0
         if elapsed_ms > threshold_ms:
-            logger.warning("Timing anomaly detected! Possible debugger single-stepping.", extra={"elapsed_ms": elapsed_ms})
+            logger.warning(
+                "Timing anomaly detected! Possible debugger single-stepping.", extra={"elapsed_ms": elapsed_ms}
+            )
             return True
         return False

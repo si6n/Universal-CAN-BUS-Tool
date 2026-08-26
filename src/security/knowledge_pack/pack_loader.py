@@ -97,7 +97,9 @@ class EncryptedKnowledgePackLoader:
                     cause=exc,
                 ) from exc
 
-        logger.info("Successfully decrypted Knowledge Pack in-memory", extra={"files_count": len(decrypted_memory_files)})
+        logger.info(
+            "Successfully decrypted Knowledge Pack in-memory", extra={"files_count": len(decrypted_memory_files)}
+        )
         return decrypted_memory_files
 
     @classmethod

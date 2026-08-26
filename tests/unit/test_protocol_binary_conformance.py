@@ -25,11 +25,11 @@ from src.protocols.volvo.volvo_decoder import VolvoPentaDecoder
 def test_isotp_can_fd_extended_single_frame_rx() -> None:
     """Verify ISO 15765-2:2016 CAN-FD Single Frame with 16-byte payload (SF_DL > 7)."""
     transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8)
-    raw_payload = b"\x62\xF1\x90" + b"ABCDEFGHIJKLM"  # 16 bytes
+    raw_payload = b"\x62\xf1\x90" + b"ABCDEFGHIJKLM"  # 16 bytes
     assert len(raw_payload) == 16
 
     # CAN-FD SF Header: [0x00, 0x10] followed by 16 bytes payload and 0xCC padding to DLC 15 (64B)
-    fd_data = bytes([0x00, 16]) + raw_payload + (b"\xCC" * 46)
+    fd_data = bytes([0x00, 16]) + raw_payload + (b"\xcc" * 46)
     fd_frame = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x7E8,
@@ -46,7 +46,7 @@ def test_isotp_can_fd_extended_single_frame_rx() -> None:
 def test_n2k_signed_tilt_trim_decoding() -> None:
     """Verify NMEA 2000 PGN 127488 signed int8 Tilt/Trim decoding."""
     # Negative trim (-10%): Byte 5 = 0xF6 (246 in unsigned, -10 in two's-complement int8)
-    data_neg = b"\x00\x40\x1f\xdc\x05\xF6\xff\xff"
+    data_neg = b"\x00\x40\x1f\xdc\x05\xf6\xff\xff"
     res_neg = Nmea2000PgnDecoder.decode_engine_rapid(data_neg)
     assert res_neg is not None
     assert res_neg.tilt_trim_percent == -10
@@ -150,7 +150,7 @@ def test_n2k_fast_packet_pdu1_canonical_pgn() -> None:
     # Proprietary PDU1 Fast Packet: PGN 126720 (0x1EF00), DA 0x28, SA 0x05 -> CAN ID 0x19EF2805
     # Total 14 bytes: "ABCDEFGHIJKLMN"
     # Frame 0 (6 bytes payload): "ABCDEF"
-    f0_data = b"\x00\x0E" + b"ABCDEF"
+    f0_data = b"\x00\x0e" + b"ABCDEF"
     f0 = CanFrame.create(
         channel_id="n2k",
         arbitration_id=0x19EF2805,
@@ -172,7 +172,7 @@ def test_n2k_fast_packet_pdu1_canonical_pgn() -> None:
     assert res1 is None
 
     # Frame 2 (1 byte payload + padding): "N" + 6x 0xFF
-    f2_data = b"\x02" + b"N" + (b"\xFF" * 6)
+    f2_data = b"\x02" + b"N" + (b"\xff" * 6)
     f2 = CanFrame.create(
         channel_id="n2k",
         arbitration_id=0x19EF2805,
@@ -193,7 +193,7 @@ def test_j1939_tp_cm_bounds_rejection() -> None:
     f_zero = CanFrame.create(
         channel_id="j1939",
         arbitration_id=0x18ECFF01,
-        data=b"\x20\x00\x00\x00\xFF\x00\xF0\x00",
+        data=b"\x20\x00\x00\x00\xff\x00\xf0\x00",
         is_extended=True,
     )
     msg, resp = tp.handle_rx_frame(f_zero)
@@ -204,7 +204,7 @@ def test_j1939_tp_cm_bounds_rejection() -> None:
     f_overflow = CanFrame.create(
         channel_id="j1939",
         arbitration_id=0x18ECFF01,
-        data=b"\x20\xD0\x07\x00\xFF\x00\xF0\x00",  # 2000 bytes (0x07D0)
+        data=b"\x20\xd0\x07\x00\xff\x00\xf0\x00",  # 2000 bytes (0x07D0)
         is_extended=True,
     )
     msg, resp = tp.handle_rx_frame(f_overflow)
@@ -215,7 +215,7 @@ def test_j1939_tp_cm_bounds_rejection() -> None:
     f_mismatch = CanFrame.create(
         channel_id="j1939",
         arbitration_id=0x18ECFF01,
-        data=b"\x20\x0E\x00\x01\xFF\x00\xF0\x00",  # 14 bytes, 1 packet
+        data=b"\x20\x0e\x00\x01\xff\x00\xf0\x00",  # 14 bytes, 1 packet
         is_extended=True,
     )
     msg, resp = tp.handle_rx_frame(f_mismatch)

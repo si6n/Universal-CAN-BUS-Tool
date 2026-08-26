@@ -68,9 +68,21 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Krank mili (CKP) veya Kam mili (CMP) sensör sinyalinde CAN gürültüsü ve tork dalgalanması.",
         ],
         "steps": [
-            ("Osilatör ekranında silindir ateşleme dalga boyunu ve krank sinyalini kontrol ediniz.", "Krank & Ateşleme Bobinleri", "Orta (Alet Gerekir)"),
-            ("Enjektör dengeleme oranlarını ve yakıt rayı basıncını (UDS 0x22 DID 0x1102) ölçün.", "Yakıt Dağıtım Rayı", "Orta (Alet Gerekir)"),
-            ("Bujilerin primer/sekonder direnç değerlerini ve kompresyon basıncını test edin.", "Silindir Yanma Odası", "İleri (Servis)"),
+            (
+                "Osilatör ekranında silindir ateşleme dalga boyunu ve krank sinyalini kontrol ediniz.",
+                "Krank & Ateşleme Bobinleri",
+                "Orta (Alet Gerekir)",
+            ),
+            (
+                "Enjektör dengeleme oranlarını ve yakıt rayı basıncını (UDS 0x22 DID 0x1102) ölçün.",
+                "Yakıt Dağıtım Rayı",
+                "Orta (Alet Gerekir)",
+            ),
+            (
+                "Bujilerin primer/sekonder direnç değerlerini ve kompresyon basıncını test edin.",
+                "Silindir Yanma Odası",
+                "İleri (Servis)",
+            ),
         ],
         "uds_routine": "UDS Routine 0x31 (ID 0x0201: Silindir Kompresyon & Balans Testi)",
     },
@@ -85,9 +97,21 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Vakum hatlarında delinme veya çekvalf arızası.",
         ],
         "steps": [
-            ("Turbo wastegate aktüatör kolunun mekanik serbestliğini el pompası ile test edin.", "Wastegate Aktüatör", "Kolay (Görsel)"),
-            ("N75 selenoid valf soketinde 12V besleme ve PWM sinyalini osiloskop ile izleyin.", "N75 Boost Valfi", "Orta (Alet Gerekir)"),
-            ("Manifold mutlak basınç (MAP) sensörü canlı değerini referans manometre ile kıyaslayın.", "MAP Sensörü", "Orta (Alet Gerekir)"),
+            (
+                "Turbo wastegate aktüatör kolunun mekanik serbestliğini el pompası ile test edin.",
+                "Wastegate Aktüatör",
+                "Kolay (Görsel)",
+            ),
+            (
+                "N75 selenoid valf soketinde 12V besleme ve PWM sinyalini osiloskop ile izleyin.",
+                "N75 Boost Valfi",
+                "Orta (Alet Gerekir)",
+            ),
+            (
+                "Manifold mutlak basınç (MAP) sensörü canlı değerini referans manometre ile kıyaslayın.",
+                "MAP Sensörü",
+                "Orta (Alet Gerekir)",
+            ),
         ],
         "uds_routine": "UDS Routine 0x31 (ID 0x0305: VGT / Wastegate Pozisyon Adaptasyonu)",
     },
@@ -101,7 +125,11 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "EGR valfinin açık konumda takılı kalması sonucu takviye basıncı kaçağı.",
         ],
         "steps": [
-            ("Intercooler ve emiş borularına duman testi (smoke test) uygulayarak kaçak arayın.", "Intercooler Boruları", "Kolay (Görsel)"),
+            (
+                "Intercooler ve emiş borularına duman testi (smoke test) uygulayarak kaçak arayın.",
+                "Intercooler Boruları",
+                "Kolay (Görsel)",
+            ),
             ("EGR valfi pozisyonunu ve karbon kurum birikintisini inceleyin.", "EGR Valfi", "Orta (Alet Gerekir)"),
         ],
         "uds_routine": "UDS Servis 0x22 DID 0x0115 (Turbo Boost Actual vs Target)",
@@ -116,8 +144,16 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Termostatın açık kalması veya soğutma sıvısı seviyesinin kritik düşmesi.",
         ],
         "steps": [
-            ("Sensör soketinde 5.0V referans voltajını ve şasi sürekliliğini multimetre ile ölçün.", "ECT Sensör Soketi", "Kolay (Görsel)"),
-            ("Sıcaklık 20°C ve 80°C iken sensör NTC direnç değerini ölçün (Beklenen: ~2.5kΩ -> ~300Ω).", "ECT Sensör Gövdesi", "Orta (Alet Gerekir)"),
+            (
+                "Sensör soketinde 5.0V referans voltajını ve şasi sürekliliğini multimetre ile ölçün.",
+                "ECT Sensör Soketi",
+                "Kolay (Görsel)",
+            ),
+            (
+                "Sıcaklık 20°C ve 80°C iken sensör NTC direnç değerini ölçün (Beklenen: ~2.5kΩ -> ~300Ω).",
+                "ECT Sensör Gövdesi",
+                "Orta (Alet Gerekir)",
+            ),
             ("Radyatör fanı rölesini ve termostat açma sıcaklığını kontrol edin.", "Termostat / Fan", "Kolay (Görsel)"),
         ],
         "uds_routine": "UDS Servis 0x22 DID 0x0105 (Coolant Temperature Sensor Value)",
@@ -132,7 +168,11 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
         ],
         "steps": [
             ("MAF sensörü ölçüm elemanını özel temizleme spreyi ile temizleyin.", "MAF Sensörü", "Kolay (Görsel)"),
-            ("Emiş borusu kelepçelerini ve hava filtresi sızdırmazlığını kontrol edin.", "Hava Filtre Kutusu", "Kolay (Görsel)"),
+            (
+                "Emiş borusu kelepçelerini ve hava filtresi sızdırmazlığını kontrol edin.",
+                "Hava Filtre Kutusu",
+                "Kolay (Görsel)",
+            ),
         ],
         "uds_routine": "UDS Servis 0x2E (MAF Adaptasyon Değerlerini Sıfırla)",
     },
@@ -146,7 +186,11 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Ön Oksijen (Lambda) sensörü kirlenmesi veya ısıtıcı devre zayıflığı.",
         ],
         "steps": [
-            ("Kısa ve uzun vadeli yakıt trim (STFT/LTFT) değerlerini canlı izleyin (+%20 üzeri fakir karışımdır).", "Lambda Sensörü", "Orta (Alet Gerekir)"),
+            (
+                "Kısa ve uzun vadeli yakıt trim (STFT/LTFT) değerlerini canlı izleyin (+%20 üzeri fakir karışımdır).",
+                "Lambda Sensörü",
+                "Orta (Alet Gerekir)",
+            ),
             ("Yakıt rayı çalışma basıncını mekanik manometre ile doğrulayın.", "Yakıt Pompası", "Orta (Alet Gerekir)"),
         ],
         "uds_routine": "UDS Servis 0x22 DID 0x0144 (Oxygen Sensor Lambda Actual)",
@@ -161,8 +205,16 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
             "Aşırı elektriksel parazit veya düğümün Bus-Off durumuna düşmesi.",
         ],
         "steps": [
-            ("Akü kutup başı sökülüyken OBD-II Pin 6 (CAN-H) ve Pin 14 (CAN-L) arası direnci ölçün (Beklenen: 60Ω).", "CAN Veri Yolu", "Orta (Alet Gerekir)"),
-            ("ECM ana besleme voltajını (Pin 16 / Kontak) ve gövde şasi direncini (<0.2Ω) ölçün.", "ECM Güç Soketi", "Orta (Alet Gerekir)"),
+            (
+                "Akü kutup başı sökülüyken OBD-II Pin 6 (CAN-H) ve Pin 14 (CAN-L) arası direnci ölçün (Beklenen: 60Ω).",
+                "CAN Veri Yolu",
+                "Orta (Alet Gerekir)",
+            ),
+            (
+                "ECM ana besleme voltajını (Pin 16 / Kontak) ve gövde şasi direncini (<0.2Ω) ölçün.",
+                "ECM Güç Soketi",
+                "Orta (Alet Gerekir)",
+            ),
         ],
         "uds_routine": "UDS Servis 0x14 (Tüm DTC Kayıtlarını Sıfırla & CAN Ağını Yeniden Tara)",
     },
@@ -200,7 +252,9 @@ class AiDiagnosticCopilot:
         active_ecus: list[str],
     ) -> DiagnosticAnalysisReport:
         """Perform deterministic expert analysis or trigger Google Gemini / OpenAI LLM."""
-        if self.provider == "openai" or (self.provider == "auto" and self.openai_api_key and len(self.openai_api_key.strip()) > 10):
+        if self.provider == "openai" or (
+            self.provider == "auto" and self.openai_api_key and len(self.openai_api_key.strip()) > 10
+        ):
             try:
                 return self._analyze_with_openai(active_dtcs, telemetry_snapshot, active_ecus)
             except Exception as exc:
@@ -235,9 +289,25 @@ class AiDiagnosticCopilot:
         if any(d.get("spn") == 100 for d in active_dtcs):
             severity = FaultSeverity.CRITICAL_STOP
             affected.append("Motor Yağlama & Yatak Sistemi")
-            likely_causes.append("Kritik düşük yağ basıncı (Yağ pompası aşınması, karterde yağ eksilmesi veya filtre tıkanıklığı)")
-            steps.append(TroubleshootingStep(1, "Motoru derhal durdurun ve yağ çubuğundan yağ seviyesini kontrol edin.", "Yağ Karteri / Çubuğu", "Kolay (Görsel)"))
-            steps.append(TroubleshootingStep(2, "Yağ basınç sensörünün kablo soketini ve multimetre ile direnç değerini ölçün.", "Yağ Basınç Sensörü (SPN 100)", "Orta (Alet Gerekir)"))
+            likely_causes.append(
+                "Kritik düşük yağ basıncı (Yağ pompası aşınması, karterde yağ eksilmesi veya filtre tıkanıklığı)"
+            )
+            steps.append(
+                TroubleshootingStep(
+                    1,
+                    "Motoru derhal durdurun ve yağ çubuğundan yağ seviyesini kontrol edin.",
+                    "Yağ Karteri / Çubuğu",
+                    "Kolay (Görsel)",
+                )
+            )
+            steps.append(
+                TroubleshootingStep(
+                    2,
+                    "Yağ basınç sensörünün kablo soketini ve multimetre ile direnç değerini ölçün.",
+                    "Yağ Basınç Sensörü (SPN 100)",
+                    "Orta (Alet Gerekir)",
+                )
+            )
             correlations.append(f"Motor {rpm:.0f} RPM devirdeyken yağ basınç alarmı tetiklendi. Yatak sarma riski!")
 
         # Scenario 2: Overheating Fault (SPN 110 or Temp > 100°C)
@@ -245,9 +315,25 @@ class AiDiagnosticCopilot:
             if severity != FaultSeverity.CRITICAL_STOP:
                 severity = FaultSeverity.CRITICAL_STOP if coolant_temp > 108.0 else FaultSeverity.MEDIUM
             affected.append("Soğutma & Termostat Sistemi")
-            likely_causes.append(f"Kritik hararet uyarısı (Sıcaklık: {coolant_temp:.1f} °C). Termostat kilitli, devirdaim pompası arızalı veya radyatör tıkalı.")
-            steps.append(TroubleshootingStep(len(steps) + 1, "Radyatör / Isı eşanjörü soğutma sıvısı seviyesini ve fan çalışmasını kontrol edin.", "Soğutma Radyatörü", "Kolay (Görsel)"))
-            steps.append(TroubleshootingStep(len(steps) + 1, "Termostat açma derecesini ve su pompası kayış gerginliğini test edin.", "Termostat & Devirdaim", "Orta (Alet Gerekir)"))
+            likely_causes.append(
+                f"Kritik hararet uyarısı (Sıcaklık: {coolant_temp:.1f} °C). Termostat kilitli, devirdaim pompası arızalı veya radyatör tıkalı."
+            )
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "Radyatör / Isı eşanjörü soğutma sıvısı seviyesini ve fan çalışmasını kontrol edin.",
+                    "Soğutma Radyatörü",
+                    "Kolay (Görsel)",
+                )
+            )
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "Termostat açma derecesini ve su pompası kayış gerginliğini test edin.",
+                    "Termostat & Devirdaim",
+                    "Orta (Alet Gerekir)",
+                )
+            )
             correlations.append(f"Soğutma suyu {coolant_temp:.1f} °C ile kritik çalışma eşiğini aştı.")
 
         # Scenario 3: Injector Fault (SPN 651..656)
@@ -259,8 +345,22 @@ class AiDiagnosticCopilot:
             cyl_no = int(str(raw_spn)) - 650
             affected.append(f"Yakıt Enjeksiyon Sistemi (Silindir #{cyl_no})")
             likely_causes.append(f"Silindir #{cyl_no} Enjektör solenoid akım kesintisi veya püskürtme dengesizliği.")
-            steps.append(TroubleshootingStep(len(steps) + 1, f"Silindir #{cyl_no} enjektör elektrik soketini ve tesisat sürekliliğini ölçün.", f"Enjektör #{cyl_no}", "Orta (Alet Gerekir)"))
-            steps.append(TroubleshootingStep(len(steps) + 1, "UDS Routine 0x31 ile Silindir Kompresyon ve Tekil Enjektör Kesme testi yapın.", "ECU Teşhis Portu", "İleri (Servis)"))
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    f"Silindir #{cyl_no} enjektör elektrik soketini ve tesisat sürekliliğini ölçün.",
+                    f"Enjektör #{cyl_no}",
+                    "Orta (Alet Gerekir)",
+                )
+            )
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "UDS Routine 0x31 ile Silindir Kompresyon ve Tekil Enjektör Kesme testi yapın.",
+                    "ECU Teşhis Portu",
+                    "İleri (Servis)",
+                )
+            )
             correlations.append(f"Silindir #{cyl_no} ateşleme dengesizliği tork dalgalanmasına yol açıyor.")
 
         # Scenario 4: Turbo Boost Fault (SPN 102 or low boost)
@@ -268,10 +368,28 @@ class AiDiagnosticCopilot:
             if severity == FaultSeverity.LOW:
                 severity = FaultSeverity.MEDIUM
             affected.append("Turboşarj & Hava Emiş Hattı")
-            likely_causes.append("Düşük turbo doldurma basıncı (Intercooler hortum kaçağı, Westgate valfi açık kalması veya VGT aktüatör sıkışması)")
-            steps.append(TroubleshootingStep(len(steps) + 1, "Turbo intercooler hava hortumlarında yırtık veya kelepçe gevşekliği arayın.", "Intercooler Boruları", "Kolay (Görsel)"))
-            steps.append(TroubleshootingStep(len(steps) + 1, "VGT Turbo aktüatör kolunun mekanik olarak serbest hareket ettiğini doğrulayın.", "VGT Aktüatör", "Orta (Alet Gerekir)"))
-            correlations.append(f"{rpm:.0f} RPM devirde turbo basıncı ({boost:.1f} kPa) beklenen 160+ kPa değerinin altında.")
+            likely_causes.append(
+                "Düşük turbo doldurma basıncı (Intercooler hortum kaçağı, Westgate valfi açık kalması veya VGT aktüatör sıkışması)"
+            )
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "Turbo intercooler hava hortumlarında yırtık veya kelepçe gevşekliği arayın.",
+                    "Intercooler Boruları",
+                    "Kolay (Görsel)",
+                )
+            )
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "VGT Turbo aktüatör kolunun mekanik olarak serbest hareket ettiğini doğrulayın.",
+                    "VGT Aktüatör",
+                    "Orta (Alet Gerekir)",
+                )
+            )
+            correlations.append(
+                f"{rpm:.0f} RPM devirde turbo basıncı ({boost:.1f} kPa) beklenen 160+ kPa değerinin altında."
+            )
 
         # Scenario 5: DPF / Exhaust Fault (SPN 3251)
         if any(d.get("spn") == 3251 for d in active_dtcs):
@@ -279,7 +397,14 @@ class AiDiagnosticCopilot:
                 severity = FaultSeverity.MEDIUM
             affected.append("Egzoz Arıtma & DPF Sistemi")
             likely_causes.append("Dizel Partikül Filtresi (DPF) aşırı kurum doluluğu ve yüksek egzoz karşı basıncı.")
-            steps.append(TroubleshootingStep(len(steps) + 1, "UDS Servis 0x31 Routine ile DPF Manuel Servis Rejenerasyonu başlatın.", "DPF Filtresi", "İleri (Servis)"))
+            steps.append(
+                TroubleshootingStep(
+                    len(steps) + 1,
+                    "UDS Servis 0x31 Routine ile DPF Manuel Servis Rejenerasyonu başlatın.",
+                    "DPF Filtresi",
+                    "İleri (Servis)",
+                )
+            )
             correlations.append("DPF diferansiyel basınç sensörü eşik değerin üzerine çıktı.")
 
         # Default healthy response if no DTCs
@@ -287,10 +412,19 @@ class AiDiagnosticCopilot:
             summary = "✅ Tüm sistemler nominal çalışma parametrelerinde. Kritik veya aktif arıza tespit edilmedi."
             root_cause_prob = "%99 Sistem Sağlıklı"
             likely_causes.append("Sensör ve CAN iletişim parametreleri fabrika toleransları dahilinde.")
-            steps.append(TroubleshootingStep(1, "Periyodik bakım planına uygun olarak sıvı kontrollerini sürdürün.", "Genel Araç", "Kolay (Görsel)"))
+            steps.append(
+                TroubleshootingStep(
+                    1,
+                    "Periyodik bakım planına uygun olarak sıvı kontrollerini sürdürün.",
+                    "Genel Araç",
+                    "Kolay (Görsel)",
+                )
+            )
             affected.append("Tüm Elektronik Kontrol Üniteleri (ECU)")
         else:
-            summary = f"⚠️ Yapay Zeka Teşhisi: {len(affected)} kritik alt sistemde arıza ve korelasyon sapması tespit edildi."
+            summary = (
+                f"⚠️ Yapay Zeka Teşhisi: {len(affected)} kritik alt sistemde arıza ve korelasyon sapması tespit edildi."
+            )
             root_cause_prob = "%91 Kök Neden Güvenilirliği (Korelasyon Analizi)"
 
         return DiagnosticAnalysisReport(
@@ -403,17 +537,17 @@ class AiDiagnosticCopilot:
             payload = {
                 "model": model,
                 "messages": [
-                    {"role": "system", "content": "Sen araç telemetrisi ve CAN-Bus arıza teşhisi konusunda uzmanlaşmış bir başmühendissin. Sadece JSON formatında yanıt ver."},
-                    {"role": "user", "content": prompt_text}
+                    {
+                        "role": "system",
+                        "content": "Sen araç telemetrisi ve CAN-Bus arıza teşhisi konusunda uzmanlaşmış bir başmühendissin. Sadece JSON formatında yanıt ver.",
+                    },
+                    {"role": "user", "content": prompt_text},
                 ],
                 "temperature": 0.2,
-                "response_format": {"type": "json_object"}
+                "response_format": {"type": "json_object"},
             }
             data = json.dumps(payload).encode("utf-8")
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.openai_api_key or ''}"
-            }
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.openai_api_key or ''}"}
             req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=data, headers=headers)
             try:
                 with urllib.request.urlopen(req, timeout=10.0) as resp:
@@ -516,7 +650,7 @@ class AiDiagnosticCopilot:
         if dtc_key and dtc_key in EXPERT_KNOWLEDGE_BASE:
             info = EXPERT_KNOWLEDGE_BASE[dtc_key]
             causes_text = "\n".join(f"  • {c}" for c in info["causes"][:2])
-            steps_text = "\n".join(f"  {idx+1}. {s[0]}" for idx, s in enumerate(info["steps"][:2]))
+            steps_text = "\n".join(f"  {idx + 1}. {s[0]}" for idx, s in enumerate(info["steps"][:2]))
 
             return (
                 f"🚨 **{dtc_key} - {info['title']}**\n\n"
@@ -526,7 +660,19 @@ class AiDiagnosticCopilot:
             )
 
         # 2. Semantic Intent: Misfire, Tekleme, Tork Kaybı
-        if any(w in prompt_lower for w in ["tekleme", "misfire", "ateşleme", "sarsıntı", "tork düşüş", "tork kaybı", "çekişten düş", "silindir"]):
+        if any(
+            w in prompt_lower
+            for w in [
+                "tekleme",
+                "misfire",
+                "ateşleme",
+                "sarsıntı",
+                "tork düşüş",
+                "tork kaybı",
+                "çekişten düş",
+                "silindir",
+            ]
+        ):
             return (
                 f"🔍 **Silindir Tekleme & Çekiş Kaybı Teşhisi:**\n\n"
                 f"• **Canlı Durum:** Motor {rpm:.0f} RPM devirde sarsıntılı çalışıyor.\n"
@@ -540,7 +686,10 @@ class AiDiagnosticCopilot:
             )
 
         # 3. Semantic Intent: Turbo, Overboost, Underboost, Basınç
-        if any(w in prompt_lower for w in ["turbo", "overboost", "underboost", "basınç", "boost", "wastegate", "intercooler", "n75"]):
+        if any(
+            w in prompt_lower
+            for w in ["turbo", "overboost", "underboost", "basınç", "boost", "wastegate", "intercooler", "n75"]
+        ):
             return (
                 f"💨 **Turbo Basıncı & Aşırı Doldurma Teşhisi:**\n\n"
                 f"• **Canlı Basınç:** **{boost_bar:.2f} Bar** (Normal aralık: 1.2 – 1.8 Bar).\n"
@@ -552,7 +701,9 @@ class AiDiagnosticCopilot:
             )
 
         # 4. Semantic Intent: Hararet, Soğutma, Termostat, Fan
-        if any(w in prompt_lower for w in ["hararet", "sıcaklık", "soğutma", "termostat", "radyatör", "fan", "antifriz"]):
+        if any(
+            w in prompt_lower for w in ["hararet", "sıcaklık", "soğutma", "termostat", "radyatör", "fan", "antifriz"]
+        ):
             return (
                 f"🌡️ **Yüksek Motor Sıcaklığı (Hararet):**\n\n"
                 f"• **Canlı Sıcaklık:** **{coolant_temp:.1f}°C** (Kritik >105°C)\n"
@@ -566,7 +717,22 @@ class AiDiagnosticCopilot:
             )
 
         # 5. Semantic Intent: CAN Bus, 120 Ohm, Sonlandırma, Pinout
-        if any(w in prompt_lower for w in ["can bus", "haberleşme", "120 ohm", "sonlandırma", "pinout", "obd", "deutsch", "kablo", "şema", "direnç", "bus off"]):
+        if any(
+            w in prompt_lower
+            for w in [
+                "can bus",
+                "haberleşme",
+                "120 ohm",
+                "sonlandırma",
+                "pinout",
+                "obd",
+                "deutsch",
+                "kablo",
+                "şema",
+                "direnç",
+                "bus off",
+            ]
+        ):
             return (
                 "🔌 **CAN-Bus 120Ω Direnç & Pinout Rehberi:**\n\n"
                 "• **Sonlandırma Testi:** Kontak kapalıyken CAN-H ve CAN-L arasında **60 Ω** okunmalıdır (Paralel 2 adet 120Ω).\n"

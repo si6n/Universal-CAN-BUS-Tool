@@ -27,7 +27,7 @@ def test_dbc_signal_validity_valid_signals() -> None:
     frame = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x0CF00400,
-        data=b"\x00\x01\xAF\x00\x32\x00\x00\x00",
+        data=b"\x00\x01\xaf\x00\x32\x00\x00\x00",
         is_extended=True,
     )
     decoded = decoder.decode_frame(frame)
@@ -53,7 +53,7 @@ def test_dbc_signal_not_available_discrete_values_detected() -> None:
     frame_na = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x0CF00400,
-        data=b"\x00\x0F\xFF\xFF\xFF\x00\x00\x00",
+        data=b"\x00\x0f\xff\xff\xff\x00\x00\x00",
         is_extended=True,
     )
     decoded = decoder.decode_frame(frame_na)
@@ -84,7 +84,7 @@ def test_dbc_signal_parameter_error_discrete_values_detected() -> None:
     frame_err = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x0CF00400,
-        data=b"\x00\x0E\xFE\xFE\xFF\x00\x00\x00",
+        data=b"\x00\x0e\xfe\xfe\xff\x00\x00\x00",
         is_extended=True,
     )
     decoded = decoder.decode_frame(frame_err)

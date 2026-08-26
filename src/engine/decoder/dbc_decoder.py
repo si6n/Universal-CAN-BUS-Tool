@@ -119,7 +119,7 @@ class DbcSignalDecoder:
             if frame_len < msg_def.length:
                 return None
 
-            payload = frame.data[:msg_def.length] if frame_len > msg_def.length else frame.data
+            payload = frame.data[: msg_def.length] if frame_len > msg_def.length else frame.data
 
             # Decode scaled physical values and raw integer values
             scaled_signals = msg_def.decode(
@@ -205,7 +205,9 @@ class DbcSignalDecoder:
 
             for candidate in self.db.messages:
                 # Candidate must be an extended frame definition (29-bit)
-                is_candidate_ext = getattr(candidate, "is_extended_frame", False) or bool(candidate.frame_id & 0x80000000)
+                is_candidate_ext = getattr(candidate, "is_extended_frame", False) or bool(
+                    candidate.frame_id & 0x80000000
+                )
                 if not is_candidate_ext:
                     continue
 

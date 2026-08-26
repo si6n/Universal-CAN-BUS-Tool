@@ -12,9 +12,9 @@ from src.core.logging import get_logger
 
 logger = get_logger("protocols.j1939.diagnostics")
 
-PGN_DM1: int = 65226   # 0xFECA (Active DTCs)
-PGN_DM2: int = 65227   # 0xFECB (Previously Active DTCs)
-PGN_DM3: int = 65228   # 0xFECC (Clear Previously Active DTCs)
+PGN_DM1: int = 65226  # 0xFECA (Active DTCs)
+PGN_DM2: int = 65227  # 0xFECB (Previously Active DTCs)
+PGN_DM3: int = 65228  # 0xFECC (Clear Previously Active DTCs)
 PGN_DM11: int = 65235  # 0xFED3 (Clear Active DTCs)
 PGN_DM12: int = 65236  # 0xFED4 (Emissions-Related Active DTCs)
 
@@ -136,7 +136,7 @@ class J1939DiagnosticService:
         for i in range(num_dtcs):
             chunk = dtc_payload[i * 4 : (i + 1) * 4]
             # Check for empty DTC (SPN=0, FMI=0)
-            if chunk == b"\x00\x00\x00\x00" or chunk == b"\xFF\xFF\xFF\xFF":
+            if chunk == b"\x00\x00\x00\x00" or chunk == b"\xff\xff\xff\xff":
                 continue
             dtc = DiagnosticTroubleCode.from_bytes(chunk, source_address=source_address)
             if dtc.spn != 0:
@@ -157,10 +157,10 @@ class J1939DiagnosticService:
     def create_dm11_clear_active_request(cls, target_address: int = 0, source_address: int = 0xF9) -> bytes:
         """Construct PGN 59904 (Request PGN) targeting DM11 (PGN 65235 / 0xFED3)."""
         # PGN 65235 in 3 bytes little endian: 0xD3, 0xFE, 0x00
-        return b"\xD3\xFE\x00"
+        return b"\xd3\xfe\x00"
 
     @classmethod
     def create_dm3_clear_previously_active_request(cls, target_address: int = 0, source_address: int = 0xF9) -> bytes:
         """Construct PGN 59904 (Request PGN) targeting DM3 (PGN 65228 / 0xFECC)."""
         # PGN 65228 in 3 bytes little endian: 0xCC, 0xFE, 0x00
-        return b"\xCC\xFE\x00"
+        return b"\xcc\xfe\x00"

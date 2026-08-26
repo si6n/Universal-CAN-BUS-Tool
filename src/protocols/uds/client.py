@@ -39,9 +39,7 @@ class UdsClient:
         self.rx_id = rx_id
         self.channel_id = channel_id
         self.transport = IsoTpTransport(tx_id=tx_id, rx_id=rx_id, channel_id=channel_id)
-        self._executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_workers, thread_name_prefix="uds_client"
-        )
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="uds_client")
 
     def execute_async(
         self,
@@ -138,23 +136,17 @@ class UdsClient:
 
     def start_routine(self, routine_id: int, options: bytes = b"") -> UdsResponse:
         """Start ECU Routine (0x31)."""
-        req_payload = UdsServiceBuilder.build_routine_control(
-            RoutineControlType.START_ROUTINE, routine_id, options
-        )
+        req_payload = UdsServiceBuilder.build_routine_control(RoutineControlType.START_ROUTINE, routine_id, options)
         return self._send_and_receive(req_payload)
 
     def stop_routine(self, routine_id: int) -> UdsResponse:
         """Stop ECU Routine (0x31)."""
-        req_payload = UdsServiceBuilder.build_routine_control(
-            RoutineControlType.STOP_ROUTINE, routine_id
-        )
+        req_payload = UdsServiceBuilder.build_routine_control(RoutineControlType.STOP_ROUTINE, routine_id)
         return self._send_and_receive(req_payload)
 
     def request_routine_results(self, routine_id: int) -> UdsResponse:
         """Query ECU Routine Results (0x31)."""
-        req_payload = UdsServiceBuilder.build_routine_control(
-            RoutineControlType.REQUEST_ROUTINE_RESULTS, routine_id
-        )
+        req_payload = UdsServiceBuilder.build_routine_control(RoutineControlType.REQUEST_ROUTINE_RESULTS, routine_id)
         return self._send_and_receive(req_payload)
 
     def tester_present(self, suppress_response: bool = False) -> UdsResponse | None:

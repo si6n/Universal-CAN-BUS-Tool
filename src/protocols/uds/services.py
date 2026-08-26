@@ -97,12 +97,14 @@ class UdsServiceBuilder:
         routine_id: int,
         option_bytes: bytes = b"",
     ) -> bytes:
-        header = bytes([
-            UdsServiceId.ROUTINE_CONTROL,
-            control_type,
-            (routine_id >> 8) & 0xFF,
-            routine_id & 0xFF,
-        ])
+        header = bytes(
+            [
+                UdsServiceId.ROUTINE_CONTROL,
+                control_type,
+                (routine_id >> 8) & 0xFF,
+                routine_id & 0xFF,
+            ]
+        )
         return header + option_bytes
 
     @classmethod
@@ -115,11 +117,17 @@ class UdsServiceBuilder:
     ) -> bytes:
         addr_bytes = memory_address.to_bytes(4, byteorder="big")
         size_bytes = memory_size.to_bytes(4, byteorder="big")
-        return bytes([
-            UdsServiceId.REQUEST_DOWNLOAD,
-            data_format_identifier,
-            address_and_length_format_identifier,
-        ]) + addr_bytes + size_bytes
+        return (
+            bytes(
+                [
+                    UdsServiceId.REQUEST_DOWNLOAD,
+                    data_format_identifier,
+                    address_and_length_format_identifier,
+                ]
+            )
+            + addr_bytes
+            + size_bytes
+        )
 
     @classmethod
     def build_transfer_data(cls, block_sequence: int, data: bytes) -> bytes:

@@ -20,12 +20,12 @@ logger = get_logger("safety.state_machine")
 class SafetyState(str, Enum):
     """Formal Safety Operational States."""
 
-    STARTUP = "STARTUP"          # System booting up, hardware initializing, TX strictly blocked
-    SAFE = "SAFE"                # Initialization complete, bus offline or TX disconnected
-    PASSIVE = "PASSIVE"          # Default mode: Listen-Only RX, zero transmissions allowed
-    ARMED_TX = "ARMED_TX"        # Explicit operator authorization granted, policy checks verified
-    ACTIVE = "ACTIVE"            # Active verified transmission in progress with live watchdog lease
-    FAULT = "FAULT"              # Safety violation / Watchdog timeout / E-Stop; TX revoked, queue flushed
+    STARTUP = "STARTUP"  # System booting up, hardware initializing, TX strictly blocked
+    SAFE = "SAFE"  # Initialization complete, bus offline or TX disconnected
+    PASSIVE = "PASSIVE"  # Default mode: Listen-Only RX, zero transmissions allowed
+    ARMED_TX = "ARMED_TX"  # Explicit operator authorization granted, policy checks verified
+    ACTIVE = "ACTIVE"  # Active verified transmission in progress with live watchdog lease
+    FAULT = "FAULT"  # Safety violation / Watchdog timeout / E-Stop; TX revoked, queue flushed
 
 
 class SafetySupervisor:
@@ -37,7 +37,10 @@ class SafetySupervisor:
         SafetyState.PASSIVE: {SafetyState.ARMED_TX, SafetyState.SAFE, SafetyState.FAULT},
         SafetyState.ARMED_TX: {SafetyState.ACTIVE, SafetyState.PASSIVE, SafetyState.FAULT},
         SafetyState.ACTIVE: {SafetyState.ARMED_TX, SafetyState.PASSIVE, SafetyState.FAULT},
-        SafetyState.FAULT: {SafetyState.PASSIVE, SafetyState.SAFE},  # MUST NOT transition directly to ARMED_TX or ACTIVE
+        SafetyState.FAULT: {
+            SafetyState.PASSIVE,
+            SafetyState.SAFE,
+        },  # MUST NOT transition directly to ARMED_TX or ACTIVE
     }
 
     def __init__(self, initial_state: SafetyState = SafetyState.STARTUP) -> None:

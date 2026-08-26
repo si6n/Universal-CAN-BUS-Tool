@@ -35,5 +35,7 @@ jobs:
           ruff check .
 
       - name: Run 274 PyTest Conformance & Safety Tests
+        env:
+          QT_QPA_PLATFORM: offscreen
         run: |
           pytest -v --durations=10

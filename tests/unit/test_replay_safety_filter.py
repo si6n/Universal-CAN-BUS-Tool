@@ -55,7 +55,7 @@ def test_replay_safety_filter_blocks_diagnostic_ecu_reset_and_writes() -> None:
     frame_write = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x7E0,
-        data=b"\x04\x2E\xF1\x90\xAA\x00\x00\x00",
+        data=b"\x04\x2e\xf1\x90\xaa\x00\x00\x00",
         is_extended=False,
     )
     assert filter_engine.filter_frame(frame_write) is None

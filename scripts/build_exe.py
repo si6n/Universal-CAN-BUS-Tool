@@ -19,7 +19,7 @@ def build_exe() -> int:
     # 1. Check & Build Frontend if needed
     if not frontend_dist.exists() or not (frontend_dist / "index.html").exists():
         print("[1/2] Frontend React+Tailwind paketi derleniyor...")
-        ret = subprocess.call("cmd.exe /c \"npm run build\"", cwd=str(frontend_dir), shell=True)
+        ret = subprocess.call('cmd.exe /c "npm run build"', cwd=str(frontend_dir), shell=True)
         if ret != 0:
             print("[HATA] Frontend derleme hatasi!")
             return ret

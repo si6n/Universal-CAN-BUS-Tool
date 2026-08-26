@@ -56,9 +56,9 @@ class VolvoEvcHelmState:
     """Volvo Penta EVC Control Lever and Powertrim Telemetry (PGN 65360 / 65361)."""
 
     lever_position_percent: float  # -100% (Full Reverse) .. +100% (Full Ahead)
-    gear_state: str                # "NEUTRAL" | "AHEAD" | "ASTERN"
-    trim_angle_deg: float          # -10.0 .. +15.0 deg
-    rudder_angle_deg: float        # -45.0 .. +45.0 deg
+    gear_state: str  # "NEUTRAL" | "AHEAD" | "ASTERN"
+    trim_angle_deg: float  # -10.0 .. +15.0 deg
+    rudder_angle_deg: float  # -45.0 .. +45.0 deg
     station_active: bool
 
 

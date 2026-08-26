@@ -5,14 +5,15 @@ Demonstrates UDS Service 0x22 (ReadDataByIdentifier) request construction.
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
 
-from src.protocols.uds.services import UdsServiceBuilder, DiagnosticSessionType
-from src.hal.drivers.pcan_kvaser import PythonCanBus
+from src.protocols.uds.services import DiagnosticSessionType, UdsServiceBuilder
+
 
 def main():
     print("=== ISO 14229 UDS Diagnostic Client Demo ===")
-    
+
     # 1. Build Extended Diagnostic Session Request (0x10 0x03)
     session_req = UdsServiceBuilder.build_diagnostic_session_control(DiagnosticSessionType.EXTENDED_DIAGNOSTIC_SESSION)
     print(f"1. UDS 0x10 Extended Session Request: {session_req.hex(' ')}")
@@ -25,5 +26,6 @@ def main():
     routine_req = UdsServiceBuilder.build_routine_control(1, 0x0202)
     print(f"3. UDS 0x31 Routine Start (0x0202) Request: {routine_req.hex(' ')}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

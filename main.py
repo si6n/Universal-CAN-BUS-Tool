@@ -1,4 +1,4 @@
-﻿"""Universal CAN-Bus Diagnostic & Telemetry Platform - Root Launcher.
+"""Universal CAN-Bus Diagnostic & Telemetry Platform - Root Launcher.
 
 Allows launching directly from project root or IDE Solution Explorer.
 """

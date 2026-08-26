@@ -47,11 +47,13 @@ def test_desktop_api_bridge_settings_update() -> None:
     app = UniversalCanDesktopApp(channel="vcan0", bitrate=250000)
     bridge = DesktopApiBridge(app)
 
-    bridge.save_settings({
-        "channel": "can0",
-        "baudRate": "500 kbps",
-        "apiKey": "test-mock-api-key-12345",
-    })
+    bridge.save_settings(
+        {
+            "channel": "can0",
+            "baudRate": "500 kbps",
+            "apiKey": "test-mock-api-key-12345",
+        }
+    )
 
     assert app.channel_name == "can0"
     assert app.bitrate_val == 500000

@@ -53,7 +53,9 @@ class LicenseValidator:
         boot_monotonic: float | None = None,
     ) -> None:
         self.public_key = public_key
-        self.hardware_fingerprint = hardware_fingerprint if hardware_fingerprint is not None else generate_hardware_fingerprint()
+        self.hardware_fingerprint = (
+            hardware_fingerprint if hardware_fingerprint is not None else generate_hardware_fingerprint()
+        )
         self.last_online_sync_ts = last_online_sync_ts or int(time.time())
         self.boot_realtime = boot_realtime
         self.boot_monotonic = boot_monotonic
@@ -97,7 +99,10 @@ class LicenseValidator:
             mono_elapsed = curr_mono - self.boot_monotonic
             real_elapsed = now - self.boot_realtime
             if mono_elapsed > (real_elapsed + 60.0):
-                logger.critical("Monotonic counter mismatch detected!", extra={"mono_elapsed": mono_elapsed, "real_elapsed": real_elapsed})
+                logger.critical(
+                    "Monotonic counter mismatch detected!",
+                    extra={"mono_elapsed": mono_elapsed, "real_elapsed": real_elapsed},
+                )
                 raise LicenseError(
                     "System clock manipulation detected (monotonic counter mismatch).",
                     code="CLOCK_MONOTONIC_MISMATCH",
@@ -146,7 +151,13 @@ class LicenseValidator:
         # Parse JSON payload
         try:
             data = json.loads(payload_bytes.decode("utf-8"))
-            if not isinstance(data, dict) or not {"user_id", "tier", "hardware_fingerprint", "issued_at", "expires_at"}.issubset(data.keys()):
+            if not isinstance(data, dict) or not {
+                "user_id",
+                "tier",
+                "hardware_fingerprint",
+                "issued_at",
+                "expires_at",
+            }.issubset(data.keys()):
                 raise ValueError("Incomplete license payload schema")
             payload = LicensePayload(
                 user_id=data["user_id"],
@@ -165,7 +176,10 @@ class LicenseValidator:
 
         # Hardware Fingerprint Check
         if payload.hardware_fingerprint != self.hardware_fingerprint and payload.hardware_fingerprint != "*":
-            logger.warning("Hardware fingerprint mismatch", extra={"expected": self.hardware_fingerprint, "token": payload.hardware_fingerprint})
+            logger.warning(
+                "Hardware fingerprint mismatch",
+                extra={"expected": self.hardware_fingerprint, "token": payload.hardware_fingerprint},
+            )
             raise LicenseError(
                 "License is locked to a different machine hardware ID.",
                 code="HARDWARE_MISMATCH",

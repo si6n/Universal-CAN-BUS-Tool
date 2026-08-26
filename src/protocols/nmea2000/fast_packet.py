@@ -116,7 +116,7 @@ class Nmea2000FastPacketDecoder:
 
         if len(session.received_bytes) >= session.total_bytes:
             # Completed!
-            completed_data = bytes(session.received_bytes[:session.total_bytes])
+            completed_data = bytes(session.received_bytes[: session.total_bytes])
             self._sessions.pop(session_key, None)
             return N2KCompletedMessage(
                 source_address=session.source_address,
@@ -129,9 +129,6 @@ class Nmea2000FastPacketDecoder:
         return None
 
     def _clean_expired(self, now: float) -> None:
-        expired = [
-            k for k, sess in self._sessions.items()
-            if (now - sess.last_activity_time) > self.TIMEOUT_SEC
-        ]
+        expired = [k for k, sess in self._sessions.items() if (now - sess.last_activity_time) > self.TIMEOUT_SEC]
         for k in expired:
             self._sessions.pop(k, None)

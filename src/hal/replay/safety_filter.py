@@ -29,7 +29,14 @@ class ReplaySafetyFilter:
     # Standard Diagnostic Request Arbitration IDs (11-bit)
     DIAGNOSTIC_11BIT_IDS: ClassVar[set[int]] = {
         0x7DF,  # Functional Broadcast Request
-        0x7E0, 0x7E1, 0x7E2, 0x7E3, 0x7E4, 0x7E5, 0x7E6, 0x7E7,  # Physical Request
+        0x7E0,
+        0x7E1,
+        0x7E2,
+        0x7E3,
+        0x7E4,
+        0x7E5,
+        0x7E6,
+        0x7E7,  # Physical Request
     }
 
     # Prohibited Diagnostic Service Identifiers (UDS SIDs)
@@ -85,7 +92,11 @@ class ReplaySafetyFilter:
             if pdu_format in {0xDA, 0xDB} and len(frame.data) >= 2:
                 # Single Frame (SF) or First Frame (FF) inspection
                 pci_type = (frame.data[0] >> 4) & 0x0F
-                sid = frame.data[1] if pci_type == 0x0 else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                sid = (
+                    frame.data[1]
+                    if pci_type == 0x0
+                    else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                )
                 if sid is not None and sid in self.PROHIBITED_UDS_SIDS:
                     return False, f"PROHIBITED_29BIT_UDS_SID: 0x{sid:02X}"
 
@@ -94,7 +105,11 @@ class ReplaySafetyFilter:
             if self.block_diagnostic_write and frame.arbitration_id in self.DIAGNOSTIC_11BIT_IDS:
                 if len(frame.data) >= 2:
                     pci_type = (frame.data[0] >> 4) & 0x0F
-                    sid = frame.data[1] if pci_type == 0x0 else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                    sid = (
+                        frame.data[1]
+                        if pci_type == 0x0
+                        else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                    )
                     if sid is not None and sid in self.PROHIBITED_UDS_SIDS:
                         return False, f"PROHIBITED_11BIT_UDS_SID: 0x{sid:02X}"
 

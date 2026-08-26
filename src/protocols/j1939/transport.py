@@ -72,7 +72,8 @@ class J1939TransportProtocol:
         """Reap inactive reassembly sessions exceeding T1 timeout."""
         curr_time = now if now is not None else time.monotonic()
         expired = [
-            key for key, sess in self._rx_sessions.items()
+            key
+            for key, sess in self._rx_sessions.items()
             if (curr_time - sess.last_activity_time) > self.T1_TIMEOUT_SEC
         ]
         for key in expired:
@@ -108,9 +109,7 @@ class J1939TransportProtocol:
 
         return None, None
 
-    def _handle_tp_cm(
-        self, frame: CanFrame, sa: int, da: int
-    ) -> tuple[CompletedMessage | None, CanFrame | None]:
+    def _handle_tp_cm(self, frame: CanFrame, sa: int, da: int) -> tuple[CompletedMessage | None, CanFrame | None]:
         ctrl_byte = frame.data[0]
         total_bytes = int.from_bytes(frame.data[1:3], byteorder="little")
         total_packets = frame.data[3]
@@ -180,7 +179,7 @@ class J1939TransportProtocol:
             cts_data = bytearray(8)
             cts_data[0] = TP_CTRL_CTS
             cts_data[1] = total_packets  # Number of packets allowed
-            cts_data[2] = 1              # Next sequence number expected
+            cts_data[2] = 1  # Next sequence number expected
             cts_data[3] = 0xFF
             cts_data[4] = 0xFF
             cts_data[5:8] = target_pgn.to_bytes(3, byteorder="little")
@@ -203,9 +202,7 @@ class J1939TransportProtocol:
 
         return None, None
 
-    def _handle_tp_dt(
-        self, frame: CanFrame, sa: int, da: int
-    ) -> tuple[CompletedMessage | None, CanFrame | None]:
+    def _handle_tp_dt(self, frame: CanFrame, sa: int, da: int) -> tuple[CompletedMessage | None, CanFrame | None]:
         seq_num = frame.data[0]
         payload = frame.data[1:8]
 
@@ -250,7 +247,7 @@ class J1939TransportProtocol:
 
         # Check if transfer is complete
         if session.expected_sequence > session.total_packets or len(session.received_bytes) >= session.total_bytes:
-            completed_data = bytes(session.received_bytes[:session.total_bytes])
+            completed_data = bytes(session.received_bytes[: session.total_bytes])
             completed_msg = CompletedMessage(
                 source_address=session.source_address,
                 destination_address=session.destination_address,
@@ -292,7 +289,7 @@ class J1939TransportProtocol:
         abort_data = bytearray(8)
         abort_data[0] = TP_CTRL_ABORT
         abort_data[1] = reason
-        abort_data[2:5] = b"\xFF\xFF\xFF"
+        abort_data[2:5] = b"\xff\xff\xff"
         abort_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
 
         can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)

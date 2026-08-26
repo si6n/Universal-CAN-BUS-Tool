@@ -69,7 +69,7 @@ class IsoTpTransport:
 
         # 1. CAN-FD Single Frame (up to 62 bytes)
         if is_fd and data_len <= 62:
-            payload = bytes([0x00, data_len]) + data + (b"\xCC" * (62 - data_len))
+            payload = bytes([0x00, data_len]) + data + (b"\xcc" * (62 - data_len))
             return [
                 CanFrame(
                     channel_id=self.channel_id,
@@ -85,10 +85,15 @@ class IsoTpTransport:
         # 2. CAN-FD Multi-Frame (FF with 62 payload bytes, CF with 63 payload bytes)
         if is_fd:
             frames: list[CanFrame] = []
-            ff_payload = bytes([
-                (PCI_FIRST_FRAME << 4) | ((data_len >> 8) & 0x0F),
-                data_len & 0xFF,
-            ]) + data[:62]
+            ff_payload = (
+                bytes(
+                    [
+                        (PCI_FIRST_FRAME << 4) | ((data_len >> 8) & 0x0F),
+                        data_len & 0xFF,
+                    ]
+                )
+                + data[:62]
+            )
             frames.append(
                 CanFrame(
                     channel_id=self.channel_id,
@@ -106,7 +111,7 @@ class IsoTpTransport:
             while bytes_sent < data_len:
                 chunk = data[bytes_sent : bytes_sent + 63]
                 pad_len = 63 - len(chunk)
-                cf_payload = bytes([(PCI_CONSECUTIVE_FRAME << 4) | (seq_num & 0x0F)]) + chunk + (b"\xCC" * pad_len)
+                cf_payload = bytes([(PCI_CONSECUTIVE_FRAME << 4) | (seq_num & 0x0F)]) + chunk + (b"\xcc" * pad_len)
 
                 frames.append(
                     CanFrame(
@@ -126,7 +131,7 @@ class IsoTpTransport:
 
         # 3. Standard CAN Single Frame fits in 1 CAN frame (<= 7 bytes)
         if data_len <= 7:
-            payload = bytes([(PCI_SINGLE_FRAME << 4) | (data_len & 0x0F)]) + data + (b"\xCC" * (7 - data_len))
+            payload = bytes([(PCI_SINGLE_FRAME << 4) | (data_len & 0x0F)]) + data + (b"\xcc" * (7 - data_len))
             return [
                 CanFrame(
                     channel_id=self.channel_id,
@@ -140,10 +145,15 @@ class IsoTpTransport:
 
         # 4. Standard CAN Multi-Frame (FF + CFs)
         frames = []
-        ff_payload = bytes([
-            (PCI_FIRST_FRAME << 4) | ((data_len >> 8) & 0x0F),
-            data_len & 0xFF,
-        ]) + data[:6]
+        ff_payload = (
+            bytes(
+                [
+                    (PCI_FIRST_FRAME << 4) | ((data_len >> 8) & 0x0F),
+                    data_len & 0xFF,
+                ]
+            )
+            + data[:6]
+        )
         frames.append(
             CanFrame(
                 channel_id=self.channel_id,
@@ -161,7 +171,7 @@ class IsoTpTransport:
         while bytes_sent < data_len:
             chunk = data[bytes_sent : bytes_sent + 7]
             pad_len = 7 - len(chunk)
-            cf_payload = bytes([(PCI_CONSECUTIVE_FRAME << 4) | (seq_num & 0x0F)]) + chunk + (b"\xCC" * pad_len)
+            cf_payload = bytes([(PCI_CONSECUTIVE_FRAME << 4) | (seq_num & 0x0F)]) + chunk + (b"\xcc" * pad_len)
 
             frames.append(
                 CanFrame(
@@ -265,7 +275,7 @@ class IsoTpTransport:
             session.last_activity_time = now
 
             if len(session.received_bytes) >= session.total_bytes:
-                completed = bytes(session.received_bytes[:session.total_bytes])
+                completed = bytes(session.received_bytes[: session.total_bytes])
                 self._rx_session = None
                 return completed, None
 

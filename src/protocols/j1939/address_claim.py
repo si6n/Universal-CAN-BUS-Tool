@@ -15,8 +15,8 @@ from src.core.models.can_frame import CanFrame
 logger = get_logger("protocols.j1939.address_claim")
 
 PGN_ADDRESS_CLAIM: int = 60928  # 0xEE00
-NULL_ADDRESS: int = 254         # 0xFE
-GLOBAL_ADDRESS: int = 255       # 0xFF
+NULL_ADDRESS: int = 254  # 0xFE
+GLOBAL_ADDRESS: int = 255  # 0xFF
 
 
 class AddressClaimState(Enum):
@@ -33,15 +33,15 @@ class J1939Name:
     """SAE J1939-81 64-bit NAME composed of all 10 standard subfields."""
 
     arbitrary_address_capable: bool  # 1 bit (Bit 63)
-    industry_group: int              # 3 bits (Bits 62..60)
-    vehicle_system_instance: int     # 4 bits (Bits 59..56)
-    vehicle_system: int              # 7 bits (Bits 55..49)
-    reserved: int = 0                # 1 bit (Bit 48, default 0)
-    function: int = 0                # 8 bits (Bits 47..40)
-    function_instance: int = 0       # 5 bits (Bits 39..35)
-    ecu_instance: int = 0            # 3 bits (Bits 34..32)
-    manufacturer_code: int = 0       # 11 bits (Bits 31..21)
-    identity_number: int = 0         # 21 bits (Bits 20..0)
+    industry_group: int  # 3 bits (Bits 62..60)
+    vehicle_system_instance: int  # 4 bits (Bits 59..56)
+    vehicle_system: int  # 7 bits (Bits 55..49)
+    reserved: int = 0  # 1 bit (Bit 48, default 0)
+    function: int = 0  # 8 bits (Bits 47..40)
+    function_instance: int = 0  # 5 bits (Bits 39..35)
+    ecu_instance: int = 0  # 3 bits (Bits 34..32)
+    manufacturer_code: int = 0  # 11 bits (Bits 31..21)
+    identity_number: int = 0  # 21 bits (Bits 20..0)
 
     def to_int64(self) -> int:
         """Encode 10 subfields into a single 64-bit unsigned integer."""

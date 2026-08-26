@@ -44,7 +44,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Universal CAN-Bus Diagnostic & Telemetry Tool")
     parser.add_argument("--cli", action="store_true", help="Run in CLI mode instead of GUI")
     parser.add_argument("--channel", type=str, default="vcan0", help="CAN Channel (e.g. PCAN_USBBUS1, 0, vcan0)")
-    parser.add_argument("--interface", type=str, default="virtual", help="Hardware driver (virtual, pcan, kvaser, vector)")
+    parser.add_argument(
+        "--interface", type=str, default="virtual", help="Hardware driver (virtual, pcan, kvaser, vector)"
+    )
     parser.add_argument("--bitrate", type=int, default=250000, help="CAN Bitrate (e.g. 250000, 500000)")
     parser.add_argument("--log-level", type=str, default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
 
@@ -66,7 +68,9 @@ def main() -> int:
             while True:
                 frame = bus.recv(timeout_s=1.0)
                 if frame:
-                    print(f"[{frame.timestamp_ns / 1e9:.6f}] ID: 0x{frame.arbitration_id:08X} DLC: {frame.dlc} Data: {' '.join(f'{b:02X}' for b in frame.data)}")
+                    print(
+                        f"[{frame.timestamp_ns / 1e9:.6f}] ID: 0x{frame.arbitration_id:08X} DLC: {frame.dlc} Data: {' '.join(f'{b:02X}' for b in frame.data)}"
+                    )
         except KeyboardInterrupt:
             print("\nShutting down...")
         finally:

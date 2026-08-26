@@ -78,7 +78,9 @@ def benchmark_ring_buffer_append(n: int = 100_000) -> float:
     tracemalloc.stop()
 
     fps = n / (t1 - t0)
-    print(f"[RingBuffer Single Append] {n:,} frames in {t1 - t0:.4f}s -> {fps:,.0f} frames/sec (Peak RAM: {peak / 1024 / 1024:.2f} MB)")
+    print(
+        f"[RingBuffer Single Append] {n:,} frames in {t1 - t0:.4f}s -> {fps:,.0f} frames/sec (Peak RAM: {peak / 1024 / 1024:.2f} MB)"
+    )
     return fps
 
 

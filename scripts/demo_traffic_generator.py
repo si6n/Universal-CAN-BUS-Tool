@@ -38,7 +38,7 @@ def run_live_simulation(channel: str = "vcan0", interval_s: float = 0.02) -> Non
             eec1_data[2] = 0x7D
             eec1_data[3] = raw_rpm & 0xFF
             eec1_data[4] = (raw_rpm >> 8) & 0xFF
-            eec1_data[5:8] = b"\xFF\xFF\xFF"
+            eec1_data[5:8] = b"\xff\xff\xff"
 
             f_eec1 = CanFrame.create(
                 channel_id="sim_engine",
@@ -72,7 +72,7 @@ def run_live_simulation(channel: str = "vcan0", interval_s: float = 0.02) -> Non
             n2k_rapid[3] = raw_boost & 0xFF
             n2k_rapid[4] = (raw_boost >> 8) & 0xFF
             n2k_rapid[5] = 0x0A  # 10% Trim
-            n2k_rapid[6:8] = b"\xFF\xFF"
+            n2k_rapid[6:8] = b"\xff\xff"
 
             f_n2k = CanFrame.create(
                 channel_id="sim_n2k",
@@ -85,7 +85,7 @@ def run_live_simulation(channel: str = "vcan0", interval_s: float = 0.02) -> Non
 
             # 4. Periodic J1939 DM1 Fault (SPN 100 Engine Oil Pressure, FMI 1 Low)
             if int(t) % 5 == 0:
-                dm1_data = b"\x40\xFF\x64\x00\x01\x01\xFF\xFF"
+                dm1_data = b"\x40\xff\x64\x00\x01\x01\xff\xff"
                 f_dm1 = CanFrame.create(
                     channel_id="sim_diag",
                     arbitration_id=0x18FECA00,

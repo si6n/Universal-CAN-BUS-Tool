@@ -91,7 +91,7 @@ class DiagnosticReportGenerator:
     <p><strong>Araç / Tekne Kimliği (VIN / HIN):</strong> {metadata.vin_or_hin}</p>
     <p><strong>Servis / Atölye:</strong> {metadata.workshop_name} | <strong>Teknisyen:</strong> {metadata.technician_name}</p>
     <p><strong>Rapor Tarihi:</strong> {now_str}</p>
-    <p><strong>Notlar:</strong> {metadata.notes or 'Rutin periyodik kontrol ve telemetri doğrulaması.'}</p>
+    <p><strong>Notlar:</strong> {metadata.notes or "Rutin periyodik kontrol ve telemetri doğrulaması."}</p>
   </div>
 
   <h2>📋 Diyagnostik Arıza Kodları (DTCs)</h2>
