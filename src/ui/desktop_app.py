@@ -38,6 +38,12 @@ class DesktopApiBridge:
     def select_scenario(self, scenario_name: str) -> None:
         self.app.set_scenario(scenario_name)
 
+    def inject_fault(self, fault_type: str) -> None:
+        self.app.inject_fault(fault_type)
+
+    def set_simulation_speed(self, speed: float) -> None:
+        self.app.set_simulation_speed(speed)
+
     def ask_copilot(self, query: str) -> str:
         return self.app.query_copilot(query)
 
@@ -83,12 +89,20 @@ class UniversalCanDesktopApp:
         self._is_simulating = False
         self._is_estop = False
         self._active_scenario = "nominal"
+        self._speed_mult = 1.0
         self._sim_time = 0.0
         self._total_packets = 0
         self._bus_load = 0
+        self._error_count = 0
         self._current_rpm = 0.0
         self._current_boost = 0.0
         self._current_temp = 0.0
+        self._pack_voltage = 398.4
+        self._battery_soc = 78.4
+        self._pack_current = 42.5
+        self._sog_knots = 18.6
+        self._depth_meters = 24.8
+        self._propeller_slip = 11.2
         self._window: webview.Window | None = None
         self._thread: threading.Thread | None = None
         self._running = True
@@ -117,6 +131,16 @@ class UniversalCanDesktopApp:
         self._active_scenario = scenario
         self._is_estop = False
 
+    def set_simulation_speed(self, speed: float) -> None:
+        self._speed_mult = max(0.25, min(10.0, float(speed)))
+
+    def inject_fault(self, fault_type: str) -> None:
+        if fault_type == "error_frame":
+            self._error_count += 5
+        elif fault_type == "wiring_dropout":
+            self._error_count += 12
+            self._bus_load = 88
+
     def query_copilot(self, query: str) -> str:
         dtc_list: list[str] = []
         if self._active_scenario == "misfire_p0300":
@@ -126,6 +150,16 @@ class UniversalCanDesktopApp:
         elif self._active_scenario == "overheat":
             dtc_list.append("P0115")
         elif self._active_scenario == "bus_surge":
+            dtc_list.append("U0100")
+        elif self._active_scenario == "ev_bms_telemetry":
+            dtc_list.append("P0A0B")
+        elif self._active_scenario == "marine_vessel_n2k":
+            dtc_list.append("SPN 520201")
+        elif self._active_scenario == "j1939_multi_ecu_fleet":
+            dtc_list.append("SPN 1087")
+        elif self._active_scenario == "can_fd_adas_vision":
+            dtc_list.append("C1A00")
+        elif self._active_scenario == "intermittent_wiring_fault":
             dtc_list.append("U0100")
 
         prompt_res = self.copilot.analyze_live_telemetry(
@@ -151,19 +185,25 @@ class UniversalCanDesktopApp:
     def _telemetry_loop(self) -> None:
         """High-speed background telemetry loop feeding the frontend."""
         while self._running:
-            time.sleep(0.05)
+            time.sleep(0.05 / max(0.5, self._speed_mult))
             self.watchdog.heartbeat()
 
             if not self._is_simulating or self._is_estop:
                 continue
 
-            self._sim_time += 0.05
+            self._sim_time += 0.05 * self._speed_mult
             t = self._sim_time
             self._total_packets += 1
 
             rpm = 2381.0 + 80.0 * math.sin(t * 0.8) + 30.0 * math.cos(t * 1.5)
             boost = 1.66 + 0.12 * math.sin(t * 0.5) + 0.05 * math.cos(t * 1.1)
             temp = 85.0 + 2.0 * math.sin(t * 0.2)
+            pack_volt = 398.4
+            soc = 78.4
+            current = 42.5
+            sog = 18.6
+            depth = 24.8
+            slip = 11.2
 
             if self._active_scenario == "misfire_p0300":
                 if math.sin(t * 3.0) > 0.4:
@@ -176,13 +216,35 @@ class UniversalCanDesktopApp:
                 temp = 108.5 + 4.0 * math.sin(t * 0.3)
                 self._bus_load = 45
             elif self._active_scenario == "bus_surge":
+                self._bus_load = 84
+            elif self._active_scenario == "ev_bms_telemetry":
+                current = 45.0 + 35.0 * math.sin(t * 1.5)
+                pack_volt = 398.0 - (current * 0.08)
+                soc = 78.4 - (t * 0.01)
+                self._bus_load = 34
+            elif self._active_scenario == "marine_vessel_n2k":
+                sog = 18.6 + 2.0 * math.sin(t * 0.5)
+                depth = 24.8 + 5.0 * math.sin(t * 0.1)
+                slip = 11.2 + math.sin(t * 0.2) * 2.0
+                self._bus_load = 38
+            elif self._active_scenario == "can_fd_adas_vision":
+                self._bus_load = 58
+            elif self._active_scenario == "intermittent_wiring_fault":
                 self._bus_load = 78
+                if math.sin(t * 2.0) > 0.6:
+                    self._error_count += 1
             else:
                 self._bus_load = 40 + int(3 * math.sin(t))
 
             self._current_rpm = rpm
             self._current_boost = boost
             self._current_temp = temp
+            self._pack_voltage = pack_volt
+            self._battery_soc = soc
+            self._pack_current = current
+            self._sog_knots = sog
+            self._depth_meters = depth
+            self._propeller_slip = slip
 
             # Push tick to JavaScript if window is active
             if self._window is not None:
@@ -191,7 +253,9 @@ class UniversalCanDesktopApp:
                         f"if (window.onTelemetryTick) window.onTelemetryTick({{"
                         f"timeSec: {t:.2f}, timeFormatted: '{t:.2f}s', rpm: {int(rpm)}, "
                         f"turboBoostBar: {boost:.2f}, coolantTempC: {int(temp)}, "
-                        f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: 0}});"
+                        f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: {self._error_count}, "
+                        f"packVoltageV: {pack_volt:.1f}, batterySocPercent: {soc:.1f}, packCurrentA: {current:.1f}, "
+                        f"sogKnots: {sog:.1f}, depthMeters: {depth:.1f}, propellerSlipPct: {slip:.1f}}});"
                     )
                     self._window.evaluate_js(js_code)
                 except Exception:

@@ -415,7 +415,13 @@ export const CanSnifferTable: React.FC<CanSnifferTableProps> = ({
                     )}
                   </td>
                   <td className="py-1 px-2 text-slate-500">
-                    {frame.frameType}
+                    {frame.isCanFd || frame.frameType === 'FD' ? (
+                      <span className="bg-purple-100 text-purple-800 text-[9px] font-bold px-1.5 py-0.5 rounded border border-purple-200">
+                        FD
+                      </span>
+                    ) : (
+                      frame.frameType
+                    )}
                   </td>
                   <td className="py-1 px-2 text-center">
                     <span

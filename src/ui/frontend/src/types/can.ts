@@ -17,6 +17,8 @@ export interface CANFrame {
   isErrorFrame?: boolean;
   colorPalette?: ('blue' | 'indigo' | 'emerald' | 'slate' | 'amber' | 'rose')[];
   signalName?: string;
+  ecuName?: string;
+  isCanFd?: boolean;
 }
 
 export interface TelemetryPoint {
@@ -28,6 +30,27 @@ export interface TelemetryPoint {
   oilPressureBar: number;
   busLoadPercent: number;
   errorCount: number;
+
+  // EV / BMS Telemetry Fields
+  batterySocPercent?: number;
+  packVoltageV?: number;
+  packCurrentA?: number;
+  cellMinMaxDeltaV?: number;
+  inverterTempC?: number;
+
+  // Marine N2K Fields
+  sogKnots?: number;
+  depthMeters?: number;
+  rudderDeg?: number;
+  propellerSlipPct?: number;
+
+  // Derived Virtual Channels
+  torqueNm?: number;
+  powerKw?: number;
+  powerHp?: number;
+  instantFuelRateLph?: number;
+  instantFuelEconomyL100km?: number;
+  gearPosition?: number | string;
 }
 
 export type ScenarioType = 
@@ -35,7 +58,19 @@ export type ScenarioType =
   | 'misfire_p0300' 
   | 'overboost' 
   | 'overheat' 
-  | 'bus_surge';
+  | 'bus_surge'
+  | 'ev_bms_telemetry'
+  | 'marine_vessel_n2k'
+  | 'j1939_multi_ecu_fleet'
+  | 'can_fd_adas_vision'
+  | 'intermittent_wiring_fault';
+
+export type FaultInjectionType = 
+  | 'error_frame'
+  | 'dtc_fault'
+  | 'sensor_freeze'
+  | 'babbling_surge'
+  | 'wiring_dropout';
 
 export interface DtcInfo {
   code: string;
@@ -59,7 +94,7 @@ export interface ChatMessage {
 export type ActiveTab = 'dashboard' | 'signal_discovery' | 'ecu_flashing' | 'pinout_guide' | 'reports';
 
 export interface DiagnosticState {
-  healthStatus: 'nominal' | 'warning' | 'critical';
+  healthStatus: 'standby' | 'nominal' | 'warning' | 'critical';
   dtcCount: number;
   activeDtcs: DtcInfo[];
   lastScanTimestamp: string;
@@ -70,6 +105,10 @@ export interface DiagnosticState {
     coolantTemp: number;
     turboPressure: number;
     responseLatencyMs: number;
+    packVoltage?: number;
+    batterySoc?: number;
+    sogKnots?: number;
+    depthMeters?: number;
   };
   recommendedActions: {
     id: string;
@@ -77,3 +116,4 @@ export interface DiagnosticState {
     completed: boolean;
   }[];
 }
+

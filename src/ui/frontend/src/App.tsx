@@ -39,6 +39,7 @@ export const App: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [isEstopActive, setIsEstopActive] = useState(false);
   const [activeScenario, setActiveScenario] = useState<ScenarioType>('nominal');
+  const [simulationSpeed, setSimulationSpeed] = useState<number>(1.0);
   const [busLoad, setBusLoad] = useState(0);
   const [totalPackets, setTotalPackets] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
@@ -198,18 +199,35 @@ export const App: React.FC = () => {
     simulator.resume();
   };
 
+  const handleChangeSpeed = (speed: number) => {
+    setSimulationSpeed(speed);
+    simulator.setSpeedMultiplier(speed);
+  };
+
+  const handleInjectFault = (type: any) => {
+    simulator.injectFault(type);
+  };
+
   const handleClearBuffer = () => {
     setFrames([]);
   };
 
   const handleRescan = () => {
-    if (currentTelemetry) {
-      const updated = diagnosticEngine.evaluateSystemState(activeScenario, currentTelemetry);
-      setDiagnosticState({
-        ...updated,
-        lastScanTimestamp: new Date().toLocaleTimeString('tr-TR', { hour12: false })
-      });
-    }
+    const point = currentTelemetry || {
+      timeSec: 0,
+      timeFormatted: '0s',
+      rpm: 0,
+      turboBoostBar: 0,
+      coolantTempC: 0,
+      oilPressureBar: 0,
+      busLoadPercent: 0,
+      errorCount: 0
+    };
+    const updated = diagnosticEngine.evaluateSystemState(activeScenario, point);
+    setDiagnosticState({
+      ...updated,
+      lastScanTimestamp: new Date().toLocaleTimeString('tr-TR', { hour12: false })
+    });
   };
 
   const handleSendMessage = async (query: string) => {
@@ -272,9 +290,12 @@ export const App: React.FC = () => {
         isSimulating={isSimulating}
         isEstopActive={isEstopActive}
         activeScenario={activeScenario}
+        simulationSpeed={simulationSpeed}
         onToggleSimulator={handleToggleSimulator}
-        onEstop={handleEstop}
         onSelectScenario={handleSelectScenario}
+        onEstop={handleEstop}
+        onChangeSpeed={handleChangeSpeed}
+        onInjectFault={handleInjectFault}
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 

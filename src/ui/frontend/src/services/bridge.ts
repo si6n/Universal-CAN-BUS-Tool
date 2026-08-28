@@ -11,6 +11,8 @@ declare global {
         ask_copilot: (query: string) => Promise<string>;
         export_logs: (format: string) => Promise<boolean>;
         save_settings: (settings: { channel: string; baudRate: string; apiKey: string }) => Promise<void>;
+        inject_fault?: (faultType: string) => Promise<void>;
+        set_simulation_speed?: (speed: number) => Promise<void>;
       };
     };
     onNewCanFrame?: (frame: CANFrame) => void;
@@ -48,6 +50,18 @@ export class DesktopBridge {
       return await window.pywebview.api.ask_copilot(query);
     }
     return null;
+  }
+
+  public static async injectFault(faultType: string): Promise<void> {
+    if (this.isNative() && window.pywebview?.api?.inject_fault) {
+      await window.pywebview.api.inject_fault(faultType);
+    }
+  }
+
+  public static async setSimulationSpeed(speed: number): Promise<void> {
+    if (this.isNative() && window.pywebview?.api?.set_simulation_speed) {
+      await window.pywebview.api.set_simulation_speed(speed);
+    }
   }
 
   public static async updateSettings(settings: { channel: string; baudRate: string; apiKey: string }): Promise<void> {

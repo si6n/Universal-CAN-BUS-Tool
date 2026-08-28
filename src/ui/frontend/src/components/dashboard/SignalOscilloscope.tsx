@@ -48,11 +48,13 @@ const HEATMAP_CAN_IDS: CanIdDefinition[] = [
   { idHex: '0x0CF00400', name: 'J1939 EEC1 Devir / Tork', protocol: 'J1939 PGN 61444', expectedFreqHz: 50, color: '#2563EB', bgGradient: 'from-blue-500 to-indigo-600' },
   { idHex: '0x18FEF600', name: 'J1939 IC1 Turbo Basınç', protocol: 'J1939 PGN 65270', expectedFreqHz: 20, color: '#10B981', bgGradient: 'from-emerald-500 to-teal-600' },
   { idHex: '0x18FEE100', name: 'J1939 ET1 Motor Hararet', protocol: 'J1939 PGN 65249', expectedFreqHz: 10, color: '#F59E0B', bgGradient: 'from-amber-500 to-orange-600' },
+  { idHex: '0x1806E5F4', name: 'EV BMS HV Paket Voltaj & Akım', protocol: 'BMS HV-DC PGN 61445', expectedFreqHz: 50, color: '#8B5CF6', bgGradient: 'from-purple-500 to-indigo-600' },
+  { idHex: '0x1807E5F4', name: 'EV BMS Şarj Durumu (SOC %)', protocol: 'BMS SOC PGN 61446', expectedFreqHz: 10, color: '#06B6D4', bgGradient: 'from-cyan-500 to-teal-600' },
   { idHex: '0x19F20000', name: 'NMEA2000 Hızlı Telemetri', protocol: 'N2K PGN 127488', expectedFreqHz: 40, color: '#6366F1', bgGradient: 'from-indigo-500 to-purple-600' },
+  { idHex: '0x19F50300', name: 'NMEA2000 Su Derinliği Sonar', protocol: 'N2K PGN 128267', expectedFreqHz: 10, color: '#0EA5E9', bgGradient: 'from-sky-500 to-blue-600' },
+  { idHex: '0x00000220', name: 'CAN-FD 64B ADAS Ön Radar', protocol: 'CAN-FD Radar Cluster', expectedFreqHz: 50, color: '#EC4899', bgGradient: 'from-pink-500 to-rose-600' },
   { idHex: '0x18FEF200', name: 'J1939 LFE Yakıt Tüketimi', protocol: 'J1939 PGN 65266', expectedFreqHz: 10, color: '#06B6D4', bgGradient: 'from-cyan-500 to-blue-600' },
   { idHex: '0x18FEE000', name: 'J1939 TCO1 Araç Hızı', protocol: 'J1939 PGN 65248', expectedFreqHz: 20, color: '#8B5CF6', bgGradient: 'from-purple-500 to-indigo-600' },
-  { idHex: '0x0CF00300', name: 'J1939 EEC2 Elektronik #2', protocol: 'J1939 PGN 61443', expectedFreqHz: 25, color: '#3B82F6', bgGradient: 'from-blue-600 to-sky-600' },
-  { idHex: '0x0C000003', name: 'Şanzıman Kontrol (TCU)', protocol: 'Proprietary TX', expectedFreqHz: 30, color: '#64748B', bgGradient: 'from-slate-600 to-slate-700' },
 ];
 
 export const SignalOscilloscope: React.FC<SignalOscilloscopeProps> = ({
@@ -365,17 +367,68 @@ export const SignalOscilloscope: React.FC<SignalOscilloscopeProps> = ({
             <div className="absolute left-2.5 top-1 z-10 flex items-center space-x-2">
               {/* Telemetry Live Value Indicators */}
               <div className="flex items-center space-x-2 px-2 py-0.5 bg-white/95 backdrop-blur-xs border border-slate-200 rounded-md text-[10.5px] font-mono shadow-2xs">
-                <div className="flex items-center space-x-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse"></span>
-                  <span className="text-slate-500 font-sans">Devir:</span>
-                  <span className="font-bold text-slate-900">{rpm} RPM</span>
-                </div>
-                <div className="w-px h-2.5 bg-slate-200"></div>
-                <div className="flex items-center space-x-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                  <span className="text-slate-500 font-sans">Turbo:</span>
-                  <span className="font-bold text-slate-900">{turboBar} Bar</span>
-                </div>
+                {currentPoint?.batterySocPercent !== undefined && currentPoint.batterySocPercent > 0 ? (
+                  <>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-600 inline-block animate-pulse"></span>
+                      <span className="text-slate-500 font-sans">HV:</span>
+                      <span className="font-bold text-purple-700">{currentPoint.packVoltageV} V</span>
+                    </div>
+                    <div className="w-px h-2.5 bg-slate-200"></div>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 inline-block"></span>
+                      <span className="text-slate-500 font-sans">SOC:</span>
+                      <span className="font-bold text-slate-900">%{currentPoint.batterySocPercent}</span>
+                    </div>
+                    <div className="w-px h-2.5 bg-slate-200"></div>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-slate-500 font-sans">Akım:</span>
+                      <span className="font-bold text-slate-900">{currentPoint.packCurrentA} A</span>
+                    </div>
+                  </>
+                ) : currentPoint?.sogKnots !== undefined && currentPoint.sogKnots > 0 ? (
+                  <>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse"></span>
+                      <span className="text-slate-500 font-sans">SOG:</span>
+                      <span className="font-bold text-blue-700">{currentPoint.sogKnots} Kn</span>
+                    </div>
+                    <div className="w-px h-2.5 bg-slate-200"></div>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-500 inline-block"></span>
+                      <span className="text-slate-500 font-sans">Derinlik:</span>
+                      <span className="font-bold text-slate-900">{currentPoint.depthMeters} m</span>
+                    </div>
+                    <div className="w-px h-2.5 bg-slate-200"></div>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-slate-500 font-sans">Slip:</span>
+                      <span className="font-bold text-slate-900">%{currentPoint.propellerSlipPct}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block animate-pulse"></span>
+                      <span className="text-slate-500 font-sans">Devir:</span>
+                      <span className="font-bold text-slate-900">{rpm} RPM</span>
+                    </div>
+                    <div className="w-px h-2.5 bg-slate-200"></div>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                      <span className="text-slate-500 font-sans">Turbo:</span>
+                      <span className="font-bold text-slate-900">{turboBar} Bar</span>
+                    </div>
+                    {currentPoint?.powerHp !== undefined && currentPoint.powerHp > 0 && (
+                      <>
+                        <div className="w-px h-2.5 bg-slate-200"></div>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-slate-500 font-sans">Güç:</span>
+                          <span className="font-bold text-slate-900">{currentPoint.powerHp} HP</span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 

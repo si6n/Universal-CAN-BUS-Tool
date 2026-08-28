@@ -4,11 +4,10 @@ import {
   Wand2,
   Cpu, 
   Share2, 
-  FileText,
-  Wrench,
-  ChevronDown,
-  Sparkles,
-  Check
+  FileText, 
+  Wrench, 
+  ChevronDown, 
+  Check 
 } from 'lucide-react';
 import { ActiveTab } from '../types/can';
 
@@ -123,9 +122,9 @@ export const SubNav: React.FC<SubNavProps> = ({
 
           {/* Dropdown Popup */}
           {isToolsOpen && (
-            <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+            <div className="absolute top-full left-0 mt-1 w-80 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
               <div className="px-2.5 py-1.5 text-[10.5px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                Sistem & Teşhis Modülleri
+                Sistem & Teşhis Araçları
               </div>
 
               {toolItems.map((tool) => {
@@ -138,7 +137,7 @@ export const SubNav: React.FC<SubNavProps> = ({
                       onSelectTab(tool.id);
                       setIsToolsOpen(false);
                     }}
-                    className={`w-full text-left p-2 rounded-lg flex items-start space-x-2.5 transition-colors ${
+                    className={`w-full text-left p-2.5 rounded-lg flex items-start space-x-2.5 transition-colors ${
                       isCurrent
                         ? 'bg-blue-50 text-blue-900 font-semibold'
                         : 'hover:bg-slate-50 text-slate-700'

@@ -7,7 +7,8 @@ import {
   Search, 
   Send, 
   Bot,
-  Check
+  Check,
+  Radio
 } from 'lucide-react';
 import { DiagnosticState, ChatMessage } from '../../types/can';
 
@@ -59,7 +60,9 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
     }, 3000);
   };
 
+  const isStandby = diagnosticState.healthStatus === 'standby';
   const isNominal = diagnosticState.healthStatus === 'nominal';
+  const isFault = diagnosticState.healthStatus === 'warning' || diagnosticState.healthStatus === 'critical';
 
   const renderFormattedText = (rawText: string, isCopilot: boolean) => {
     if (!isCopilot) {
@@ -128,23 +131,37 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
       <div className="flex-1 p-3.5 space-y-3 overflow-y-auto">
         {/* System Health Status Card */}
         <div className={`p-3 rounded-lg border transition-all ${
-          isNominal 
+          isStandby
+            ? 'bg-slate-50 border-slate-200 text-slate-800'
+            : isNominal 
             ? 'bg-emerald-50/70 border-emerald-200/80' 
             : 'bg-rose-50/70 border-rose-200/80'
         }`}>
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-2.5">
-              {isNominal ? (
+              {isStandby ? (
+                <Radio className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+              ) : isNominal ? (
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
               ) : (
                 <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               )}
               <div>
-                <h3 className={`text-xs font-bold ${isNominal ? 'text-emerald-900' : 'text-rose-900'}`}>
-                  {isNominal ? 'Sistem Nominal (0 DTC Hata Kodu)' : `Kritik Arıza (${diagnosticState.dtcCount} DTC Hata Kodu)`}
+                <h3 className={`text-xs font-bold ${
+                  isStandby ? 'text-slate-800' : isNominal ? 'text-emerald-900' : 'text-rose-900'
+                }`}>
+                  {isStandby 
+                    ? 'CAN Veri Yolu Beklemede (Sinyal Yok)'
+                    : isNominal 
+                    ? 'Sistem Nominal (0 DTC Hata Kodu)' 
+                    : `Kritik Arıza (${diagnosticState.dtcCount} DTC Hata Kodu)`}
                 </h3>
-                <p className={`text-[11px] mt-0.5 ${isNominal ? 'text-emerald-700' : 'text-rose-700'}`}>
-                  {isNominal 
+                <p className={`text-[11px] mt-0.5 ${
+                  isStandby ? 'text-slate-500' : isNominal ? 'text-emerald-700' : 'text-rose-700'
+                }`}>
+                  {isStandby
+                    ? 'CAN veri yolu dinleniyor. Henüz aktif veri akışı veya simülasyon başlatılmadı.'
+                    : isNominal 
                     ? 'Tüm CAN bus düğümleri (ECU, TCU, ABS) normal aralıkta çalışıyor.' 
                     : 'Anomali eşiği aşıldı! E-Stop veya acil kontrol önerilir.'}
                 </p>
@@ -186,27 +203,39 @@ export const AiCopilotPanel: React.FC<AiCopilotPanelProps> = ({
 
         {/* Recommended Actions (Checklist) */}
         <div className="bg-white border border-slate-200 rounded-lg p-3 space-y-2">
-          <div className="text-xs font-bold text-slate-800">
-            🛠️ Önerilen Aksiyonlar & Kontroller
+          <div className="text-xs font-bold text-slate-800 flex items-center justify-between">
+            <span>🛠️ Önerilen Aksiyonlar & Kontroller</span>
+            {diagnosticState.recommendedActions.length > 0 && (
+              <span className="text-[10px] bg-indigo-50 text-indigo-700 font-mono px-1.5 py-0.5 rounded">
+                {diagnosticState.recommendedActions.length} Görev
+              </span>
+            )}
           </div>
-          <div className="space-y-1.5">
-            {diagnosticState.recommendedActions.map((action) => (
-              <label 
-                key={action.id}
-                className="flex items-start space-x-2 text-[11px] text-slate-700 cursor-pointer hover:text-slate-900 select-none"
-              >
-                <input
-                  type="checkbox"
-                  checked={!!checkboxState[action.id]}
-                  onChange={() => toggleCheck(action.id)}
-                  className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3.5 h-3.5"
-                />
-                <span className={checkboxState[action.id] ? 'line-through text-slate-400' : 'text-slate-700'}>
-                  {action.text}
-                </span>
-              </label>
-            ))}
-          </div>
+          {diagnosticState.recommendedActions.length === 0 ? (
+            <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200/80 rounded-md p-2.5 text-center">
+              <p className="font-medium text-slate-600">Henüz aktif bir arıza veya anomali tespit edilmedi.</p>
+              <p className="text-[10.5px] text-slate-400 mt-0.5">Donanım bağlandığında veya Araçlar sekmesinden bir senaryo çalıştırıldığında anlık aksiyonlar burada listelenecektir.</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {diagnosticState.recommendedActions.map((action) => (
+                <label 
+                  key={action.id}
+                  className="flex items-start space-x-2 text-[11px] text-slate-700 cursor-pointer hover:text-slate-900 select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!checkboxState[action.id]}
+                    onChange={() => toggleCheck(action.id)}
+                    className="mt-0.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 w-3.5 h-3.5"
+                  />
+                  <span className={checkboxState[action.id] ? 'line-through text-slate-400' : 'text-slate-700'}>
+                    {action.text}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Query Chips */}
