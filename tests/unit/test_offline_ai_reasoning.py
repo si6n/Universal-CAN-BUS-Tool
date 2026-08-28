@@ -1,13 +1,10 @@
 """Unit test suite for Offline AI Reasoning Engine, Automotive Tokenizer, and Causal Fault Tree."""
 
-import pytest
 
 from src.engine.ai.diagnostic_copilot import (
+    AiDiagnosticCopilot,
     AutomotiveTokenizer,
     CausalBayesianInferenceEngine,
-    EXPERT_KNOWLEDGE_BASE,
-    UDS_NRC_CATALOG,
-    AiDiagnosticCopilot,
 )
 
 

@@ -14,7 +14,6 @@ import argparse
 import math
 import sys
 import time
-from typing import ClassVar
 
 from src.core.models.can_frame import CanFrame
 from src.hal.drivers.pcan_kvaser import PythonCanBus
