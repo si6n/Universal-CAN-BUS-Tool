@@ -59,10 +59,21 @@ class AbstractBus(ABC):
         """Close connection and release hardware resources."""
         ...
 
-    @abstractmethod
     def send(self, frame: CanFrame) -> None:
-        """Transmit a single CanFrame."""
-        ...
+        """Public transmission method for backward compatibility; delegates to _send_raw."""
+        self._send_raw(frame)
+
+    def _send_raw(self, frame: CanFrame) -> None:
+        """Protected hardware transmission routine implemented by concrete drivers.
+
+        Upper application and protocol layers MUST NOT call this directly;
+        transmissions must be routed through TxPort / TxSafetyGateway.
+        """
+        # If concrete subclass implemented send() without overriding _send_raw(), route to send()
+        if type(self).send is not AbstractBus.send:
+            type(self).send(self, frame)
+        else:
+            raise NotImplementedError(f"{self.__class__.__name__} must implement _send_raw()")
 
     @abstractmethod
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
