@@ -1,9 +1,15 @@
 """Unit tests for Hardware Abstraction Layer (HAL) base classes and BusState enum."""
 
+import asyncio
 import json
 
+import pytest
+
+from src.core.contracts.ports import InMemoryTxPort, TxPort
+from src.core.errors import HardwareError
 from src.core.models.can_frame import CanFrame
 from src.hal import AbstractBus, BusMetrics, BusState
+from src.hal.virtual import VirtualBus
 
 
 class DummyTestBus(AbstractBus):
@@ -22,7 +28,7 @@ class DummyTestBus(AbstractBus):
         self.is_connected = False
         self.metrics.state = BusState.DISCONNECTED
 
-    def send(self, frame: CanFrame) -> None:
+    def _send_raw(self, frame: CanFrame) -> None:
         self.sent_frames.append(frame)
         self.metrics.tx_frames += 1
 
@@ -117,3 +123,76 @@ def test_abstract_bus_lifecycle_and_context_manager() -> None:
 
     assert not bus.is_connected
     assert bus.metrics.state == BusState.DISCONNECTED
+
+
+def test_abstract_bus_requires_send_raw_implementation() -> None:
+    """Verify that instantiating AbstractBus without connect/disconnect/recv raises TypeError."""
+    class IncompleteBus(AbstractBus):
+        def _send_raw(self, frame: CanFrame) -> None: pass
+
+    with pytest.raises(TypeError, match="Can't instantiate abstract class"):
+        IncompleteBus(channel_id="incomplete_0")  # type: ignore[abstract]
+
+
+def test_abstract_bus_unimplemented_send_raw_raises_not_implemented() -> None:
+    """Verify that calling _send_raw on a bus that overrides neither _send_raw nor send raises NotImplementedError."""
+    class DummyNoSendBus(AbstractBus):
+        def connect(self) -> None: pass
+        def disconnect(self) -> None: pass
+        def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None: return None
+
+    bus = DummyNoSendBus("no_send_0")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x123, data=b"\x01")
+    with pytest.raises(NotImplementedError, match="must implement _send_raw"):
+        bus._send_raw(frame)
+
+
+def test_virtual_bus_implementation() -> None:
+    """Verify VirtualBus connect, disconnect, _send_raw, recv, and inject_rx."""
+    vbus = VirtualBus(channel_id="vcan99", bitrate=500000)
+    assert not vbus.is_connected
+
+    # Cannot send/receive before connecting
+    frame = CanFrame.create(channel_id="vcan99", arbitration_id=0x700, data=b"\x11\x22")
+    with pytest.raises(HardwareError, match="Cannot send"):
+        vbus.send(frame)
+
+    with pytest.raises(HardwareError, match="Cannot receive"):
+        vbus.recv()
+
+    with vbus:
+        assert vbus.is_connected
+        assert vbus.metrics.state == BusState.ACTIVE
+
+        # Transmit frame via send() -> _send_raw()
+        vbus.send(frame)
+        assert len(vbus.sent_frames) == 1
+        assert vbus.sent_frames[0].arbitration_id == 0x700
+        assert vbus.metrics.tx_frames == 1
+
+        # Receive frame via inject_rx()
+        rx_frame = CanFrame.create(channel_id="vcan99", arbitration_id=0x708, data=b"\x33\x44")
+        vbus.inject_rx(rx_frame)
+        received = vbus.recv(timeout_s=0.05)
+        assert received is not None
+        assert received.arbitration_id == 0x708
+        assert vbus.metrics.rx_frames == 1
+
+        # Empty queue returns None on timeout
+        assert vbus.recv(timeout_s=0.01) is None
+
+    assert not vbus.is_connected
+
+
+def test_tx_port_contract_and_in_memory_tx_port() -> None:
+    """Verify TxPort protocol and InMemoryTxPort implementation."""
+    tx_port: TxPort = InMemoryTxPort()
+    frame = CanFrame.create(channel_id="test_c0", arbitration_id=0x555, data=b"\xAA\xBB")
+
+    # Synchronous send
+    tx_port.send_sync(frame)
+    assert len(tx_port.sent_frames) == 1  # type: ignore[attr-defined]
+
+    # Asynchronous send
+    asyncio.run(tx_port.send(frame))
+    assert len(tx_port.sent_frames) == 2  # type: ignore[attr-defined]

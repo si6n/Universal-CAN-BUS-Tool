@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from src.core.contracts.ports import InMemoryTxPort
 from src.core.errors import ProtocolError
 from src.core.models.can_frame import CanFrame
 from src.hal.base import AbstractBus
@@ -16,6 +17,11 @@ from src.protocols.uds.services import (
     UdsServiceBuilder,
     UdsServiceId,
 )
+from src.safety.exceptions import (
+    DualConfirmationRequiredError,
+    SpeedInterlockError,
+)
+from src.safety.gateway import TxSafetyGateway
 
 
 class MockDiagnosticBus(AbstractBus):
@@ -32,7 +38,7 @@ class MockDiagnosticBus(AbstractBus):
     def disconnect(self) -> None:
         self.is_connected = False
 
-    def send(self, frame: CanFrame) -> None:
+    def _send_raw(self, frame: CanFrame) -> None:
         self.sent_frames.append(frame)
 
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
@@ -263,4 +269,67 @@ def test_uds_client_execute_async_error_callback() -> None:
     assert len(received_errors) == 1
     assert "Simulated ECU hardware failure" in str(received_errors[0])
 
+    client.close()
+
+
+def test_uds_client_tx_port_injection() -> None:
+    """Verify UdsClient working directly with an injected TxPort."""
+    tx_port = InMemoryTxPort()
+    bus = MockDiagnosticBus()
+    client = UdsClient(bus=bus, tx_port=tx_port, tx_id=0x7E0, rx_id=0x7E8)
+
+    bus.inject_rx(
+        CanFrame.create(
+            channel_id="mock_uds_0",
+            arbitration_id=0x7E8,
+            data=b"\x04\x62\xf1\x90\x12\x00\x00\x00",
+        )
+    )
+
+    resp = client.read_did(0xF190)
+    assert resp.is_positive is True
+    assert len(tx_port.sent_frames) == 1
+    assert tx_port.sent_frames[0].arbitration_id == 0x7E0
+    client.close()
+
+
+def test_uds_client_speed_interlock_blocks_critical_services() -> None:
+    """Verify TxSafetyGateway blocks critical UDS requests (ECU Reset, Write DID) when vehicle is moving."""
+    bus1 = MockDiagnosticBus()
+    gateway1 = TxSafetyGateway(bus=bus1, whitelist_ids={0x7E0})
+    client1 = UdsClient(bus=bus1, tx_port=gateway1, tx_id=0x7E0, rx_id=0x7E8)
+
+    # Set vehicle speed in motion (50 km/h > 0.5 km/h)
+    gateway1.update_vehicle_speed(50.0)
+
+    # ECU Reset (0x11) must be blocked by speed interlock
+    with pytest.raises(SpeedInterlockError) as exc_info:
+        client1.ecu_reset(reset_type=0x01)
+    assert exc_info.value.code == "SPEED_INTERLOCK_ACTIVE"
+    client1.close()
+
+    # Write DID (0x2E) on a separate moving gateway must also be blocked by speed interlock
+    bus2 = MockDiagnosticBus()
+    gateway2 = TxSafetyGateway(bus=bus2, whitelist_ids={0x7E0})
+    client2 = UdsClient(bus=bus2, tx_port=gateway2, tx_id=0x7E0, rx_id=0x7E8)
+    gateway2.update_vehicle_speed(50.0)
+
+    with pytest.raises(SpeedInterlockError) as exc_info2:
+        client2.write_did(0x0100, b"\x01\x02")
+    assert exc_info2.value.code == "SPEED_INTERLOCK_ACTIVE"
+    client2.close()
+
+
+def test_uds_client_dual_confirmation_rejected_when_unconfirmed() -> None:
+    """Verify that unconfirmed critical command fails when vehicle is stationary."""
+    bus = MockDiagnosticBus()
+    gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
+    client = UdsClient(bus=bus, tx_port=gateway, tx_id=0x7E0, rx_id=0x7E8)
+
+    gateway.update_vehicle_speed(0.0)
+
+    with pytest.raises(DualConfirmationRequiredError) as exc_info:
+        client.ecu_reset(reset_type=0x01, user_confirmed=False)
+
+    assert exc_info.value.code == "CONFIRMATION_REQUIRED"
     client.close()
