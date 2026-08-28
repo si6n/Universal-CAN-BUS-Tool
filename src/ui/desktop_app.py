@@ -65,12 +65,15 @@ class DesktopApiBridge:
 class UniversalCanDesktopApp:
     """Master native desktop container running the modern React+Tailwind UI with full CAN engine."""
 
-    def __init__(self, channel: str = "vcan0", bitrate: int = 250000) -> None:
+    def __init__(self, channel: str = "vcan0", bitrate: int = 250000, interface: str = "virtual") -> None:
         self.channel_name = channel
         self.bitrate_val = bitrate
+        self.interface_name = interface
 
         # Safety & HAL Architecture
-        self.bus = PythonCanBus(interface="virtual", channel=self.channel_name, bitrate=self.bitrate_val)
+        # BUGFIX: interface was hardcoded to "virtual" \u2014 the GUI silently ignored
+        # the operator's --interface selection (pcan/kvaser/vector).
+        self.bus = PythonCanBus(interface=self.interface_name, channel=self.channel_name, bitrate=self.bitrate_val)
         self.estop = EmergencyStopSystem()
         self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
         self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=500.0)

@@ -25,9 +25,15 @@ QApplication: Any = None
 class UniversalCanMainWindow:
     """MainWindow wrapper supporting both Qt and Desktop webview lifecycle."""
 
-    def __init__(self, bus: Any | None = None, channel: str = "vcan0", bitrate: int = 250000) -> None:
-        self.bus = bus if bus is not None else PythonCanBus(interface="virtual", channel=channel, bitrate=bitrate)
-        self._desktop_app = UniversalCanDesktopApp(channel=channel, bitrate=bitrate)
+    def __init__(
+        self,
+        bus: Any | None = None,
+        channel: str = "vcan0",
+        bitrate: int = 250000,
+        interface: str = "virtual",
+    ) -> None:
+        self.bus = bus if bus is not None else PythonCanBus(interface=interface, channel=channel, bitrate=bitrate)
+        self._desktop_app = UniversalCanDesktopApp(channel=channel, bitrate=bitrate, interface=interface)
 
     def show(self) -> None:
         pass
@@ -61,9 +67,18 @@ def main() -> int:
 
     if args.cli:
         print("=== Universal CAN-Bus CLI Mode ===")
-        bus = PythonCanBus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
+        # SAFE-BY-DEFAULT (Invariant 4): the CLI is a pure RX monitor and opens
+        # the physical interface in Listen-Only (PASSIVE) mode. It has NO TX
+        # path and NO TxSafetyGateway on purpose — a passive transceiver state
+        # cannot ACK or transmit, so it cannot disturb a live J1939/UDS bus.
+        bus = PythonCanBus(
+            interface=args.interface,
+            channel=args.channel,
+            bitrate=args.bitrate,
+            listen_only=True,
+        )
         bus.connect()
-        print(f"Connected to {args.interface}:{args.channel} @ {args.bitrate} bps. Listening for frames...")
+        print(f"Connected to {args.interface}:{args.channel} @ {args.bitrate} bps (LISTEN-ONLY). Listening for frames...")
         try:
             while True:
                 frame = bus.recv(timeout_s=1.0)
@@ -83,7 +98,7 @@ def main() -> int:
     if qapp_cls is not None:
         qapp = qapp_cls(sys.argv)
         bus = PythonCanBus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
-        window = UniversalCanMainWindow(bus=bus)
+        window = UniversalCanMainWindow(bus=bus, channel=args.channel, bitrate=args.bitrate, interface=args.interface)
         window.show()
         try:
             ret = qapp.exec()
@@ -92,7 +107,9 @@ def main() -> int:
             bus.disconnect()
 
     # Launch Modern Native Desktop GUI (WebView2 + React + Tailwind)
-    app = UniversalCanDesktopApp(channel=args.channel, bitrate=args.bitrate)
+    # BUGFIX: --interface was silently dropped here; a user selecting
+    # --interface pcan got a virtual bus while believing they were on hardware.
+    app = UniversalCanDesktopApp(channel=args.channel, bitrate=args.bitrate, interface=args.interface)
     app.run()
     return 0
 

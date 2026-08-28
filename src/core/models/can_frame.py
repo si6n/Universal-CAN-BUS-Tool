@@ -137,11 +137,13 @@ class CanFrame:
     host_timestamp_ns: int | None = None
     sequence: int = 0
     error_state: str = "active"  # "active" | "passive" | "bus_off"
-    source: str = "physical"  # "physical" | "replay" | "virtual" | "injected"
+    source: str = "physical"  # "physical" | "replay" | "virtual" | "injected" | "demo"
 
     VALID_DIRECTIONS: ClassVar[frozenset[str]] = frozenset({"rx", "tx"})
     VALID_ERROR_STATES: ClassVar[frozenset[str]] = frozenset({"active", "passive", "bus_off"})
-    VALID_SOURCES: ClassVar[frozenset[str]] = frozenset({"physical", "replay", "virtual", "injected"})
+    # "demo" marks simulator-generated traffic (Invariant 5): simulated frames
+    # must NEVER be confusable with physical bus traffic in logs, exports, or UI.
+    VALID_SOURCES: ClassVar[frozenset[str]] = frozenset({"physical", "replay", "virtual", "injected", "demo"})
 
     def __post_init__(self) -> None:
         """Validate all invariant invariants at instantiation time."""

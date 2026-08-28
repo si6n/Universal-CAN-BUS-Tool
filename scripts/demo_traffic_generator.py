@@ -11,16 +11,41 @@ Simulates real-world automotive, marine, electric vehicle (EV/BMS), and CAN-FD t
 from __future__ import annotations
 
 import argparse
+import collections
 import math
 import sys
 import time
 
 from src.core.models.can_frame import CanFrame
 from src.hal.drivers.pcan_kvaser import PythonCanBus
+from src.safety.gateway import TxSafetyGateway
+from src.safety.state_machine import SafetyState, SafetySupervisor
+
+# Every arbitration ID the simulator may emit. The demo runs with an explicit
+# whitelist (fail-closed): anything outside this set is rejected by the gateway.
+DEMO_TX_WHITELIST: frozenset[int] = frozenset(
+    {
+        0x0CF00400,  # J1939 EEC1
+        0x1806E5F4,  # EV/BMS Pack Voltage & Current
+        0x00000220,  # CAN-FD Radar Object Tracking
+        0x18FF0501,  # Proprietary Discovery Frame
+        0x19F20000,  # NMEA 2000 Engine Rapid Update
+        0x19F50300,  # NMEA 2000 Water Depth Sonar
+        0x18FEE100,  # J1939 ET1 Coolant Temperature
+        0x18FECA00,  # J1939 DM1 Diagnostics
+        0x7E8,  # UDS Mock Responder positive responses
+    }
+)
 
 
 class UniversalTrafficSimulator:
-    """Multi-domain CAN traffic generator and virtual ECU node."""
+    """Multi-domain CAN traffic generator and virtual ECU node.
+
+    SAFETY (Invariant 1): all TX is routed through TxSafetyGateway with an
+    explicit whitelist — the demo generator has NO direct bus.send() path.
+    SAFETY (Invariant 5): every generated frame is tagged source="demo" so
+    simulated traffic can never be confused with physical bus traffic.
+    """
 
     def __init__(
         self,
@@ -39,16 +64,57 @@ class UniversalTrafficSimulator:
         self.enable_can_fd = enable_can_fd
 
         self.bus = PythonCanBus(interface=self.interface, channel=self.channel, bitrate=self.bitrate)
+
+        # Route ALL simulator TX through the safety gateway (Invariant 1).
+        # The supervisor is armed explicitly for the demo session; any fault
+        # or E-Stop still fails closed exactly as in production.
+        self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
+        self.supervisor.transition_to(SafetyState.SAFE, reason="Demo simulator boot")
+        self.supervisor.transition_to(SafetyState.PASSIVE, reason="Demo simulator default listen-only")
+        self.gateway = TxSafetyGateway(
+            bus=self.bus,
+            supervisor=self.supervisor,
+            whitelist_ids=set(DEMO_TX_WHITELIST),
+        )
+
         self.rolling_counter = 0
         self.sim_time = 0.0
 
+        # Source-side pacing: stay BELOW the gateway's hard 100 msg/s budget so
+        # demo traffic can never trip the rate-limit E-Stop. The gateway budget
+        # itself is NOT weakened — it remains the fail-closed backstop.
+        self._demo_tx_budget_per_sec = 90
+        self._demo_tx_window: collections.deque[int] = collections.deque()
+        self._demo_dropped_frames = 0
+
+    def _tx(self, frame: CanFrame) -> None:
+        """Transmit exclusively through the TxSafetyGateway choke-point.
+
+        Applies local pacing under the gateway budget; excess demo frames are
+        dropped (acceptable for simulation) rather than risking a latched E-Stop.
+        """
+        now_ns = time.monotonic_ns()
+        while self._demo_tx_window and (now_ns - self._demo_tx_window[0]) >= 1_000_000_000:
+            self._demo_tx_window.popleft()
+        if len(self._demo_tx_window) >= self._demo_tx_budget_per_sec:
+            self._demo_dropped_frames += 1
+            return
+        self._demo_tx_window.append(now_ns)
+        self.gateway.send_sync(frame)
+
     def connect(self) -> None:
         self.bus.connect()
+        # Explicit operator arming ladder: PASSIVE -> ARMED_TX for the demo session.
+        self.supervisor.arm_tx(reason="Demo simulator broadcast session armed by operator")
+        # Speed telemetry: the simulator is a bench tool with no real vehicle;
+        # publish 0.0 km/h so the interlock has fresh, truthful telemetry.
+        self.gateway.update_vehicle_speed(0.0)
         print(f"[+] Universal CAN Simulator connected on {self.interface}:{self.channel} @ {self.bitrate} bps.")
         print(f"[*] Active Scenario: '{self.scenario.upper()}' | Broadcast Rate: {self.hz} Hz | CAN-FD: {self.enable_can_fd}")
         print("[*] Broadcasting multi-ECU streams. Press Ctrl+C to stop.\n")
 
     def disconnect(self) -> None:
+        self.supervisor.enter_passive_mode(reason="Demo simulator shutdown")
         self.bus.disconnect()
         print("\n[!] Simulator disconnected cleanly.")
 
@@ -110,8 +176,9 @@ class UniversalTrafficSimulator:
             data=bytes(eec1_data),
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_eec1)
+        self._tx(f_eec1)
 
         # 2. EV / BMS Pack Voltage & Current (0x1806E5F4)
         if self.scenario in ("bms", "ev", "nominal"):
@@ -131,8 +198,9 @@ class UniversalTrafficSimulator:
                 data=bytes(bms_data),
                 is_extended=True,
                 direction="rx",
+                source="demo",
             )
-            self.bus.send(f_bms)
+            self._tx(f_bms)
 
         # 3. CAN-FD 64-Byte Radar Object Tracking (0x220)
         if self.enable_can_fd or self.scenario == "canfd":
@@ -150,8 +218,9 @@ class UniversalTrafficSimulator:
                 is_extended=False,
                 is_fd=True,
                 direction="rx",
+                source="demo",
             )
-            self.bus.send(f_radar)
+            self._tx(f_radar)
 
         # 4. Proprietary Discovery Frame with Rolling Counter and XOR Checksum
         prop_data = bytearray(8)
@@ -167,8 +236,9 @@ class UniversalTrafficSimulator:
             data=bytes(prop_data),
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_prop)
+        self._tx(f_prop)
 
     def _broadcast_100ms_frames(self, t: float) -> None:
         """Broadcast medium-frequency frames (N2K Marine, Speed, SOC%)."""
@@ -191,8 +261,9 @@ class UniversalTrafficSimulator:
             data=bytes(n2k_rapid),
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_n2k)
+        self._tx(f_n2k)
 
         # 2. NMEA 2000 Water Depth Sonar (PGN 128267 / 0x19F50300)
         depth_m = 24.5 + 6.0 * math.sin(t * 0.1)
@@ -210,8 +281,9 @@ class UniversalTrafficSimulator:
             data=bytes(n2k_depth),
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_depth)
+        self._tx(f_depth)
 
     def _broadcast_1000ms_frames(self, t: float) -> None:
         """Broadcast slow frames: Temperature (ET1), Hours, and Active DTCs (DM1)."""
@@ -226,8 +298,9 @@ class UniversalTrafficSimulator:
             data=bytes(et1_data),
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_et1)
+        self._tx(f_et1)
 
         # 2. J1939 DM1 Diagnostic Fault Frame (PGN 65226 / 0x18FECA00)
         if self.scenario == "misfire":
@@ -252,8 +325,9 @@ class UniversalTrafficSimulator:
             data=dm1_data,
             is_extended=True,
             direction="rx",
+            source="demo",
         )
-        self.bus.send(f_dm1)
+        self._tx(f_dm1)
 
     def _handle_mock_uds_responder(self) -> None:
         """Inspect bus for diagnostic UDS requests (0x7E0) and emit positive responses (0x7E8)."""
@@ -290,8 +364,9 @@ class UniversalTrafficSimulator:
                     data=bytes(resp),
                     is_extended=False,
                     direction="rx",
+                    source="demo",
                 )
-                self.bus.send(f_uds_resp)
+                self._tx(f_uds_resp)
 
 
 def main() -> int:
