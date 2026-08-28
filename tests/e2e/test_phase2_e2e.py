@@ -24,7 +24,7 @@ import queue
 import tempfile
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Callable
 
 import pytest
@@ -47,6 +47,7 @@ from src.safety.estop import EmergencyStopSystem, EStopTriggerSource
 from src.safety.gateway import TxSafetyGateway
 from src.safety.state_machine import SafetyState, SafetySupervisor
 from src.safety.watchdog import TxWatchdogSupervisor
+from tests.conftest import VirtualMonotonicClock
 
 # ===========================================================================
 # Test Helpers & Provider Mocks
@@ -564,10 +565,16 @@ def test_tier1_rule_ordering_dual_confirmation_when_stationary() -> None:
     assert gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True) is True
 
 
-def test_tier1_clock_specialization_monotonic_durations() -> None:
-    """Tier 1.5.4: Verify state duration calculations use monotonic time and increase smoothly."""
+def test_tier1_clock_specialization_monotonic_durations(
+    monotonic_clock: VirtualMonotonicClock,
+) -> None:
+    """Tier 1.5.4: Verify state duration calculations use monotonic time and increase smoothly.
+
+    H-29: the interval is produced by the virtual clock, not a real sleep, so
+    the assertion is independent of host monotonic granularity.
+    """
     supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
-    time.sleep(0.015)
+    monotonic_clock.sleep(0.015)
     duration_ns = supervisor.state_duration_ns
     assert duration_ns >= 10_000_000  # At least 10ms
     assert supervisor.state_duration_sec >= 0.010
@@ -933,13 +940,44 @@ def test_tier2_r5_rate_limiter_sliding_window_1000ms_recovery() -> None:
     assert len(gateway._tx_timestamps) == 1
 
 
-def test_tier2_r5_system_wall_clock_shift_does_not_affect_monotonic_invariants() -> None:
-    """Tier 2.5.4: Verify state machine duration is immune to wall clock date/time shifts."""
+def test_tier2_r5_system_wall_clock_shift_does_not_affect_monotonic_invariants(
+    monotonic_clock: VirtualMonotonicClock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Tier 2.5.4: Verify state machine duration is immune to wall clock date/time shifts.
+
+    CAN-25 requires duration accounting to be monotonic-only. The system wall
+    clock is stepped *backwards by one hour* (NTP step, DST mishandling, manual
+    date change) between two transitions; the recorded monotonic duration must
+    still be correct while the audit timestamp follows the shifted wall clock.
+
+    H-29: intervals come from the virtual clock, so the test no longer depends
+    on host monotonic granularity (CI runners observed at ~15.6ms).
+    """
     supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
     t0_mono = supervisor.state_change_timestamp_ns
     assert t0_mono > 0
-    time.sleep(0.01)
+
+    monotonic_clock.sleep(0.01)
     assert supervisor.state_duration_ns >= 5_000_000
+
+    # Step the wall clock one hour backwards without touching monotonic time.
+    class WallClockShiftedDatetime(datetime):
+        @classmethod
+        def now(cls, tz: object | None = None) -> datetime:
+            return datetime.now(tz) - timedelta(hours=1)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("src.safety.state_machine.datetime", WallClockShiftedDatetime)
+
+    monotonic_clock.sleep(0.02)
+    supervisor.transition_to(SafetyState.SAFE, "After one-hour backwards wall-clock step")
+
+    record = supervisor.get_history()[0]
+    # Monotonic duration is unaffected by the wall-clock step...
+    assert record.duration_ns >= 20_000_000
+    # ...while the UTC audit stamp faithfully follows the (shifted) wall clock.
+    assert record.wall_time_utc < datetime.now(timezone.utc) - timedelta(minutes=59)
+    assert record.monotonic_timestamp_ns > t0_mono
 
 
 def test_tier2_r5_speed_interlock_negative_speed_sanitization() -> None:

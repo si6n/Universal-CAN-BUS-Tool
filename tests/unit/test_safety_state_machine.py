@@ -6,13 +6,13 @@ Complies with CAN-12 (Snapshot-Then-Release) and CAN-25 (Monotonic Clock Special
 from __future__ import annotations
 
 import concurrent.futures
-import time
 from datetime import datetime, timezone
 
 import pytest
 
 from src.core.errors import SafetyError
 from src.safety.state_machine import SafetyState, SafetySupervisor, StateTransitionRecord
+from tests.conftest import VirtualMonotonicClock
 
 
 def test_safety_state_machine_initial_state_and_safe_transitions() -> None:
@@ -259,15 +259,22 @@ def test_safety_state_machine_epoch_monotonicity() -> None:
         assert epochs[i + 1] > epochs[i]
 
 
-def test_safety_state_machine_monotonic_time_duration_accuracy() -> None:
-    """CAN-25: Duration calculations must use monotonic time accurately."""
+def test_safety_state_machine_monotonic_time_duration_accuracy(
+    monotonic_clock: VirtualMonotonicClock,
+) -> None:
+    """CAN-25: Duration calculations must use monotonic time accurately.
+
+    H-29: driven by the virtual clock. A real ``time.sleep`` is meaningless on
+    CI runners whose monotonic source ticks at ~15.6ms (Hyper-V emulated QPC),
+    where it can be observed as 0ns elapsed.
+    """
     supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
 
     t0_mono = supervisor.state_change_timestamp_ns
     assert t0_mono > 0
 
-    # Sleep a short controlled interval
-    time.sleep(0.02)  # 20ms
+    # Advance a controlled interval
+    monotonic_clock.sleep(0.02)  # 20ms
 
     duration_ns = supervisor.state_duration_ns
     duration_sec = supervisor.state_duration_sec
@@ -283,14 +290,20 @@ def test_safety_state_machine_monotonic_time_duration_accuracy() -> None:
     assert duration_after_reset_ns < duration_ns
 
 
-def test_safety_state_machine_history_and_utc_audit_log() -> None:
-    """CAN-25: History records must store monotonic duration and UTC timestamp."""
+def test_safety_state_machine_history_and_utc_audit_log(
+    monotonic_clock: VirtualMonotonicClock,
+) -> None:
+    """CAN-25: History records must store monotonic duration and UTC timestamp.
+
+    H-29: durations are asserted against the virtual clock, not host sleep
+    granularity, so the >=5ms lower bound holds on every CI runner.
+    """
     supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
 
     before_utc = datetime.now(timezone.utc)
-    time.sleep(0.01)
+    monotonic_clock.sleep(0.01)
     supervisor.transition_to(SafetyState.SAFE, "Step 1")
-    time.sleep(0.01)
+    monotonic_clock.sleep(0.01)
     supervisor.transition_to(SafetyState.PASSIVE, "Step 2")
     after_utc = datetime.now(timezone.utc)
 
