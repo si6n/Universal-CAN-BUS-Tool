@@ -36,21 +36,27 @@ Phase 2 Functional Safety & Architectural Hardening enforces strict choke-points
 | M6 | Final Verification, Tier 5 Hardening & Forensic Audit | Full test suite, adversarial tests, ruff, mypy, clean audit | M1-M5, E2E | PLANNED |
 
 ## Interface Contracts
-### `TxPort` Protocol (`src/hal/tx_port.py` or `src/hal/base.py`)
+### `TxPort` Protocol (canonical: `src/core/contracts/ports.py`, re-exported by `src/hal/tx_port.py`)
 ```python
+@runtime_checkable
 class TxPort(Protocol):
-    async def send(self, frame: CanFrame) -> bool: ...
-    def send_sync(self, frame: CanFrame) -> bool: ...
+    async def send(self, frame: CanFrame) -> None: ...
+    def send_sync(self, frame: CanFrame) -> None: ...
 ```
+Both methods raise (fail-closed) on any safety-policy rejection; they never return a boolean
+success flag that callers could ignore. `TxSafetyGateway` is the sole implementation permitted
+to invoke the protected HAL primitive `AbstractBus._send_raw()`.
 
-### `SecretProvider` (`src/safety/secret_provider.py`)
+### `SecretProvider` (canonical read contract: `src/core/contracts/ports.py`)
 ```python
-class SecretProvider(ABC):
-    @abstractmethod
+@runtime_checkable
+class SecretProvider(Protocol):
     def get_secret(self, key_name: str) -> bytes: ...
-    @abstractmethod
-    def store_secret(self, key_name: str, secret: bytes) -> None: ...
 ```
+Concrete storage backends (DPAPI / Linux 0600 keyfile / ephemeral) live in
+`src/safety/secret_provider.py` and additionally expose `store_secret()`. Consumers
+(E-Stop, UDS security access) MUST depend only on the read-side Protocol above so key
+material handling stays decoupled from storage backends.
 
 ### `EmergencyStopToken` (`src/safety/estop.py`)
 ```python

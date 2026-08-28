@@ -126,13 +126,18 @@ def test_safety_gateway_speed_interlock_and_dual_confirmation() -> None:
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x31\x01\x02\x01")
 
+    # INVARIANT FIX: fresh speed telemetry MUST exist before ANY critical command
+    # (fail-closed boot). The prior version issued a critical command with zero
+    # telemetry and expected the Stage 5 dual-confirmation error — that only
+    # passed because the gateway wrongly seeded speed freshness at construction.
+    gateway.update_vehicle_speed(0.0)
+
     # Critical command without user confirmation fails when stationary
     with pytest.raises(DualConfirmationRequiredError, match="Operator dual-confirmation missing") as exc_info:
         gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=False)
     assert exc_info.value.code == "CONFIRMATION_REQUIRED"
 
     # Critical command with confirmation succeeds when stationary (speed = 0)
-    gateway.update_vehicle_speed(0.0)
     assert gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True) is True
 
     # Minor sensor jitter (e.g. 0.2 km/h <= SPEED_NOISE_THRESHOLD_KMH 0.5 km/h) is permitted
@@ -269,8 +274,11 @@ def test_safety_gateway_sliding_window_expiration() -> None:
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
-    # Insert old timestamps (> 1.5 seconds ago) into deque
-    old_time = time.monotonic() - 2.0
+    # Insert old timestamps (> 1.5 seconds ago) into deque.
+    # INVARIANT (CAN-25): rate window entries are time.monotonic_ns() integers ONLY.
+    # The prior float-seconds injection encoded a wrong invariant that required a
+    # unit-guessing heuristic inside the safety-critical rate limiter.
+    old_time = time.monotonic_ns() - 2_000_000_000
     for _ in range(50):
         gateway._tx_timestamps.append(old_time)
 

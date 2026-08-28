@@ -5,6 +5,7 @@ Complies with Saha Risk Kataloğu v1.2 Sections 4, 5, 6, 37, 38 and CAN-12, CAN-
 
 from __future__ import annotations
 
+import collections
 import threading
 import time
 from collections.abc import Callable
@@ -70,6 +71,11 @@ class SafetySupervisor:
         },  # MUST NOT transition directly to ARMED_TX or ACTIVE
     }
 
+    # Bounded in-memory audit ring: prevents unbounded RAM growth in 24/7
+    # sessions with cyclic ARMED_TX<->ACTIVE transitions. Full forensic trail
+    # is still emitted via the structured logger on every transition.
+    MAX_HISTORY_RECORDS: ClassVar[int] = 10_000
+
     def __init__(self, initial_state: SafetyState = SafetyState.STARTUP) -> None:
         self._state = initial_state
         self._epoch: int = 0
@@ -77,7 +83,17 @@ class SafetySupervisor:
         self._lock = threading.RLock()
         self._callbacks: list[Callable[[SafetyState, SafetyState, str], None]] = []
         self._fault_reason: str = ""
-        self._history: list[StateTransitionRecord] = []
+        self._history: collections.deque[StateTransitionRecord] = collections.deque(
+            maxlen=self.MAX_HISTORY_RECORDS,
+        )
+        if initial_state in {SafetyState.ARMED_TX, SafetyState.ACTIVE}:
+            # Safe-by-default (CAN-24): production boot MUST start in STARTUP and
+            # walk STARTUP -> SAFE -> PASSIVE -> ARMED_TX under operator action.
+            logger.warning(
+                "SafetySupervisor constructed directly in TX-permitted state '%s'. "
+                "This bypasses the arming ladder and is acceptable ONLY in tests.",
+                initial_state.value,
+            )
 
     @property
     def current_state(self) -> SafetyState:
@@ -167,6 +183,7 @@ class SafetySupervisor:
 
     def transition_to(self, new_state: SafetyState, reason: str = "") -> None:
         """Execute a formal validated state transition adhering to Snapshot-Then-Release."""
+        illegal_err_msg: str | None = None
         with self._lock:
             if self._state == new_state:
                 return
@@ -177,48 +194,34 @@ class SafetySupervisor:
 
             allowed = self.ALLOWED_TRANSITIONS.get(self._state, set())
             if new_state not in allowed:
-                err_msg = (
+                illegal_err_msg = (
                     f"Illegal Safety State transition from '{self._state.value}' to '{new_state.value}'. "
                     f"Reason: {reason or 'N/A'}"
                 )
-                logger.critical(err_msg)
                 old_state = self._state
+                effective_new_state = SafetyState.FAULT
+                effective_reason = "ILLEGAL_STATE_TRANSITION: " + illegal_err_msg
                 self._state = SafetyState.FAULT
-                self._fault_reason = "ILLEGAL_STATE_TRANSITION: " + err_msg
-                self._epoch += 1
-                self._state_change_timestamp_ns = now_monotonic_ns
+                self._fault_reason = effective_reason
+            else:
+                old_state = self._state
+                effective_new_state = new_state
+                effective_reason = reason
+                self._state = new_state
+                if new_state == SafetyState.FAULT:
+                    self._fault_reason = reason
+                elif old_state == SafetyState.FAULT and new_state in {SafetyState.PASSIVE, SafetyState.SAFE}:
+                    self._fault_reason = ""
 
-                record = StateTransitionRecord(
-                    from_state=old_state,
-                    to_state=SafetyState.FAULT,
-                    reason=self._fault_reason,
-                    epoch=self._epoch,
-                    monotonic_timestamp_ns=now_monotonic_ns,
-                    wall_time_utc=now_utc,
-                    duration_ns=duration_ns,
-                )
-                self._history.append(record)
-                callbacks_snapshot = list(self._callbacks)
-
-                # Snapshot-Then-Release: Dispath callbacks outside lock on illegal transition
-                self._dispatch_callbacks(callbacks_snapshot, old_state, SafetyState.FAULT, self._fault_reason)
-                raise SafetyError(err_msg, code="ILLEGAL_SAFETY_TRANSITION")
-
-            old_state = self._state
-            self._state = new_state
             self._epoch += 1
             self._state_change_timestamp_ns = now_monotonic_ns
-
-            if new_state == SafetyState.FAULT:
-                self._fault_reason = reason
-            elif old_state == SafetyState.FAULT and new_state in {SafetyState.PASSIVE, SafetyState.SAFE}:
-                self._fault_reason = ""
+            epoch_snapshot = self._epoch
 
             record = StateTransitionRecord(
                 from_state=old_state,
-                to_state=new_state,
-                reason=reason,
-                epoch=self._epoch,
+                to_state=effective_new_state,
+                reason=effective_reason,
+                epoch=epoch_snapshot,
                 monotonic_timestamp_ns=now_monotonic_ns,
                 wall_time_utc=now_utc,
                 duration_ns=duration_ns,
@@ -226,19 +229,28 @@ class SafetySupervisor:
             self._history.append(record)
             callbacks_snapshot = list(self._callbacks)
 
+        if illegal_err_msg is not None:
+            logger.critical(illegal_err_msg)
+            # Snapshot-Then-Release: callbacks MUST run outside the lock even on
+            # the illegal-transition path. Dispatching under the lock creates an
+            # AB-BA deadlock with TxSafetyGateway (gateway lock -> supervisor lock
+            # vs supervisor lock -> gateway lock via _on_safety_state_changed).
+            self._dispatch_callbacks(callbacks_snapshot, old_state, SafetyState.FAULT, effective_reason)
+            raise SafetyError(illegal_err_msg, code="ILLEGAL_SAFETY_TRANSITION")
+
         logger.info(
             "Safety State Transition",
             extra={
                 "from": old_state.value,
-                "to": new_state.value,
-                "reason": reason,
-                "epoch": self._epoch,
+                "to": effective_new_state.value,
+                "reason": effective_reason,
+                "epoch": epoch_snapshot,
                 "duration_ms": duration_ns / 1_000_000.0,
             },
         )
 
         # Snapshot-Then-Release: Execute callbacks outside lock with exception isolation
-        self._dispatch_callbacks(callbacks_snapshot, old_state, new_state, reason)
+        self._dispatch_callbacks(callbacks_snapshot, old_state, effective_new_state, effective_reason)
 
     def enter_passive_mode(self, reason: str = "Operator entered PASSIVE listen-only mode") -> None:
         """Safely transition to PASSIVE (Listen-Only) mode."""
@@ -284,6 +296,7 @@ class SafetySupervisor:
                 duration_ns=duration_ns,
             )
             self._history.append(record)
+            epoch_snapshot = self._epoch
             callbacks_snapshot = list(self._callbacks)
 
         logger.critical(
@@ -292,7 +305,7 @@ class SafetySupervisor:
                 "from": old_state.value,
                 "to": SafetyState.FAULT.value,
                 "reason": reason,
-                "epoch": self._epoch,
+                "epoch": epoch_snapshot,
             },
         )
 

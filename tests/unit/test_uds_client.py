@@ -117,6 +117,12 @@ def test_uds_client_sync_routines_and_session() -> None:
     bus = MockDiagnosticBus()
     client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
 
+    # INVARIANT FIX: critical UDS services (WriteDID/RoutineControl) require fresh
+    # stationary speed telemetry; the gateway now fails closed at boot instead of
+    # unsafely seeding speed freshness at construction time.
+    assert isinstance(client.tx_port, TxSafetyGateway)
+    client.tx_port.update_vehicle_speed(0.0)
+
     # 1. Change session
     bus.inject_rx(
         CanFrame.create(

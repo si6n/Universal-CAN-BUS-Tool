@@ -217,7 +217,11 @@ def test_gateway_complete_rule_matrix() -> None:
     estop.reset(estop.compute_reset_token(nonce))
     assert estop.is_engaged is False
 
-    # Rule 4: Critical command missing user confirmation
+    # Rule 4: Critical command missing user confirmation.
+    # INVARIANT FIX: fresh speed telemetry MUST be supplied first — the gateway now
+    # fails closed at boot (no telemetry == stale), so Stage 4 would (correctly)
+    # reject with SPEED_DATA_STALE before Stage 5 dual-confirmation is reached.
+    gateway.update_vehicle_speed(0.0)
     with pytest.raises(SafetyError, match="Operator dual-confirmation missing"):
         gateway.validate_and_transmit(frame_valid, is_critical_command=True, user_confirmed=False)
 

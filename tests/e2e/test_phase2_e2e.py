@@ -179,6 +179,12 @@ def test_tier1_txport_uds_client_session_and_routine_controls() -> None:
     bus = MockMemoryBus()
     client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
 
+    # INVARIANT FIX: critical UDS services (WriteDID/RoutineControl) require FRESH
+    # stationary speed telemetry. The gateway now fails closed at boot (no telemetry
+    # ever received == stale); the old test relied on the unsafe boot-time seeding.
+    assert isinstance(client.tx_port, TxSafetyGateway)
+    client.tx_port.update_vehicle_speed(0.0)
+
     # 1. Change Session
     bus.inject_rx(
         CanFrame.create(channel_id="mock_vbus_0", arbitration_id=0x7E8, data=b"\x02\x50\x03\x00\x00\x00\x00\x00")
@@ -914,8 +920,11 @@ def test_tier2_r5_rate_limiter_sliding_window_1000ms_recovery() -> None:
     gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
-    # Seed 50 timestamps from 2.0s ago
-    old_t = time.monotonic() - 2.0
+    # Seed 50 timestamps from 2.0s ago.
+    # INVARIANT (CAN-25): the rate window stores time.monotonic_ns() integers ONLY.
+    # This test previously injected float seconds, forcing the gateway to keep a
+    # unit-guessing heuristic that could mis-expire real entries. Fixed to ns.
+    old_t = time.monotonic_ns() - 2_000_000_000
     for _ in range(50):
         gateway._tx_timestamps.append(old_t)
 
@@ -1190,7 +1199,11 @@ def test_tier4_scenario1_full_diagnostic_session_stationary_vehicle() -> None:
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(0.0)
 
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    # INVARIANT FIX: route the UDS client through THE safety gateway under test
+    # (Invariant 1: single TxPort choke-point). Previously the client silently
+    # built its own internal allow-all gateway with no speed telemetry, so the
+    # scenario's whitelist/E-Stop/speed setup was never actually exercised.
+    client = UdsClient(bus=bus, tx_port=gateway, tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Diagnostic Session Control (0x10 0x03)
     bus.inject_rx(

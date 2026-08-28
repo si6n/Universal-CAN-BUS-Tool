@@ -12,7 +12,9 @@ Enforces strict 6-stage policy evaluation order:
 
 from __future__ import annotations
 
+import asyncio
 import collections
+import math
 import threading
 import time
 from typing import TYPE_CHECKING, ClassVar
@@ -63,10 +65,22 @@ class TxSafetyGateway:
         self.whitelist_ids: set[int] = set(whitelist_ids) if whitelist_ids is not None else set()
         self.allow_all_for_testing = allow_all_for_testing
 
-        self._tx_timestamps: collections.deque[int | float] = collections.deque()
+        # Rate budget window: monotonic nanosecond integers ONLY (CAN-25).
+        self._tx_timestamps: collections.deque[int] = collections.deque()
         self._current_vehicle_speed_kmh: float = 0.0
-        self._last_speed_update_ns: int = time.monotonic_ns()
+        # 0 is the fail-closed sentinel: no vehicle speed telemetry has EVER been
+        # received. Critical commands MUST be blocked until the first real update;
+        # initializing to "now" would let a critical TX pass the freshness gate
+        # during the first second after boot with zero telemetry.
+        self._last_speed_update_ns: int = 0
         self._lock = threading.RLock()
+
+        if self.supervisor is None and not self.allow_all_for_testing:
+            logger.warning(
+                "TxSafetyGateway constructed WITHOUT a SafetySupervisor: "
+                "Stage 2 state gating (PASSIVE/FAULT enforcement) is disabled. "
+                "Production deployments MUST supply a supervisor.",
+            )
 
         # Wire E-stop callback to halt bus TX and trigger fault state
         self.estop.register_callback(self._on_estop_triggered)
@@ -87,7 +101,20 @@ class TxSafetyGateway:
                 self._tx_timestamps.clear()
 
     def update_vehicle_speed(self, speed_kmh: float, timestamp_ns: int | None = None) -> None:
-        """Update live vehicle speed for dynamic interlock enforcement."""
+        """Update live vehicle speed for dynamic interlock enforcement.
+
+        Non-finite telemetry (NaN/inf from a corrupted J1939 CCVS decode) is
+        REJECTED without refreshing the freshness timestamp: `max(0.0, nan)`
+        silently evaluates to 0.0, which would disguise poisoned telemetry as
+        a stationary vehicle and open the speed interlock. Dropping the update
+        lets the staleness gate fail closed instead.
+        """
+        if not math.isfinite(speed_kmh):
+            logger.error(
+                "Rejected non-finite vehicle speed telemetry update",
+                extra={"speed_kmh": repr(speed_kmh)},
+            )
+            return
         with self._lock:
             self._current_vehicle_speed_kmh = max(0.0, speed_kmh)
             self._last_speed_update_ns = timestamp_ns if timestamp_ns is not None else time.monotonic_ns()
@@ -211,13 +238,11 @@ class TxSafetyGateway:
             # -----------------------------------------------------------------
             # Stage 6: Rate Budget Enforcement (Sliding Window in monotonic nanoseconds)
             # -----------------------------------------------------------------
-            while self._tx_timestamps:
-                first_ts = self._tx_timestamps[0]
-                first_ts_ns = int(first_ts * 1_000_000_000) if first_ts < 1_000_000_000_000 else int(first_ts)
-                if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
-                    self._tx_timestamps.popleft()
-                else:
-                    break
+            # CAN-25: the window holds monotonic_ns integers exclusively. No
+            # unit-guessing heuristics: mixed units mis-expire entries and can
+            # either starve the budget or wedge the limiter into permanent E-Stop.
+            while self._tx_timestamps and (now_ns - self._tx_timestamps[0]) >= self.RATE_LIMIT_WINDOW_NS:
+                self._tx_timestamps.popleft()
 
             if len(self._tx_timestamps) >= self.MAX_TX_RATE_PER_SEC:
                 logger.error("TX Rate limit exceeded! Triggering E-Stop.")
@@ -229,17 +254,26 @@ class TxSafetyGateway:
 
             self._tx_timestamps.append(now_ns)
 
-            # Privileged dispatch to HAL driver via _send_raw
-            if hasattr(self.bus, "_send_raw"):
-                self.bus._send_raw(frame)
-            else:
-                self.bus.send(frame)
-            return True
+        # ---------------------------------------------------------------------
+        # Privileged dispatch: TxSafetyGateway is the SOLE sanctioned caller of
+        # the protected HAL primitive. NEVER fall back to the public bus.send():
+        # a subclass override of send() would silently bypass this choke-point.
+        # Dispatch happens OUTSIDE self._lock so a blocking/wedged HAL write can
+        # never stall E-Stop handling, speed telemetry updates, or the FAULT
+        # queue flush (fail-silent requirement).
+        # ---------------------------------------------------------------------
+        self.bus._send_raw(frame)
+        return True
 
     def send_sync(self, frame: CanFrame) -> None:
         """Synchronously transmit frame conforming to TxPort protocol."""
         self.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False)
 
     async def send(self, frame: CanFrame) -> None:
-        """Asynchronously transmit frame conforming to TxPort protocol."""
-        self.send_sync(frame)
+        """Asynchronously transmit frame conforming to TxPort protocol.
+
+        Runs the blocking validation + HAL dispatch in a worker thread so a
+        slow or wedged bus driver cannot stall the event loop (which would
+        delay UI E-Stop handling and watchdog petting).
+        """
+        await asyncio.to_thread(self.send_sync, frame)
