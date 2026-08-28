@@ -6,20 +6,27 @@ on:
   pull_request:
     branches: [ main, master ]
 
+# K-17: least-privilege token. This workflow only needs to read the repository.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: PyTest & Conformance (Python ${{ matrix.python-version }})
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: [ '3.12', '3.13' ]
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        # K-17: third-party actions are pinned to full commit SHAs, not mutable
+        # tags, so a tag retag/hijack cannot inject code into this safety CI.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -34,7 +41,7 @@ jobs:
         run: |
           ruff check .
 
-      - name: Run 274 PyTest Conformance & Safety Tests
+      - name: Run PyTest Conformance & Safety Suite
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
