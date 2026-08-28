@@ -47,7 +47,18 @@ class UdsClient:
             if isinstance(bus, TxPort):
                 self.tx_port = bus
             else:
-                self.tx_port = TxSafetyGateway(bus=bus, allow_all_for_testing=True)
+                # SAFETY (Invariant 1): NEVER silently construct an allow-all
+                # gateway. A raw bus gets a fail-closed gateway restricted to
+                # this client's own diagnostic TX identifier; callers needing
+                # broader policy must inject an explicitly configured gateway
+                # via tx_port=.
+                logger.warning(
+                    "UdsClient constructed with a raw bus: auto-wrapping in a "
+                    "fail-closed TxSafetyGateway whitelisted to tx_id=0x%X only. "
+                    "Inject an explicit TxSafetyGateway via tx_port= for production policy.",
+                    tx_id,
+                )
+                self.tx_port = TxSafetyGateway(bus=bus, whitelist_ids={tx_id})
         else:
             raise ValueError("Either bus or tx_port must be provided to UdsClient")
 

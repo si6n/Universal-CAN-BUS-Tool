@@ -24,7 +24,7 @@ def test_virtual_bus_connect_send_recv() -> None:
             data=b"\x01\x02\x03\x04\x05\x06\x07\x08",
         )
 
-        bus1.send(tx_frame)
+        bus1._send_raw(tx_frame)
         rx_frame = bus2.recv(timeout_s=0.5)
 
         assert rx_frame is not None
@@ -47,6 +47,6 @@ def test_listen_only_mode_blocks_tx() -> None:
     try:
         frame = CanFrame.create(channel_id="vchan", arbitration_id=0x123, data=b"\x00")
         with pytest.raises(HardwareError, match="Listen-Only"):
-            bus.send(frame)
+            bus._send_raw(frame)
     finally:
         bus.disconnect()

@@ -59,21 +59,22 @@ class AbstractBus(ABC):
         """Close connection and release hardware resources."""
         ...
 
-    def send(self, frame: CanFrame) -> None:
-        """Public transmission method for backward compatibility; delegates to _send_raw."""
-        self._send_raw(frame)
-
+    @abstractmethod
     def _send_raw(self, frame: CanFrame) -> None:
         """Protected hardware transmission routine implemented by concrete drivers.
 
+        SAFETY INVARIANT (CAN-02): TxSafetyGateway is the ONLY sanctioned caller.
         Upper application and protocol layers MUST NOT call this directly;
         transmissions must be routed through TxPort / TxSafetyGateway.
+
+        NOTE: The legacy public ``send()`` method has been REMOVED deliberately.
+        It allowed any caller (UDS, demo, UI, replay) to transmit around the
+        6-stage safety pipeline, and its ``_send_raw -> send()`` re-entry
+        fallback let subclasses override ``send()`` to silently bypass the
+        choke-point. Buses that cannot transmit fail at construction time
+        (abstract method) instead of failing open at first TX.
         """
-        # If concrete subclass implemented send() without overriding _send_raw(), route to send()
-        if type(self).send is not AbstractBus.send:
-            type(self).send(self, frame)
-        else:
-            raise NotImplementedError(f"{self.__class__.__name__} must implement _send_raw()")
+        ...
 
     @abstractmethod
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:

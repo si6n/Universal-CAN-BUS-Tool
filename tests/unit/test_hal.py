@@ -111,7 +111,9 @@ def test_abstract_bus_lifecycle_and_context_manager() -> None:
             data=b"\x01\x02\x03\x04",
             source="virtual",
         )
-        bus.send(frame)
+        # CAN-02: AbstractBus exposes no public send(); the HAL primitive is
+        # _send_raw() and only TxSafetyGateway may reach it in production.
+        bus._send_raw(frame)
         assert bus.metrics.tx_frames == 1
         assert len(bus.sent_frames) == 1
 
@@ -134,17 +136,27 @@ def test_abstract_bus_requires_send_raw_implementation() -> None:
         IncompleteBus(channel_id="incomplete_0")  # type: ignore[abstract]
 
 
-def test_abstract_bus_unimplemented_send_raw_raises_not_implemented() -> None:
-    """Verify that calling _send_raw on a bus that overrides neither _send_raw nor send raises NotImplementedError."""
-    class DummyNoSendBus(AbstractBus):
+def test_abstract_bus_has_no_public_send_bypass() -> None:
+    """CAN-02 regression: the legacy public send() choke-point bypass is gone.
+
+    ``AbstractBus.send()`` let UDS, demo, UI and replay callers transmit around
+    the 6-stage safety pipeline, and its ``_send_raw -> send()`` re-entry
+    fallback let subclasses override ``send()`` to silently bypass the gateway.
+    Neither may come back.
+    """
+    assert not hasattr(AbstractBus, "send")
+    assert "_send_raw" in AbstractBus.__abstractmethods__
+
+
+def test_abstract_bus_without_send_raw_fails_at_construction() -> None:
+    """A bus with no TX primitive must fail closed at construction, not at first TX."""
+    class DummyNoSendRawBus(AbstractBus):
         def connect(self) -> None: pass
         def disconnect(self) -> None: pass
         def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None: return None
 
-    bus = DummyNoSendBus("no_send_0")
-    frame = CanFrame.create(channel_id="c0", arbitration_id=0x123, data=b"\x01")
-    with pytest.raises(NotImplementedError, match="must implement _send_raw"):
-        bus._send_raw(frame)
+    with pytest.raises(TypeError, match="abstract method.*_send_raw"):
+        DummyNoSendRawBus("no_send_raw_0")  # type: ignore[abstract]
 
 
 def test_virtual_bus_implementation() -> None:
@@ -155,7 +167,7 @@ def test_virtual_bus_implementation() -> None:
     # Cannot send/receive before connecting
     frame = CanFrame.create(channel_id="vcan99", arbitration_id=0x700, data=b"\x11\x22")
     with pytest.raises(HardwareError, match="Cannot send"):
-        vbus.send(frame)
+        vbus._send_raw(frame)
 
     with pytest.raises(HardwareError, match="Cannot receive"):
         vbus.recv()
@@ -164,8 +176,8 @@ def test_virtual_bus_implementation() -> None:
         assert vbus.is_connected
         assert vbus.metrics.state == BusState.ACTIVE
 
-        # Transmit frame via send() -> _send_raw()
-        vbus.send(frame)
+        # Transmit frame via the protected HAL primitive (gateway-owned in prod)
+        vbus._send_raw(frame)
         assert len(vbus.sent_frames) == 1
         assert vbus.sent_frames[0].arbitration_id == 0x700
         assert vbus.metrics.tx_frames == 1

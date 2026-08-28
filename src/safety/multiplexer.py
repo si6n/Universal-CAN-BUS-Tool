@@ -50,12 +50,27 @@ class SafeMultiplexedBus(AbstractBus):
         """Unsubscribe from router upon teardown."""
         self.router.unsubscribe(self.sub_id)
 
-    def send(self, frame: CanFrame) -> None:
-        """Enforce CORE_SAFETY_FLOOR on every transmission."""
+    def send_sync(self, frame: CanFrame) -> None:
+        """Enforce CORE_SAFETY_FLOOR on every transmission (TxPort conformance)."""
         self.gateway.validate_and_transmit(
             frame,
             is_critical_command=self.is_critical_command,
             user_confirmed=self.user_confirmed,
+        )
+
+    def send(self, frame: CanFrame) -> None:
+        """Legacy alias routing through the gateway; kept for adapter compatibility."""
+        self.send_sync(frame)
+
+    def _send_raw(self, frame: CanFrame) -> None:
+        """K-01: The application-layer adapter has NO physical TX capability.
+
+        This adapter must never be handed to TxSafetyGateway as a physical bus;
+        the gateway owns the real HAL. Fail closed instead of transmitting.
+        """
+        raise PermissionError(
+            "SafeMultiplexedBus has no raw TX capability (K-01). "
+            "Route transmissions through send_sync() -> TxSafetyGateway.",
         )
 
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:

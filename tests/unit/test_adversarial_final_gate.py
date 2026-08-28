@@ -74,7 +74,7 @@ class MockTestingBus(AbstractBus):
         self.is_connected = False
         self.metrics.state = BusState.DISCONNECTED
 
-    def send(self, frame: CanFrame) -> None:
+    def _send_raw(self, frame: CanFrame) -> None:
         with self._lock:
             self.sent_frames.append(frame)
             self.metrics.tx_frames += 1

@@ -39,7 +39,19 @@ DEFAULT_KDF_INFO: bytes = b"UniversalCAN_Secret_Key_Derivation_v1"
 
 
 class SecretProvider(ABC):
-    """Abstract interface for secure secret and key storage providers."""
+    """Abstract base for secure secret and key STORAGE backends.
+
+    Canonical relationship (resolves the ABC-vs-Protocol split):
+    - ``src.core.contracts.ports.SecretProvider`` is the READ-side structural
+      Protocol (``get_secret(key_name) -> bytes``) that consumers (E-Stop,
+      UDS security access) depend on. It is ``runtime_checkable`` and every
+      concrete backend below satisfies it structurally.
+    - THIS class is the storage-backend base adding write/lifecycle methods
+      (``store_secret``/``set_secret``/``delete_secret``/``has_secret``).
+
+    Consumers MUST type against the ports Protocol; only backend
+    implementations and provisioning code should reference this ABC.
+    """
 
     @abstractmethod
     def get_secret(self, name: str) -> bytes:

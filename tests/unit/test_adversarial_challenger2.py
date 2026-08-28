@@ -212,7 +212,7 @@ class MockBus(AbstractBus):
     def disconnect(self) -> None:
         self.is_connected = False
 
-    def send(self, frame: CanFrame) -> None:
+    def _send_raw(self, frame: CanFrame) -> None:
         with self._lock:
             self.sent_frames.append(frame)
 
@@ -358,7 +358,7 @@ class UdsMockDiagnosticBus(AbstractBus):
     def disconnect(self) -> None:
         self.is_connected = False
 
-    def send(self, frame: CanFrame) -> None:
+    def _send_raw(self, frame: CanFrame) -> None:
         with self._lock:
             self.sent_frames.append(frame)
 

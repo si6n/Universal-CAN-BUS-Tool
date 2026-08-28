@@ -87,8 +87,11 @@ class PythonCanBus(AbstractBus):
                 self.is_connected = False
                 self.metrics.state = "disconnected"
 
-    def send(self, frame: CanFrame) -> None:
-        """Transmit CanFrame on physical bus."""
+    def _send_raw(self, frame: CanFrame) -> None:
+        """Transmit CanFrame on physical bus (protected HAL primitive).
+
+        SAFETY INVARIANT (CAN-02): Only TxSafetyGateway may invoke this.
+        """
         if not self.is_connected or self._bus is None:
             raise HardwareError("Cannot send: CAN bus is not connected")
 
