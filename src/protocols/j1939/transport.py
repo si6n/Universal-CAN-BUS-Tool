@@ -10,6 +10,14 @@ import time
 from dataclasses import dataclass, field
 from typing import ClassVar
 
+from src.core.contracts.ports import ClockProvider
+from src.core.exceptions import (
+    J1939SequenceError,
+    J1939SessionCollisionError,
+    J1939TpAbortError,
+    J1939TpError,
+    J1939TpTimeoutError,
+)
 from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame
 
@@ -24,6 +32,12 @@ TP_CTRL_CTS: int = 0x11
 TP_CTRL_ACK: int = 0x13
 TP_CTRL_BAM: int = 0x20
 TP_CTRL_ABORT: int = 0xFF
+
+# TP.Conn_Abort Reason Codes (SAE J1939-21 Section 5.10.3)
+ABORT_REASON_SEQUENCE_ERROR: int = 0x01
+ABORT_REASON_SESSION_COLLISION: int = 0x02
+ABORT_REASON_TIMEOUT: int = 0x03
+ABORT_REASON_UNEXPECTED_CONTROL: int = 0x04
 
 
 @dataclass(slots=True)
@@ -40,6 +54,11 @@ class ReassemblySession:
     received_bytes: bytearray = field(default_factory=bytearray)
     last_activity_time: float = field(default_factory=time.monotonic)
     channel_id: str = "j1939_ch0"
+
+    @property
+    def expected_pgn(self) -> int:
+        """Alias for target_pgn to conform with expected_pgn naming."""
+        return self.target_pgn
 
 
 @dataclass(slots=True)
@@ -58,19 +77,33 @@ class J1939TransportProtocol:
     """SAE J1939-21 Transport Protocol Engine managing BAM & CMDT sessions."""
 
     # Timeouts in seconds (SAE J1939-21)
-    T1_TIMEOUT_SEC: ClassVar[float] = 0.750  # 750 ms
-    T2_TIMEOUT_SEC: ClassVar[float] = 1.250  # 1250 ms
-    T3_TIMEOUT_SEC: ClassVar[float] = 1.250  # 1250 ms
+    T1_TIMEOUT_SEC: ClassVar[float] = 0.750  # 750 ms (Time between packets)
+    T2_TIMEOUT_SEC: ClassVar[float] = 1.250  # 1250 ms (Time to CTS)
+    T3_TIMEOUT_SEC: ClassVar[float] = 1.250  # 1250 ms (Time to EndOfMsgACK)
+    T4_TIMEOUT_SEC: ClassVar[float] = 1.050  # 1050 ms (Time to hold connection)
     MAX_CONCURRENT_SESSIONS: ClassVar[int] = 512
 
-    def __init__(self, my_address: int = 0xF9, channel_id: str = "j1939_ch0") -> None:
+    def __init__(
+        self,
+        my_address: int = 0xF9,
+        channel_id: str = "j1939_ch0",
+        clock: ClockProvider | None = None,
+    ) -> None:
         self.my_address = my_address
         self.channel_id = channel_id
-        self._rx_sessions: dict[tuple[int, int, int], ReassemblySession] = {}
+        self.clock = clock
+        # Session storage strictly keyed by (source_address, destination_address)
+        self._rx_sessions: dict[tuple[int, int], ReassemblySession] = {}
+
+    def _get_now(self) -> float:
+        """Return current monotonic time in seconds."""
+        if self.clock is not None:
+            return self.clock.now_monotonic()
+        return time.monotonic()
 
     def _reap_stale_sessions(self, now: float | None = None) -> None:
         """Reap inactive reassembly sessions exceeding T1 timeout."""
-        curr_time = now if now is not None else time.monotonic()
+        curr_time = now if now is not None else self._get_now()
         expired = [
             key
             for key, sess in self._rx_sessions.items()
@@ -109,14 +142,20 @@ class J1939TransportProtocol:
 
         return None, None
 
-    def _handle_tp_cm(self, frame: CanFrame, sa: int, da: int) -> tuple[CompletedMessage | None, CanFrame | None]:
+    def handle_frame(self, frame: CanFrame) -> tuple[CompletedMessage | None, CanFrame | None]:
+        """Alias for handle_rx_frame."""
+        return self.handle_rx_frame(frame)
+
+    def _handle_tp_cm(
+        self, frame: CanFrame, sa: int, da: int
+    ) -> tuple[CompletedMessage | None, CanFrame | None]:
         ctrl_byte = frame.data[0]
         total_bytes = int.from_bytes(frame.data[1:3], byteorder="little")
         total_packets = frame.data[3]
         target_pgn = int.from_bytes(frame.data[5:8], byteorder="little")
 
-        # Session key: (SA, Target_PGN, DA)
-        session_key = (sa, target_pgn, da)
+        # Session key strictly by (source_address, destination_address)
+        session_key = (sa, da)
 
         # Validate SAE J1939-21 TP limits: max 1785 bytes, packets must match declared bytes
         if ctrl_byte in {TP_CTRL_BAM, TP_CTRL_RTS}:
@@ -135,12 +174,13 @@ class J1939TransportProtocol:
                 return None, None
 
         self._reap_stale_sessions()
-        if len(self._rx_sessions) >= self.MAX_CONCURRENT_SESSIONS and session_key not in self._rx_sessions:
-            oldest_key = min(self._rx_sessions.keys(), key=lambda k: self._rx_sessions[k].last_activity_time)
-            self._rx_sessions.pop(oldest_key, None)
 
         if ctrl_byte == TP_CTRL_BAM:
-            # Broadcast Announce Message
+            # Broadcast Announce Message (DA == 255)
+            if len(self._rx_sessions) >= self.MAX_CONCURRENT_SESSIONS and session_key not in self._rx_sessions:
+                oldest_key = min(self._rx_sessions.keys(), key=lambda k: self._rx_sessions[k].last_activity_time)
+                self._rx_sessions.pop(oldest_key, None)
+
             logger.debug(
                 "Received J1939 TP.CM_BAM",
                 extra={"sa": sa, "target_pgn": hex(target_pgn), "bytes": total_bytes, "packets": total_packets},
@@ -152,91 +192,118 @@ class J1939TransportProtocol:
                 total_bytes=total_bytes,
                 total_packets=total_packets,
                 is_bam=True,
+                expected_sequence=1,
+                last_activity_time=self._get_now(),
                 channel_id=frame.channel_id,
             )
             return None, None
 
         if ctrl_byte == TP_CTRL_RTS:
             # Request To Send (Point-to-Point CMDT)
-            if da != self.my_address and da != 255:
+            # 1. Reject RTS addressed to global broadcast address DA == 255 (0xFF)
+            if da == 255 or da != self.my_address:
+                logger.warning(
+                    "Rejected J1939 TP.CM_RTS with invalid destination address",
+                    extra={"da": da, "my_address": self.my_address, "sa": sa},
+                )
                 return None, None
 
-            logger.debug(
-                "Received J1939 TP.CM_RTS",
-                extra={"sa": sa, "target_pgn": hex(target_pgn), "bytes": total_bytes, "packets": total_packets},
-            )
-            self._rx_sessions[session_key] = ReassemblySession(
+            # 2. Check for active session collision on (SA, DA)
+            existing_session = self._rx_sessions.get(session_key)
+            abort_frame: CanFrame | None = None
+            if existing_session is not None:
+                logger.warning(
+                    "J1939 TP session collision detected on (SA, DA)",
+                    extra={
+                        "sa": sa,
+                        "da": da,
+                        "old_pgn": hex(existing_session.target_pgn),
+                        "new_pgn": hex(target_pgn),
+                    },
+                )
+                # Abort existing session with reason=2 (Session Collision)
+                abort_frame = self._create_abort_frame(
+                    existing_session, reason=ABORT_REASON_SESSION_COLLISION
+                )
+                self._rx_sessions.pop(session_key, None)
+
+            # Capacity management
+            if len(self._rx_sessions) >= self.MAX_CONCURRENT_SESSIONS and session_key not in self._rx_sessions:
+                oldest_key = min(self._rx_sessions.keys(), key=lambda k: self._rx_sessions[k].last_activity_time)
+                self._rx_sessions.pop(oldest_key, None)
+
+            # Establish new session with new expected_pgn
+            new_session = ReassemblySession(
                 source_address=sa,
                 destination_address=da,
                 target_pgn=target_pgn,
                 total_bytes=total_bytes,
                 total_packets=total_packets,
                 is_bam=False,
+                expected_sequence=1,
+                last_activity_time=self._get_now(),
                 channel_id=frame.channel_id,
             )
+            self._rx_sessions[session_key] = new_session
 
-            # Send TP.CM_CTS (Clear To Send for all packets)
-            cts_data = bytearray(8)
-            cts_data[0] = TP_CTRL_CTS
-            cts_data[1] = total_packets  # Number of packets allowed
-            cts_data[2] = 1  # Next sequence number expected
-            cts_data[3] = 0xFF
-            cts_data[4] = 0xFF
-            cts_data[5:8] = target_pgn.to_bytes(3, byteorder="little")
+            # If collision occurred, emit abort frame for the old session
+            if abort_frame is not None:
+                return None, abort_frame
 
-            can_id = 0x18EC0000 | (sa << 8) | (self.my_address & 0xFF)
-            cts_frame = CanFrame.create(
-                channel_id=frame.channel_id,
-                arbitration_id=can_id,
-                data=bytes(cts_data),
-                is_extended=True,
-                direction="tx",
-            )
+            # Otherwise emit affirmative TP.CM_CTS for the new session
+            cts_frame = self._create_cts_frame(new_session)
             return None, cts_frame
 
         if ctrl_byte == TP_CTRL_ABORT:
-            # Connection Abort
-            logger.warning("Received J1939 TP.Conn_Abort", extra={"sa": sa, "target_pgn": hex(target_pgn)})
+            # Peer Connection Abort
+            logger.warning(
+                "Received J1939 TP.Conn_Abort",
+                extra={"sa": sa, "da": da, "target_pgn": hex(target_pgn), "reason": frame.data[1]},
+            )
             self._rx_sessions.pop(session_key, None)
             return None, None
 
         return None, None
 
-    def _handle_tp_dt(self, frame: CanFrame, sa: int, da: int) -> tuple[CompletedMessage | None, CanFrame | None]:
+    def _handle_tp_dt(
+        self, frame: CanFrame, sa: int, da: int
+    ) -> tuple[CompletedMessage | None, CanFrame | None]:
         seq_num = frame.data[0]
         payload = frame.data[1:8]
 
-        # Find matching session for this SA and DA
-        matching_key = None
-        for key, sess in self._rx_sessions.items():
-            if sess.source_address == sa and (sess.destination_address == da or sess.is_bam):
-                matching_key = key
-                break
+        # Session lookup strictly keyed by (source_address, destination_address)
+        session_key = (sa, da)
+        session = self._rx_sessions.get(session_key)
 
-        if not matching_key:
+        if session is None:
             return None, None
 
-        session = self._rx_sessions[matching_key]
-        now = time.monotonic()
+        now = self._get_now()
 
-        # Check T1 timeout
+        # Check T1 timeout (750 ms)
         if (now - session.last_activity_time) > self.T1_TIMEOUT_SEC:
             logger.warning(
                 "J1939 TP.DT session timeout (T1 exceeded)",
-                extra={"sa": sa, "target_pgn": hex(session.target_pgn)},
+                extra={"sa": sa, "da": da, "target_pgn": hex(session.target_pgn)},
             )
-            self._rx_sessions.pop(matching_key, None)
-            abort_frame = self._create_abort_frame(session, reason=0x01)
+            self._rx_sessions.pop(session_key, None)
+            abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_TIMEOUT)
             return None, abort_frame
 
         # Check sequence order
         if seq_num != session.expected_sequence:
             logger.warning(
-                "J1939 TP.DT Out of order sequence",
-                extra={"expected": session.expected_sequence, "got": seq_num},
+                "J1939 TP.DT out of order sequence",
+                extra={
+                    "expected": session.expected_sequence,
+                    "got": seq_num,
+                    "sa": sa,
+                    "da": da,
+                    "target_pgn": hex(session.target_pgn),
+                },
             )
-            self._rx_sessions.pop(matching_key, None)
-            abort_frame = self._create_abort_frame(session, reason=0x04)
+            self._rx_sessions.pop(session_key, None)
+            abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_SEQUENCE_ERROR)
             return None, abort_frame
 
         # Append payload data
@@ -276,10 +343,29 @@ class J1939TransportProtocol:
                     direction="tx",
                 )
 
-            self._rx_sessions.pop(matching_key, None)
+            self._rx_sessions.pop(session_key, None)
             return completed_msg, resp_frame
 
         return None, None
+
+    def _create_cts_frame(self, session: ReassemblySession) -> CanFrame:
+        """Construct standard J1939 TP.CM_CTS frame (PGN 60416 / 0xEC00 with Control Byte 0x11)."""
+        cts_data = bytearray(8)
+        cts_data[0] = TP_CTRL_CTS
+        cts_data[1] = session.total_packets  # Number of packets allowed
+        cts_data[2] = session.expected_sequence  # Next sequence number expected (1)
+        cts_data[3] = 0xFF
+        cts_data[4] = 0xFF
+        cts_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
+
+        can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)
+        return CanFrame.create(
+            channel_id=session.channel_id,
+            arbitration_id=can_id,
+            data=bytes(cts_data),
+            is_extended=True,
+            direction="tx",
+        )
 
     def _create_abort_frame(self, session: ReassemblySession, reason: int = 0x01) -> CanFrame | None:
         """Construct standard J1939 TP.Conn_Abort frame (PGN 60416 / 0xEC00 with Control Byte 0xFF)."""
@@ -300,3 +386,126 @@ class J1939TransportProtocol:
             is_extended=True,
             direction="tx",
         )
+
+    def start_tp_bam(self, pgn: int, data: bytes, channel_id: str | None = None) -> list[CanFrame]:
+        """Segment data into J1939 BAM broadcast frames (TP.CM_BAM followed by TP.DT packets)."""
+        if not (1 <= len(data) <= 1785):
+            raise ValueError(f"J1939 TP data length must be 1..1785 bytes, got {len(data)}")
+
+        ch = channel_id or self.channel_id
+        total_bytes = len(data)
+        total_packets = (total_bytes + 6) // 7
+
+        # 1. TP.CM_BAM frame (DA = 255, SA = my_address)
+        bam_data = bytearray(8)
+        bam_data[0] = TP_CTRL_BAM
+        bam_data[1:3] = total_bytes.to_bytes(2, byteorder="little")
+        bam_data[3] = total_packets
+        bam_data[4] = 0xFF
+        bam_data[5:8] = pgn.to_bytes(3, byteorder="little")
+
+        can_id_cm = 0x18ECFF00 | (self.my_address & 0xFF)
+        frames: list[CanFrame] = [
+            CanFrame.create(
+                channel_id=ch,
+                arbitration_id=can_id_cm,
+                data=bytes(bam_data),
+                is_extended=True,
+                direction="tx",
+            )
+        ]
+
+        # 2. TP.DT packets
+        can_id_dt = 0x18EBFF00 | (self.my_address & 0xFF)
+        for seq in range(1, total_packets + 1):
+            chunk = data[(seq - 1) * 7 : seq * 7]
+            dt_data = bytearray(8)
+            dt_data[0] = seq
+            dt_data[1 : 1 + len(chunk)] = chunk
+            for i in range(1 + len(chunk), 8):
+                dt_data[i] = 0xFF
+            frames.append(
+                CanFrame.create(
+                    channel_id=ch,
+                    arbitration_id=can_id_dt,
+                    data=bytes(dt_data),
+                    is_extended=True,
+                    direction="tx",
+                )
+            )
+
+        return frames
+
+    def start_tp_cm_dt(
+        self, target_address: int, pgn: int, data: bytes, channel_id: str | None = None
+    ) -> list[CanFrame]:
+        """Segment data into J1939 CMDT peer-to-peer frames (TP.CM_RTS followed by TP.DT packets)."""
+        if not (1 <= len(data) <= 1785):
+            raise ValueError(f"J1939 TP data length must be 1..1785 bytes, got {len(data)}")
+
+        ch = channel_id or self.channel_id
+        total_bytes = len(data)
+        total_packets = (total_bytes + 6) // 7
+
+        # 1. TP.CM_RTS frame (DA = target_address, SA = my_address)
+        rts_data = bytearray(8)
+        rts_data[0] = TP_CTRL_RTS
+        rts_data[1:3] = total_bytes.to_bytes(2, byteorder="little")
+        rts_data[3] = total_packets
+        rts_data[4] = 0xFF
+        rts_data[5:8] = pgn.to_bytes(3, byteorder="little")
+
+        can_id_cm = 0x18EC0000 | ((target_address & 0xFF) << 8) | (self.my_address & 0xFF)
+        frames: list[CanFrame] = [
+            CanFrame.create(
+                channel_id=ch,
+                arbitration_id=can_id_cm,
+                data=bytes(rts_data),
+                is_extended=True,
+                direction="tx",
+            )
+        ]
+
+        # 2. TP.DT packets (DA = target_address, SA = my_address)
+        can_id_dt = 0x18EB0000 | ((target_address & 0xFF) << 8) | (self.my_address & 0xFF)
+        for seq in range(1, total_packets + 1):
+            chunk = data[(seq - 1) * 7 : seq * 7]
+            dt_data = bytearray(8)
+            dt_data[0] = seq
+            dt_data[1 : 1 + len(chunk)] = chunk
+            for i in range(1 + len(chunk), 8):
+                dt_data[i] = 0xFF
+            frames.append(
+                CanFrame.create(
+                    channel_id=ch,
+                    arbitration_id=can_id_dt,
+                    data=bytes(dt_data),
+                    is_extended=True,
+                    direction="tx",
+                )
+            )
+
+        return frames
+
+
+__all__ = [
+    "ABORT_REASON_SEQUENCE_ERROR",
+    "ABORT_REASON_SESSION_COLLISION",
+    "ABORT_REASON_TIMEOUT",
+    "ABORT_REASON_UNEXPECTED_CONTROL",
+    "CompletedMessage",
+    "J1939SequenceError",
+    "J1939SessionCollisionError",
+    "J1939TpAbortError",
+    "J1939TpError",
+    "J1939TpTimeoutError",
+    "J1939TransportProtocol",
+    "PGN_TP_CM",
+    "PGN_TP_DT",
+    "ReassemblySession",
+    "TP_CTRL_ABORT",
+    "TP_CTRL_ACK",
+    "TP_CTRL_BAM",
+    "TP_CTRL_CTS",
+    "TP_CTRL_RTS",
+]

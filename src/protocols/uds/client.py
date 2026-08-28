@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from src.core.contracts.ports import RxSubscription, TxPort
 from src.core.errors import ProtocolError
 from src.core.logging import get_logger
 from src.protocols.uds.isotp import IsoTpTransport
@@ -16,6 +17,7 @@ from src.protocols.uds.services import (
     UdsResponse,
     UdsServiceBuilder,
 )
+from src.safety.gateway import TxSafetyGateway
 
 if TYPE_CHECKING:
     from src.hal.base import AbstractBus
@@ -24,17 +26,33 @@ logger = get_logger("protocols.uds.client")
 
 
 class UdsClient:
-    """Synchronous / Non-blocking ISO 14229 Diagnostic Client over ISO-TP."""
+    """Synchronous / Non-blocking ISO 14229 Diagnostic Client over ISO-TP.
+
+    Routes all CAN frame transmissions through the TxPort / TxSafetyGateway choke-point.
+    """
 
     def __init__(
         self,
-        bus: AbstractBus,
+        bus: AbstractBus | None = None,
+        tx_port: TxPort | None = None,
+        rx_sub: RxSubscription | None = None,
         tx_id: int = 0x7E0,
         rx_id: int = 0x7E8,
         channel_id: str = "uds_ch0",
         max_workers: int = 4,
     ) -> None:
+        if tx_port is not None:
+            self.tx_port: TxPort = tx_port
+        elif bus is not None:
+            if isinstance(bus, TxPort):
+                self.tx_port = bus
+            else:
+                self.tx_port = TxSafetyGateway(bus=bus, allow_all_for_testing=True)
+        else:
+            raise ValueError("Either bus or tx_port must be provided to UdsClient")
+
         self.bus = bus
+        self.rx_sub = rx_sub
         self.tx_id = tx_id
         self.rx_id = rx_id
         self.channel_id = channel_id
@@ -98,10 +116,10 @@ class UdsClient:
         req_payload = UdsServiceBuilder.build_read_data_by_identifier(did)
         return self._send_and_receive(req_payload)
 
-    def write_did(self, did: int, data: bytes) -> UdsResponse:
-        """Write Data Identifier (0x2E)."""
+    def write_did(self, did: int, data: bytes, user_confirmed: bool = True) -> UdsResponse:
+        """Write Data Identifier (0x2E) - Critical command."""
         req_payload = UdsServiceBuilder.build_write_data_by_identifier(did, data)
-        return self._send_and_receive(req_payload)
+        return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
     def request_download(
         self,
@@ -109,15 +127,16 @@ class UdsClient:
         memory_size: int,
         data_format_identifier: int = 0x00,
         address_and_length_format_identifier: int = 0x44,
+        user_confirmed: bool = True,
     ) -> UdsResponse:
-        """Request Download (0x34)."""
+        """Request Download (0x34) - Critical command."""
         req_payload = UdsServiceBuilder.build_request_download(
             memory_address=memory_address,
             memory_size=memory_size,
             data_format_identifier=data_format_identifier,
             address_and_length_format_identifier=address_and_length_format_identifier,
         )
-        return self._send_and_receive(req_payload)
+        return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
     def transfer_data(self, block_sequence: int, data: bytes) -> UdsResponse:
         """Transfer Data Block (0x36)."""
@@ -129,15 +148,15 @@ class UdsClient:
         req_payload = UdsServiceBuilder.build_request_transfer_exit()
         return self._send_and_receive(req_payload)
 
-    def ecu_reset(self, reset_type: int = 0x01) -> UdsResponse:
-        """ECU Reset (0x11)."""
+    def ecu_reset(self, reset_type: int = 0x01, user_confirmed: bool = True) -> UdsResponse:
+        """ECU Reset (0x11) - Critical command."""
         req_payload = UdsServiceBuilder.build_ecu_reset(reset_type=reset_type)
-        return self._send_and_receive(req_payload)
+        return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
-    def start_routine(self, routine_id: int, options: bytes = b"") -> UdsResponse:
-        """Start ECU Routine (0x31)."""
+    def start_routine(self, routine_id: int, options: bytes = b"", user_confirmed: bool = True) -> UdsResponse:
+        """Start ECU Routine (0x31) - Critical command."""
         req_payload = UdsServiceBuilder.build_routine_control(RoutineControlType.START_ROUTINE, routine_id, options)
-        return self._send_and_receive(req_payload)
+        return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
     def stop_routine(self, routine_id: int) -> UdsResponse:
         """Stop ECU Routine (0x31)."""
@@ -157,24 +176,48 @@ class UdsClient:
             return None
         return self._send_and_receive(req_payload)
 
-    def _send_payload(self, payload: bytes) -> None:
+    def _send_payload(
+        self,
+        payload: bytes,
+        is_critical_command: bool = False,
+        user_confirmed: bool = True,
+    ) -> None:
         frames = self.transport.segment_message(payload)
         for frame in frames:
-            self.bus.send(frame)
+            if hasattr(self.tx_port, "validate_and_transmit"):
+                self.tx_port.validate_and_transmit(
+                    frame,
+                    is_critical_command=is_critical_command,
+                    user_confirmed=user_confirmed,
+                )
+            else:
+                self.tx_port.send_sync(frame)
 
-    def _send_and_receive(self, payload: bytes, timeout_s: float = 2.0) -> UdsResponse:
+    def _send_and_receive(
+        self,
+        payload: bytes,
+        timeout_s: float = 2.0,
+        is_critical_command: bool = False,
+        user_confirmed: bool = True,
+    ) -> UdsResponse:
         """Send segmented UDS request and wait for complete ISO-TP reassembled response."""
-        self._send_payload(payload)
+        self._send_payload(payload, is_critical_command=is_critical_command, user_confirmed=user_confirmed)
 
         start_time = time.monotonic()
 
         while (time.monotonic() - start_time) < timeout_s:
-            rx_frame = self.bus.recv(timeout_s=0.1)
+            rx_frame = None
+            if self.bus is not None:
+                rx_frame = self.bus.recv(timeout_s=0.1)
+
             if rx_frame is not None and rx_frame.arbitration_id == self.rx_id:
                 completed_data, resp_frame = self.transport.handle_rx_frame(rx_frame)
                 if resp_frame is not None:
-                    # Flow control frame response
-                    self.bus.send(resp_frame)
+                    # Flow control frame response - routed through TxPort
+                    if hasattr(self.tx_port, "validate_and_transmit"):
+                        self.tx_port.validate_and_transmit(resp_frame, is_critical_command=False, user_confirmed=False)
+                    else:
+                        self.tx_port.send_sync(resp_frame)
                 if completed_data is not None:
                     return UdsServiceBuilder.parse_response(completed_data)
 
