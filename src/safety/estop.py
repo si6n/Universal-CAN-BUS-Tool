@@ -1,4 +1,8 @@
-"""10-Trigger Hardware/Software Emergency Stop (E-Stop) Interlock System."""
+"""10-Trigger Hardware/Software Emergency Stop (E-Stop) Interlock System.
+
+Enforces immediate hardware and software transmission cutoffs upon fault detection,
+with anti-replay, epoch-tracked, and timing-safe challenge-response cryptographic reset.
+"""
 
 from __future__ import annotations
 
@@ -10,11 +14,23 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from src.core.errors import SafetyError
 from src.core.logging import get_logger
+from src.safety.secret_provider import (
+    EphemeralSecretBackend,
+    SecretProvider,
+    get_default_secret_provider,
+)
+
+if TYPE_CHECKING:
+    pass
 
 logger = get_logger("safety.estop")
+
+DEFAULT_ESTOP_KEY_NAME: str = "ESTOP_HMAC_SECRET"
+DEFAULT_TOKEN_MAX_AGE_NS: int = 30_000_000_000  # 30 seconds
 
 
 class EStopTriggerSource(Enum):
@@ -42,37 +58,211 @@ class EStopEvent:
     system_speed_kmh: float = 0.0
 
 
-class EmergencyStopSystem:
-    """Master Emergency Stop controller ensuring immediate hardware/software TX cutoff."""
+@dataclass(slots=True, frozen=True)
+class EStopChallenge:
+    """Cryptographic challenge issued upon E-Stop engagement."""
 
-    def __init__(self, reset_secret: bytes | None = None) -> None:
-        self.reset_secret = reset_secret or b"EMERGENCY_STOP_DEFAULT_HMAC_SECRET_2026"
+    epoch: int
+    nonce: bytes
+    timestamp_monotonic_ns: int
+    action: str = "ESTOP_RESET"
+    max_age_ns: int = DEFAULT_TOKEN_MAX_AGE_NS
+
+    def serialize_for_signature(self) -> bytes:
+        """Deterministic serialization for HMAC computation."""
+        return f"{self.epoch}:{self.nonce.hex()}:{self.timestamp_monotonic_ns}:{self.action}".encode("utf-8")
+
+
+@dataclass(slots=True, frozen=True)
+class EmergencyStopToken:
+    """Structured cryptographic authorization token for E-Stop reset."""
+
+    epoch: int
+    nonce: str
+    timestamp_monotonic_ns: int
+    action: str
+    signature: str
+
+    def to_token_string(self) -> str:
+        """Serialize token into canonical colon-separated representation."""
+        return f"{self.epoch}:{self.nonce}:{self.timestamp_monotonic_ns}:{self.action}:{self.signature}"
+
+    @classmethod
+    def from_token_string(cls, token_str: str) -> EmergencyStopToken:
+        """Parse token from canonical string format."""
+        parts = token_str.strip().split(":")
+        if len(parts) != 5:
+            raise ValueError(f"Invalid token format, expected 5 colon-separated fields: {token_str}")
+        try:
+            return cls(
+                epoch=int(parts[0]),
+                nonce=parts[1],
+                timestamp_monotonic_ns=int(parts[2]),
+                action=parts[3],
+                signature=parts[4],
+            )
+        except (ValueError, IndexError) as exc:
+            raise ValueError(f"Malformed token fields: {exc}") from exc
+
+
+class EmergencyStopSystem:
+    """Master Emergency Stop controller ensuring immediate hardware/software TX cutoff.
+
+    Integrates with SecretProvider for dynamic key retrieval (zero hardcoded secrets),
+    maintains an anti-replay store of consumed nonces, enforces monotonic TTL windows,
+    and performs constant-time HMAC-SHA256 authorization verification.
+    """
+
+    def __init__(
+        self,
+        reset_secret: bytes | None = None,
+        secret_provider: SecretProvider | None = None,
+        key_name: str = DEFAULT_ESTOP_KEY_NAME,
+        max_token_age_s: float = 30.0,
+    ) -> None:
+        self._key_name = key_name
+        self._max_token_age_ns = int(max_token_age_s * 1_000_000_000)
+
+        if reset_secret is not None:
+            self._secret_provider: SecretProvider = EphemeralSecretBackend({self._key_name: bytes(reset_secret)})
+        elif secret_provider is not None:
+            self._secret_provider = secret_provider
+        else:
+            self._secret_provider = get_default_secret_provider()
+
+        # Ensure a valid key exists in the provider; if not, generate a dynamic 256-bit key
+        if not self._secret_provider.has_secret(self._key_name):
+            try:
+                self._secret_provider.store_secret(self._key_name, os.urandom(32))
+            except Exception as exc:
+                logger.warning(
+                    "Failed to persist initial E-Stop secret, using ephemeral fallback",
+                    extra={"error": str(exc)},
+                )
+                self._secret_provider = EphemeralSecretBackend({self._key_name: os.urandom(32)})
+
         self._is_engaged = False
         self._last_event: EStopEvent | None = None
         self._callbacks: list[Callable[[EStopEvent], None]] = []
-        self._reset_nonce: bytes = b""
+        self._active_challenge: EStopChallenge | None = None
+        self._consumed_nonces: set[bytes] = set()
+        self._epoch: int = 0
         self._lock = threading.RLock()
 
     @property
     def is_engaged(self) -> bool:
+        """Return True if E-Stop is currently engaged and transmissions are blocked."""
         with self._lock:
             return self._is_engaged
 
     @property
     def last_event(self) -> EStopEvent | None:
+        """Return the most recent EStopEvent if engaged."""
         with self._lock:
             return self._last_event
+
+    @property
+    def epoch(self) -> int:
+        """Return current monotonically increasing state epoch counter."""
+        with self._lock:
+            return self._epoch
+
+    @property
+    def active_challenge(self) -> EStopChallenge | None:
+        """Return the currently active cryptographic challenge."""
+        with self._lock:
+            return self._active_challenge
+
+    @property
+    def secret_provider(self) -> SecretProvider:
+        """Return the bound SecretProvider instance."""
+        return self._secret_provider
+
+    @property
+    def reset_secret(self) -> bytes:
+        """Retrieve current binary HMAC secret from SecretProvider (for backward compatibility)."""
+        return self._get_secret()
+
+    @reset_secret.setter
+    def reset_secret(self, secret: bytes) -> None:
+        """Update binary HMAC secret in SecretProvider."""
+        with self._lock:
+            self._secret_provider.store_secret(self._key_name, bytes(secret))
+
+    def _get_secret(self) -> bytes:
+        """Internal secret resolver."""
+        try:
+            return self._secret_provider.get_secret(self._key_name)
+        except Exception as exc:
+            raise SafetyError(
+                f"Failed to retrieve E-Stop HMAC secret: {exc}",
+                code="ESTOP_RESET_DENIED",
+                cause=exc,
+            ) from exc
 
     def get_reset_nonce(self) -> bytes:
         """Return the single-use cryptographic challenge nonce for the current E-Stop engagement."""
         with self._lock:
-            return self._reset_nonce
+            if self._active_challenge is not None:
+                return self._active_challenge.nonce
+            return b""
 
-    def compute_reset_token(self, nonce: bytes) -> str:
-        """Compute expected HMAC-SHA256 token for a given challenge nonce."""
-        if not nonce:
-            return ""
-        return hmac.new(self.reset_secret, nonce, hashlib.sha256).hexdigest()
+    def get_active_challenge(self) -> EStopChallenge | None:
+        """Return the active challenge record."""
+        with self._lock:
+            return self._active_challenge
+
+    def create_reset_token(self) -> EmergencyStopToken | None:
+        """Generate a valid, signed EmergencyStopToken for the currently active challenge."""
+        with self._lock:
+            if not self._is_engaged or self._active_challenge is None:
+                return None
+
+            challenge = self._active_challenge
+            secret = self._get_secret()
+            sig = hmac.new(secret, challenge.serialize_for_signature(), hashlib.sha256).hexdigest()
+
+            return EmergencyStopToken(
+                epoch=challenge.epoch,
+                nonce=challenge.nonce.hex(),
+                timestamp_monotonic_ns=challenge.timestamp_monotonic_ns,
+                action=challenge.action,
+                signature=sig,
+            )
+
+    def compute_reset_token(
+        self,
+        nonce: bytes | str | None = None,
+        epoch: int | None = None,
+        timestamp_ns: int | None = None,
+        action: str = "ESTOP_RESET",
+    ) -> str:
+        """Compute expected token string for authorization.
+
+        If called with an active challenge, returns a canonical structured token string
+        or computed signature compatible with reset().
+        """
+        with self._lock:
+            secret = self._get_secret()
+
+            if self._active_challenge is not None:
+                token_obj = self.create_reset_token()
+                if token_obj is not None:
+                    return token_obj.to_token_string()
+
+            if nonce is None:
+                return ""
+
+            nonce_bytes = nonce if isinstance(nonce, bytes) else bytes.fromhex(nonce)
+            if not nonce_bytes:
+                return ""
+
+            if epoch is not None and timestamp_ns is not None:
+                payload = f"{epoch}:{nonce_bytes.hex()}:{timestamp_ns}:{action}".encode("utf-8")
+                sig = hmac.new(secret, payload, hashlib.sha256).hexdigest()
+                return f"{epoch}:{nonce_bytes.hex()}:{timestamp_ns}:{action}:{sig}"
+
+            return hmac.new(secret, nonce_bytes, hashlib.sha256).hexdigest()
 
     def register_callback(self, callback: Callable[[EStopEvent], None]) -> None:
         """Register listener to be invoked immediately upon E-Stop trigger."""
@@ -87,13 +277,22 @@ class EmergencyStopSystem:
     ) -> None:
         """Engage Emergency Stop immediately and cut all transmissions."""
         with self._lock:
-            now_ns = time.time_ns()
+            now_wall_ns = time.time_ns()
+            now_monotonic_ns = time.monotonic_ns()
+
             self._is_engaged = True
-            self._reset_nonce = os.urandom(16)
+            challenge_nonce = os.urandom(16)
+            self._active_challenge = EStopChallenge(
+                epoch=self._epoch,
+                nonce=challenge_nonce,
+                timestamp_monotonic_ns=now_monotonic_ns,
+                action="ESTOP_RESET",
+                max_age_ns=self._max_token_age_ns,
+            )
             self._last_event = EStopEvent(
                 trigger=trigger,
                 reason=reason,
-                timestamp_ns=now_ns,
+                timestamp_ns=now_wall_ns,
                 system_speed_kmh=vehicle_speed_kmh,
             )
             event_snapshot = self._last_event
@@ -105,30 +304,129 @@ class EmergencyStopSystem:
                 "trigger": trigger.value,
                 "reason": reason,
                 "speed_kmh": vehicle_speed_kmh,
+                "epoch": self._epoch,
             },
         )
 
-        # Notify all listeners (hardware buses, UI, timers) outside lock
+        # Notify all listeners outside lock with exception isolation
         for cb in callbacks_snapshot:
             try:
                 cb(event_snapshot)
             except Exception as exc:
                 logger.error("Error in E-Stop callback", extra={"error": str(exc)})
 
-    def reset(self, authorization_token: str) -> None:
-        """Manual reset of E-Stop requires valid challenge-response HMAC token."""
+    def reset(self, authorization_token: str | EmergencyStopToken) -> None:
+        """Manual reset of E-Stop requiring a valid replay-protected challenge-response token."""
         with self._lock:
             if not self._is_engaged:
                 return  # No-op when not engaged
 
-            if not self._reset_nonce:
-                return
+            if self._active_challenge is None:
+                raise SafetyError("No active E-Stop challenge available", code="ESTOP_RESET_DENIED")
 
-            expected_token = self.compute_reset_token(self._reset_nonce)
-            if not hmac.compare_digest(authorization_token, expected_token):
+            challenge = self._active_challenge
+            now_monotonic_ns = time.monotonic_ns()
+
+            # 1. Parse token input
+            token_epoch: int
+            token_nonce_hex: str
+            token_ts: int
+            token_action: str
+            sig: str
+
+            if isinstance(authorization_token, EmergencyStopToken):
+                token_epoch = authorization_token.epoch
+                token_nonce_hex = authorization_token.nonce
+                token_ts = authorization_token.timestamp_monotonic_ns
+                token_action = authorization_token.action
+                sig = authorization_token.signature
+            elif isinstance(authorization_token, str):
+                token_str = authorization_token.strip()
+                if not token_str:
+                    raise SafetyError("Invalid E-Stop reset token", code="ESTOP_RESET_DENIED")
+
+                if ":" in token_str:
+                    try:
+                        parsed = EmergencyStopToken.from_token_string(token_str)
+                        token_epoch = parsed.epoch
+                        token_nonce_hex = parsed.nonce
+                        token_ts = parsed.timestamp_monotonic_ns
+                        token_action = parsed.action
+                        sig = parsed.signature
+                    except ValueError as exc:
+                        raise SafetyError(
+                            f"Malformed E-Stop reset token structure: {exc}",
+                            code="ESTOP_RESET_DENIED",
+                            cause=exc,
+                        ) from exc
+                else:
+                    # Raw signature submitted against current active challenge
+                    token_epoch = challenge.epoch
+                    token_nonce_hex = challenge.nonce.hex()
+                    token_ts = challenge.timestamp_monotonic_ns
+                    token_action = challenge.action
+                    sig = token_str
+            else:
+                raise SafetyError(
+                    f"Unsupported token type: {type(authorization_token).__name__}",
+                    code="ESTOP_RESET_DENIED",
+                )
+
+            # 2. Anti-Replay: Check if nonce was already consumed
+            if challenge.nonce in self._consumed_nonces:
+                raise SafetyError(
+                    "E-Stop token nonce has already been consumed (Replay Attack)",
+                    code="ESTOP_RESET_DENIED",
+                )
+
+            # 3. Epoch verification
+            if token_epoch != challenge.epoch or token_epoch != self._epoch:
+                raise SafetyError(
+                    "E-Stop token epoch mismatch (Replay or Stale Trigger)",
+                    code="ESTOP_RESET_DENIED",
+                )
+
+            # 4. Action verification
+            if token_action != "ESTOP_RESET":
+                raise SafetyError("Invalid E-Stop token action", code="ESTOP_RESET_DENIED")
+
+            # 5. Nonce match verification
+            if token_nonce_hex.lower() != challenge.nonce.hex().lower():
+                raise SafetyError("E-Stop token nonce mismatch", code="ESTOP_RESET_DENIED")
+
+            # 6. TTL / Expiration Check (using monotonic clock)
+            age_ns = now_monotonic_ns - challenge.timestamp_monotonic_ns
+            if age_ns > challenge.max_age_ns or age_ns < 0:
+                self._active_challenge = None
+                raise SafetyError("E-Stop reset token expired", code="ESTOP_RESET_DENIED")
+
+            token_age_ns = now_monotonic_ns - token_ts
+            if token_age_ns > challenge.max_age_ns or token_age_ns < 0:
+                self._active_challenge = None
+                raise SafetyError("E-Stop reset token timestamp expired", code="ESTOP_RESET_DENIED")
+
+            # 7. Constant-Time HMAC Signature Verification
+            secret = self._get_secret()
+            structured_payload = challenge.serialize_for_signature()
+            expected_sig_structured = hmac.new(secret, structured_payload, hashlib.sha256).hexdigest()
+            expected_sig_legacy = hmac.new(secret, challenge.nonce, hashlib.sha256).hexdigest()
+
+            is_valid = hmac.compare_digest(
+                sig.lower(), expected_sig_structured.lower()
+            ) or hmac.compare_digest(
+                sig.lower(), expected_sig_legacy.lower()
+            )
+
+            if not is_valid:
                 raise SafetyError("Invalid E-Stop reset token", code="ESTOP_RESET_DENIED")
 
+            # 8. Success: Consume nonce, advance epoch, disengage E-Stop
+            self._consumed_nonces.add(challenge.nonce)
             self._is_engaged = False
             self._last_event = None
-            self._reset_nonce = b""
-            logger.warning("Emergency Stop reset by operator")
+            self._active_challenge = None
+            self._epoch += 1
+            logger.warning(
+                "Emergency Stop successfully reset by authorized operator",
+                extra={"epoch": self._epoch},
+            )
