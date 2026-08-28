@@ -13,6 +13,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -56,6 +57,9 @@ class EStopEvent:
     reason: str
     timestamp_ns: int
     system_speed_kmh: float = 0.0
+    # SP-7: UTC wall-clock mirror of timestamp_ns so audit trails and fault
+    # history use the same datetime.now(timezone.utc) format as state_machine.
+    wall_time_utc: datetime | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -294,6 +298,7 @@ class EmergencyStopSystem:
                 reason=reason,
                 timestamp_ns=now_wall_ns,
                 system_speed_kmh=vehicle_speed_kmh,
+                wall_time_utc=datetime.fromtimestamp(now_wall_ns / 1_000_000_000, tz=timezone.utc),
             )
             event_snapshot = self._last_event
             callbacks_snapshot = list(self._callbacks)

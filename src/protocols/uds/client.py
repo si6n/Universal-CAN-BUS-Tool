@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from src.core.contracts.ports import RxSubscription, TxPort
+from src.core.contracts.ports import RxSubscription, TxPort, ValidatedTxPort
 from src.core.errors import ProtocolError
 from src.core.logging import get_logger
 from src.protocols.uds.isotp import IsoTpTransport
@@ -195,7 +195,7 @@ class UdsClient:
     ) -> None:
         frames = self.transport.segment_message(payload)
         for frame in frames:
-            if hasattr(self.tx_port, "validate_and_transmit"):
+            if isinstance(self.tx_port, ValidatedTxPort):
                 self.tx_port.validate_and_transmit(
                     frame,
                     is_critical_command=is_critical_command,
@@ -225,7 +225,7 @@ class UdsClient:
                 completed_data, resp_frame = self.transport.handle_rx_frame(rx_frame)
                 if resp_frame is not None:
                     # Flow control frame response - routed through TxPort
-                    if hasattr(self.tx_port, "validate_and_transmit"):
+                    if isinstance(self.tx_port, ValidatedTxPort):
                         self.tx_port.validate_and_transmit(resp_frame, is_critical_command=False, user_confirmed=False)
                     else:
                         self.tx_port.send_sync(resp_frame)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import sys
 import threading
@@ -249,18 +250,31 @@ class UniversalCanDesktopApp:
             self._depth_meters = depth
             self._propeller_slip = slip
 
-            # Push tick to JavaScript if window is active
+            # Push tick to JavaScript if window is active.
+            # S-8: the payload is serialized with json.dumps (all values are
+            # Python numbers) instead of f-string interpolation, so no
+            # hand-built JS literal can inject code into the webview.
             if self._window is not None:
                 try:
-                    js_code = (
-                        f"if (window.onTelemetryTick) window.onTelemetryTick({{"
-                        f"timeSec: {t:.2f}, timeFormatted: '{t:.2f}s', rpm: {int(rpm)}, "
-                        f"turboBoostBar: {boost:.2f}, coolantTempC: {int(temp)}, "
-                        f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: {self._error_count}, "
-                        f"packVoltageV: {pack_volt:.1f}, batterySocPercent: {soc:.1f}, packCurrentA: {current:.1f}, "
-                        f"sogKnots: {sog:.1f}, depthMeters: {depth:.1f}, propellerSlipPct: {slip:.1f}}});"
+                    tick_payload = json.dumps(
+                        {
+                            "timeSec": round(t, 2),
+                            "timeFormatted": f"{t:.2f}s",
+                            "rpm": int(rpm),
+                            "turboBoostBar": round(boost, 2),
+                            "coolantTempC": int(temp),
+                            "oilPressureBar": 4.2,
+                            "busLoadPercent": self._bus_load,
+                            "errorCount": self._error_count,
+                            "packVoltageV": round(pack_volt, 1),
+                            "batterySocPercent": round(soc, 1),
+                            "packCurrentA": round(current, 1),
+                            "sogKnots": round(sog, 1),
+                            "depthMeters": round(depth, 1),
+                            "propellerSlipPct": round(slip, 1),
+                        }
                     )
-                    self._window.evaluate_js(js_code)
+                    self._window.evaluate_js(f"if (window.onTelemetryTick) window.onTelemetryTick({tick_payload});")
                 except Exception:
                     pass
 

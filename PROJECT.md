@@ -27,7 +27,7 @@ Phase 2 Functional Safety & Architectural Hardening enforces strict choke-points
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | R1: TxPort & UDS Gateway (CAN-02) | `src/hal/base.py`, `src/hal/tx_port.py`, `src/protocols/uds/client.py`, `src/safety/gateway.py` | None | IN_PROGRESS |
+| M1 | R1: TxPort & UDS Gateway (CAN-02) | `src/hal/base.py`, `src/core/contracts/ports.py`, `src/protocols/uds/client.py`, `src/safety/gateway.py` | None | IN_PROGRESS |
 | M2 | R2: SecretProvider & E-Stop Hardening (CAN-05) | `src/safety/secret_provider.py`, `src/safety/estop.py` | None | IN_PROGRESS |
 | M3 | R3: Fail-Closed Whitelist (CAN-06) | `src/safety/gateway.py`, `src/safety/exceptions.py` | M1 | PLANNED |
 | M4 | R4: Deadlock-Free Callback Dispatch (CAN-12) | `src/safety/state_machine.py` | None | IN_PROGRESS |
@@ -36,7 +36,7 @@ Phase 2 Functional Safety & Architectural Hardening enforces strict choke-points
 | M6 | Final Verification, Tier 5 Hardening & Forensic Audit | Full test suite, adversarial tests, ruff, mypy, clean audit | M1-M5, E2E | PLANNED |
 
 ## Interface Contracts
-### `TxPort` Protocol (canonical: `src/core/contracts/ports.py`, re-exported by `src/hal/tx_port.py`)
+### `TxPort` Protocol (canonical: `src/core/contracts/ports.py`)
 ```python
 @runtime_checkable
 class TxPort(Protocol):
@@ -71,8 +71,8 @@ class EmergencyStopToken:
 
 ## Code Layout
 - `src/hal/base.py` — `AbstractBus` base with `_send_raw()` protected method
-- `src/hal/tx_port.py` — `TxPort` protocol definition
-- `src/hal/virtual.py`, `can_interface.py` — Concrete bus implementations of `_send_raw()`
+- `src/core/contracts/ports.py` — `TxPort` / `ValidatedTxPort` protocol definitions
+- `src/hal/virtual.py` — Concrete bus implementation of `_send_raw()`
 - `src/safety/secret_provider.py` — `SecretProvider` interface and backends
 - `src/safety/estop.py` — Dynamic secret & replay-protected `EmergencyStopSystem`
 - `src/safety/gateway.py` — `TxSafetyGateway` implementing `TxPort`, 6-stage rule ordering, fail-closed whitelist

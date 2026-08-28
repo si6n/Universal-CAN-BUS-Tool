@@ -45,6 +45,33 @@ class TxPort(Protocol):
 
 
 @runtime_checkable
+class ValidatedTxPort(TxPort, Protocol):
+    """TxPort whose transmissions pass the TxSafetyGateway validation pipeline.
+
+    Resolves SP-9: consumers (e.g. UdsClient) dispatch on this explicit
+    contract via isinstance() instead of probing undocumented attributes with
+    hasattr(). TxSafetyGateway structurally satisfies this Protocol; the
+    signature mirrors its validate_and_transmit().
+    """
+
+    def validate_and_transmit(
+        self,
+        frame: CanFrame,
+        is_critical_command: bool = False,
+        user_confirmed: bool = False,
+    ) -> bool:
+        """Run the 6-stage safety pipeline, then transmit onto the bus.
+
+        Returns:
+            True if the frame passed validation and was transmitted.
+
+        Raises:
+            PlatformError: If any safety stage rejects the transmission.
+        """
+        ...
+
+
+@runtime_checkable
 class RxSubscription(Protocol):
     """Abstract CAN frame subscription receiver.
 

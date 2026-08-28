@@ -28,6 +28,24 @@ All notable changes to the **Universal CAN-Bus Diagnostic & Telemetry Platform**
 - **K-17:** CI actions are pinned to full commit SHAs, workflow token permissions are
   reduced to `contents: read`, and `fail-fast: false` keeps both matrix jobs reporting.
 
+### Code Review Cleanup (S-5, S-8, S-3/S-10, SP-7, SP-9)
+- **S-5:** `BusMetrics.state` is now a `BusState` invariant — the `| str` escape hatch
+  is gone. `PythonCanBus` assigns enum members instead of raw strings, and its python-can
+  `BusState` import no longer shadows the platform enum (`CanLibBusState` alias).
+- **SP-7:** `EStopEvent` gains `wall_time_utc` (UTC `datetime` mirror of `timestamp_ns`)
+  so E-Stop audit records use the same `datetime.now(timezone.utc)` format as the
+  safety state machine's fault history.
+- **SP-9:** `UdsClient` dispatches on the new explicit `ValidatedTxPort` Protocol via
+  `isinstance()` instead of probing undocumented attributes with `hasattr()`.
+  `ValidatedTxPort` extends `TxPort` with the gateway's `validate_and_transmit()`
+  contract in `src/core/contracts/ports.py`.
+- **S-8:** the desktop telemetry loop serializes the JS push payload with `json.dumps`
+  instead of hand-built f-string JS literals, removing the code-injection surface in
+  `evaluate_js`.
+- **S-3/S-10:** removed the middle-man re-export modules `src/hal/tx_port.py` and
+  `src/hal/can_interface.py`; consumers use the canonical `src/core/contracts/ports.py`
+  and `src/hal/__init__.py` exports (PROJECT.md updated accordingly).
+
 ## [13.0.0] - 2026-08-26
 ### Added
 - **Formal Safety State Machine**: Fail-Silent and Safe-by-Default architecture (`STARTUP` -> `SAFE` -> `PASSIVE` -> `ARMED_TX` -> `ACTIVE` -> `FAULT`).

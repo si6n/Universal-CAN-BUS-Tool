@@ -10,12 +10,12 @@ from collections.abc import Sequence
 from typing import Any
 
 import can
-from can import BusState
+from can import BusState as CanLibBusState
 
 from src.core.errors import HardwareError, TransportError
 from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame, length_to_dlc
-from src.hal.base import AbstractBus
+from src.hal.base import AbstractBus, BusState
 
 logger = get_logger("hal.drivers")
 
@@ -56,18 +56,18 @@ class PythonCanBus(AbstractBus):
                 bus_kwargs["data_bitrate"] = self.data_bitrate
 
             if self.listen_only:
-                bus_kwargs["state"] = BusState.PASSIVE
+                bus_kwargs["state"] = CanLibBusState.PASSIVE
 
             self._bus = can.Bus(**bus_kwargs)
             self.is_connected = True
-            self.metrics.state = "passive" if self.listen_only else "active"
+            self.metrics.state = BusState.PASSIVE if self.listen_only else BusState.ACTIVE
             logger.info(
                 "Connected CAN hardware interface",
                 extra={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
             )
         except (can.CanError, OSError, ValueError) as exc:
             self.is_connected = False
-            self.metrics.state = "disconnected"
+            self.metrics.state = BusState.DISCONNECTED
             raise HardwareError(
                 f"Failed to connect to CAN interface '{self.interface}:{self.channel}': {exc}",
                 code="HARDWARE_CONNECT_FAILED",
@@ -85,7 +85,7 @@ class PythonCanBus(AbstractBus):
             finally:
                 self._bus = None
                 self.is_connected = False
-                self.metrics.state = "disconnected"
+                self.metrics.state = BusState.DISCONNECTED
 
     def _send_raw(self, frame: CanFrame) -> None:
         """Transmit CanFrame on physical bus (protected HAL primitive).

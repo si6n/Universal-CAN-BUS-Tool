@@ -36,7 +36,7 @@ class BusMetrics:
     bus_load_percent: float = 0.0
     bitrate: int = 250000
     data_bitrate: int | None = None
-    state: BusState | str = BusState.ACTIVE
+    state: BusState = BusState.ACTIVE
 
 
 class AbstractBus(ABC):
