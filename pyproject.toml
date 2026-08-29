@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-can-bus-platform"
+version = "1.0.0"
+description = "Universal CAN-Bus Diagnostic & Telemetry Tool"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --strict-markers"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".git",
+    ".agents",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+]
+ignore = [
+    "E501",  # line too long
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E402"]
+"src/main.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "scripts", "tests"]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+[tool.pyright]
+include = ["src", "tests", "main.py"]
+extraPaths = ["."]
+
+[tool.pyrefly]
+search-path = ["."]
+disable-search-path-heuristics = true

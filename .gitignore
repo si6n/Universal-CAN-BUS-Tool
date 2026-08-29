@@ -1,0 +1,62 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Node.js & Frontend Build
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing & Quality
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Build & Distribution
+build/
+dist/
+*.dist/
+*.build/
+*.egg-info/
+*.spec
+
+# IDE & Editors
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Artifacts
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs & Generated Reports
+*.log
+reports/*.html
+reports/*.pdf
+!reports/.gitkeep
+
+# Secrets & Environment Variables
+.env
+.env.*
+*.pem
+*.key
+
+# AI Agent Workspaces & Local Prompts
+.agents/
+.agent/
