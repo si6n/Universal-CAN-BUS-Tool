@@ -1,11 +1,11 @@
 # 🚀 Universal CAN-Bus Diagnostic & Telemetry Platform (v13.0)
 
-[![CI Pipeline](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions/workflows/ci.yml/badge.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions/workflows/ci.yml)
-[![Tests: 274 passed](https://img.shields.io/badge/tests-274%20passed-success.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic/actions)
+[![CI Pipeline](https://github.com/si6n/Universal-CAN-BUS-Tool/actions/workflows/ci.yml/badge.svg)](https://github.com/si6n/Universal-CAN-BUS-Tool/actions/workflows/ci.yml)
+[![Tests: verified suite](https://img.shields.io/badge/tests-CI%20artifact-success.svg)](https://github.com/si6n/Universal-CAN-BUS-Tool/actions)
 [![Python 3.12 | 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Platform: Windows](https://img.shields.io/badge/platform-Windows%20WebView2-lightgrey.svg)](https://github.com/si6n/Universal-CAN-Bus-Diagnostic)
+[![Platform: Windows](https://img.shields.io/badge/platform-Windows%20WebView2-lightgrey.svg)](https://github.com/si6n/Universal-CAN-BUS-Tool)
 
 > **Endüstriyel Otomotiv, Ağır Vasıta, İş Makinesi & Marin Telemetri, Teşhis ve Yapay Zeka Destekli Copilot Platformu**  
 > *ISO 11898-1:2015/2024 (CAN / CAN-FD) • SAE J1939-21/71/73/81 • ISO 14229-1 UDS • ISO 15765-2 DoCAN • NMEA 2000 (ISO 11783-3) • TMC RP1210 (A/B/C) • Volvo Penta EDC/EVC*
@@ -16,13 +16,13 @@
 
 | Standart / Güvenlik Katmanı | Durum / Uyumluluk | Test Kapsamı | Güvenlik Seviyesi |
 | :--- | :---: | :---: | :---: |
-| **Saha Risk Kataloğu v1.2** | 🟢 %100 Uyumlu | 42/42 Madde Kapatıldı | **Fail-Silent & Safe-by-Default** |
-| **CAN / CAN-FD (ISO 11898-1)** | 🟢 %100 Uyumlu | 274/274 Test Başarılı | 64-Bayt FD / BRS / ESI / CRC-17/21 |
-| **SAE J1939 (21, 71, 73, 81)** | 🟢 %100 Conformance | BAM, RTS/CTS, 64-bit NAME | DM1..DM11, SPN/FMI/OC/Lamp, Sentinel |
-| **ISO-TP & UDS (15765-2 / 14229-1)** | 🟢 %100 Conformance | Single/Multi-Frame, Seed-Key | 0x10, 0x11, 0x22, 0x27, 0x2E, 0x31, 0x34..0x37 |
-| **NMEA 2000 & Volvo Penta EVC** | 🟢 %100 Conformance | Fast Packet (223B), PGN 65360/65361 | Motor, Şanzıman, Trim (-100%..+100%), Dümen |
-| **TMC RP1210 (A/B/C)** | 🟢 %100 Conformance | Nexiq, Noregon, Cummins, DPA5 | Çoklu Donanım HAL & Hata Yönetimi |
-| **Lisanslama & Anti-Tamper** | 🟢 RFC 8032 Ed25519 | DPAPI + CIM HWID + 7-Day Grace | Anti-Clock Rollback + Win32 Anti-Debug |
+| **Saha Risk Kataloğu v1.2** | 🟢 Uyumlu | 42/42 Madde Kapatıldı | **Fail-Silent & Safe-by-Default** |
+| **CAN / CAN-FD (ISO 11898-1)** | 🟢 Uyumlu | Doğrulanmış kapsam: CI artefaktı | 64-Bayt FD / BRS / ESI / CRC-17/21 |
+| **SAE J1939 (21, 71, 73, 81)** | 🟢 Doğrulanmış Conformance | BAM, RTS/CTS, 64-bit NAME | DM1..DM11, SPN/FMI/OC/Lamp, Sentinel |
+| **ISO-TP & UDS (15765-2 / 14229-1)** | 🟢 Doğrulanmış Conformance | Single/Multi-Frame, Seed-Key | 0x10, 0x11, 0x22, 0x27, 0x2E, 0x31, 0x34..0x37 |
+| **NMEA 2000 & Volvo Penta EVC** | 🟢 Doğrulanmış Conformance | Fast Packet (223B), PGN 65360/65361 | Motor, Şanzıman, Trim (-100%..+100%), Dümen |
+| **TMC RP1210 (A/B/C)** | 🟡 İstemci Hazır, Entegrasyon Planlı | Nexiq, Noregon, Cummins, DPA5 | Çoklu Donanım HAL & Hata Yönetimi *(HAL istemcisi mevcut; ürün kablolaması sürüyor)* |
+| **Lisanslama & Anti-Tamper** | 🟡 Altyapı Hazır, Entegrasyon Planlı | DPAPI + CIM HWID + 7-Day Grace *(kütüphane doğrulandı; ürün akışına bağlanacak)* | Anti-Clock Rollback + Win32 Anti-Debug |
 | **Kod Kalitesi & Statik Analiz** | 🟢 Ruff Linting Temiz | 0 Hata / 0 Uyarı | Python 3.13 Strict Type Hints |
 
 ---
@@ -61,7 +61,7 @@ Platform; **React 18 + TypeScript + Tailwind CSS + Native Windows Desktop (Micro
 2. [🏛️ 6 Katmanlı Normatif Mimari](#️-6-katmanlı-normatif-mimari)
 3. [🛡️ Endüstriyel Güvenlik Mimarisi (Saha Risk Kataloğu v1.2)](#-endüstriyel-güvenlik-mimarisi-saha-risk-kataloğu-v12)
    - [Formal Safety State Machine](#1-formal-safety-state-machine)
-   - [500 ms Monotonic TX Watchdog Supervisor](#2-500-ms-monotonic-tx-watchdog-supervisor)
+   - [800 ms Monotonic TX Watchdog Supervisor](#2-800-ms-monotonic-tx-watchdog-supervisor)
    - [Çift Onaylı TX Safety Gateway & Speed Interlock](#3-çift-onaylı-tx-safety-gateway--speed-interlock)
    - [Replay Trace Güvenlik Filtresi](#4-replay-trace-güvenlik-filtresi)
    - [DBC Sinyal Geçerlilik (Sentinel Range) Filtresi](#5-dbc-sinyal-geçerlilik-sentinel-range-filtresi)
@@ -90,8 +90,8 @@ Platform; **React 18 + TypeScript + Tailwind CSS + Native Windows Desktop (Micro
 ## 🌟 Temel Yetenekler ve Öne Çıkan Özellikler
 
 * **⚡ Sıfır Gecikmeli Telemetri & 60 FPS Grafik:** CAN/CAN-FD mesajlarını mikrosaniye zaman damgalarıyla yakalar, dinamik bayt renklendirmesiyle gösterir ve yüksek yenileme hızında osiloskop grafikleri çizer.
-* **🤖 Hibrit AI Diagnostic Copilot:** Çevrimdışı yerel otomotiv teşhis motoru ve opsiyonel **Google Gemini 1.5/3 Flash LLM** entegrasyonuyla canlı DTC kök neden analizi, arıza olasılık dağılımı ve adım adım interaktif onarım rehberliği.
-* **🛡️ E-Stop & TX Safety Gateway:** Donanım seviyesinde acil durdurma (E-Stop), araç hareket halindeyken tehlikeli mesajları bloke eden hız kilidi (*Speed Interlock*), sliding-window hız sınırlayıcı (100 msg/s) ve yetkisiz komutları engelleyen dinamik beyaz liste (*Whitelist*).
+* **🤖 Hibrit AI Diagnostic Copilot:** Çevrimdışı yerel otomotiv teşhis motoru ve opsiyonel **Google Gemini 2.0 Flash LLM** entegrasyonuyla canlı DTC kök neden analizi, arıza olasılık dağılımı ve adım adım interaktif onarım rehberliği.
+* **🛡️ E-Stop & TX Safety Gateway:** Donanım seviyesinde acil durdurma (E-Stop), araç hareket halindeyken tehlikeli mesajları bloke eden hız kilidi (*Speed Interlock*), sliding-window hız sınırlayıcı (100 msg/s) ve yetkisiz komutları engelleyen dinamik beyaz liste (*Whitelist*). E-Stop sonrası kurtarma, HMAC imzalı reset jetonu ile çalışır: **geçerli sürümde jeton aynı süreç tarafından üretilip tüketildiğinden bu bir yerel kurtarma akışıdır** — dağıtık/çoklu operatörlü yetkilendirme (bağımsız doğrulayıcı) planlanmektedir.
 * **🧠 Çift Yönlü Tam Protokol Desteği:** J1939 (BAM, RTS/CTS, DM1..DM11, Dynamic Address Claiming, Sentinel bounds), ISO 14229 UDS (ECU Flashing, Seed-Key, RoutineControl, NRC analizi) ve NMEA 2000 Fast Packet desteği.
 * **🔬 Kanıt Tabanlı Tersine Mühendislik (Signal Discovery):** Uyarı-Tepki (Stimulus-Response) deney protokolü, Pearson/Spearman korelasyonu, Time-Lag analizi, Sayaç/CRC eleme ve tek tıkla DBC dosyası üretimi.
 * **🧮 Doğrulanmış Sanal Kanallar:** Motor Torku ($N\cdot m$), Güç ($kW$ / $HP$), Marin Yakıt Verimliliği ($L/NM$), Karayolu Yakıt Tüketimi ($L/100km$) ve Pervane Kayma Oranı (Propeller Slip %).
@@ -135,7 +135,7 @@ graph TD
 
     subgraph Layer5 [5. CAN ÇEKİRDEĞİ & GÜVENLİK KATMANI]
         SafeSM[Formal Safety State Machine: Fail-Silent / Safe-by-Default]
-        Watchdog[500ms Monotonic TX Watchdog Supervisor]
+        Watchdog[800ms Monotonic TX Watchdog Supervisor]
         Gateway[TX Safety Gateway: Speed Interlock & Whitelist]
         EStop[Emergency Stop Subsystem TOCTOU-Safe]
         RingBuf[NumPy 300K Frame Bounded Ring Buffer]
@@ -149,7 +149,7 @@ graph TD
         RP1210[TMC RP1210 Client: Nexiq, Noregon, Cummins]
         Vector[Vector Informatik XL Driver]
         SocketCAN[Linux SocketCAN: can0, vcan0]
-        Replay[ReplayBus: ASC/CSV/BLF Player with Safety Filter]
+        Replay[ReplayBus: Vector ASC Player with Safety Filter]
     end
 
     Layer1 --> Layer2
@@ -180,7 +180,7 @@ stateDiagram-v2
     PASSIVE --> SAFE : Bus Bağlantısı Kesildi
     PASSIVE --> FAULT : E-Stop / İhlal
     
-    ARMED_TX --> ACTIVE : Watchdog Lease Aktif (500ms Heartbeat)
+    ARMED_TX --> ACTIVE : Watchdog Lease Aktif (800ms Heartbeat)
     ARMED_TX --> PASSIVE : İletim İptal Edildi
     ARMED_TX --> FAULT : Süre Aşımı / E-Stop
     
@@ -196,8 +196,8 @@ stateDiagram-v2
 * **Safe-by-Default (Varsayılan Güvenli):** Sistem açılışta ve her arıza sonrasında doğrudan `PASSIVE` (Sadece Dinleme / Listen-Only) durumuna geçer; operatörün açık onayı olmadan hatta 1 bit dahi TX basılamaz.
 * **Fail-Silent İlkesi:** Herhangi bir kural ihlali, geçersiz durum geçişi veya iletişim kopmasında sistem `FAULT` durumuna geçer ve tüm iletim izinlerini sıfırlar.
 
-### 2. 500 ms Monotonic TX Watchdog Supervisor
-* İletim yapan tüm arayüz ve UI bileşenleri 500 ms içinde bir kalp atışı (`heartbeat`) göndermek zorundadır.
+### 2. 800 ms Monotonic TX Watchdog Supervisor
+* İletim yapan tüm arayüz ve UI bileşenleri 800 ms içinde bir kalp atışı (`heartbeat`) göndermek zorundadır. UI lease'i, arayüzün render döngüsünden (rAF pulse, 250 ms) beslenir; arayüz donarsa lease süresi dolar.
 * Süre aşımında (`KEEPALIVE_TIMEOUT`) Watchdog devreye girer, acil durdurmayı (E-Stop) tetikler ve giden mesaj kuyruğunu anında temizler.
 
 ### 3. Çift Onaylı TX Safety Gateway & Speed Interlock
@@ -206,7 +206,11 @@ stateDiagram-v2
 * **Dinamik Beyaz Liste (Whitelist):** Yalnızca tanımlı güvenli CAN ID'lerinin iletimine izin verilir; yabancı ID'ler tespit edildiğinde E-Stop tetiklenir.
 
 ### 4. Replay Trace Güvenlik Filtresi
-* Log dosyalarından (`.asc`, `.csv`, `.blf`) simülasyon veya test amaçlı geriye oynatma (*Replay*) yapılırken, canlı veri yolunu bozabilecek **J1939 Address Claiming (PGN 60928)**, **Commanded Address (PGN 65240)** ve tehlikeli **UDS Reset/Flash (0x10, 0x11, 0x2E, 0x31, 0x34..0x37)** komutları filtrelenerek hatta basılması engellenir.
+* Log dosyalarından (Vector `.asc`) simülasyon veya test amaçlı geriye oynatma (*Replay*) yapılırken, canlı veri yolunu bozabilecek komutlar filtrelenerek hatta basılması engellenir:
+  * **J1939-81 Adres Yönetimi:** Address Claiming (PGN 60928), Commanded Address (PGN 65240)
+  * **J1939-73 Teşhis Yazma Yolları:** DM2 (65227), DM4 Freeze Frame Clear (65229), DM5 Diagnostic Readiness (65230), DM11 Diagnostic Data Clear (65242), Request PGN (59904)
+  * **J1939-21 Tünel Engeli:** TP.CM (60416) / TP.DT (60160) çerçeveleri herhangi bir engelli komutu 7 baytlık dilimler içinde taşıyabildiğinden varsayılan olarak engellenir (yalnızca açık `block_transport_tunneling=False` ile devre dışı)
+  * **UDS Kritik Servisleri:** `0x10` Session Control, `0x11` ECU Reset, `0x2E` WDBI, `0x31` RoutineControl, `0x34..0x37` Flash Transfer zinciri
 
 ### 5. DBC Sinyal Geçerlilik (Sentinel Range) Filtresi
 * SAE J1939-71 standardındaki ayrık sensör hata ve veri yok durumları otomatik olarak `SignalQuality.NOT_AVAILABLE` veya `SignalQuality.ERROR` olarak etiketlenir:
@@ -304,7 +308,7 @@ Platform, ham sensör verilerinden fizik ve makine dinamiği formülleriyle tür
 
 * **NumPy Pre-allocated Bounded Ring Buffer:**
   * 300.000 CAN karesi için önceden tahsis edilmiş 88-baytlık sabit hizalı bellek (`CAN_RECORD_DTYPE`).
-  * 5.000 msg/s akışta 60 saniyelik sıfır kopyalı tampon (yalnızca 26.4 MB RAM tüketimi).
+  * 5.000 msg/s akışta 60 saniyelik sıfır kopyalı tampon (yalnızca 25.2 MB RAM tüketimi).
   * Python Garbage Collection (GC) duraklamalarını tamamen ortadan kaldırır.
 * **Rolling Zstandard Compressed Disk Buffer:**
   * 10 dakikalık / 100 MB'lık parçalar halinde Zstandard (`.bin.zst`) sıkıştırmalı kesintisiz kara kutu kayıt motoru.
@@ -312,6 +316,8 @@ Platform, ham sensör verilerinden fizik ve makine dinamiği formülleriyle tür
 ---
 
 ## 🔐 Lisanslama, Kriptografi ve Cihaz Güvenliği (DRM & DPAPI)
+
+> ℹ️ **Entegrasyon Durumu:** Aşağıdaki lisanslama, anti-tamper ve HWID bileşenleri **kütüphane olarak eksiksiz ve birim testleriyle doğrulanmış** durumdadır; uygulama akışına (başlangıçta lisans denetimi, özellik kilitleme vb.) bağlanmaları planlanmaktadır. Şu an çalışma zamanı zorunlu değildir.
 
 * **RFC 8032 Ed25519 Dijital İmzalı Lisanslama:**
   * Asimetrik anahtar doğrulaması ile tahrif edilemez lisans jetonları.
@@ -321,9 +327,25 @@ Platform, ham sensör verilerinden fizik ve makine dinamiği formülleriyle tür
 * **Anti-Clock Rollback (Sistem Saati Hilesi Koruması):**
   * Yüksek Filigran (*High-Water Mark*) HMAC doğrulaması ve Windows `GetTickCount64()` donanımsal monotonik sayaç denetimi.
 * **Win32 Anti-Tamper Guard:**
-  * `IsDebuggerPresent`, `CheckRemoteDebuggerPresent` ve CPU mikrosaniye gecikme anomalisi tespiti.
+  * Anti-debug ve hooking tespiti kütüphanesi hazır; sürekli izleme modu entegrasyonla etkinleşecek.
 * **Şifreli Bilgi Paketleri (Knowledge Pack):**
   * AES-GCM-256 ile şifrelenmiş araç kütüphaneleri, Ed25519 imzalı `manifest.json.sig` ve RAM'de güvenli sıfırlama (`secure_zero_memory`).
+
+### ☁️ Bulut Entegrasyonu (Universal-CAN-Cloud)
+
+> ℹ️ **Entegrasyon Durumu:** Bulut istemci modülü (`src/security/cloud/`) eksiksiz ve mock
+> sunucuyla 8 uçtan uca testle doğrulanmış durumdadır; masaüstü UI ayar paneli bağlantısı planlanmıştır.
+
+* **`CloudClient`** (`cloud/client.py`): DPAPI destekli credential saklama (session + device
+  token), retry'lı HTTP (429/5xx linear backoff, `Retry-After` uyumu), health-check helper.
+* **`LicenseFlow`** (`cloud/license_flow.py`): cihaz kaydı (CIM HWID parmak izi → `device_token`),
+  Ed25519 bilet aktivasyonu + **yerel doğrulama** (gömülü public key, kanonik 13-alan şema,
+  iss/aud/exp kontrolü — MASTER_PLAN §3.1 SSOT).
+* **`TelemetryUploader`** (`cloud/telemetry_uploader.py`): 5 MB parçalı resumable MDF4 yükleme
+  (session announce → chunks → complete), SHA-256 bildirimi, UI progress callback, kopma sonrası
+  `resume()` ile durum sorgulama.
+* Bulut tarafı: `../Universal-CAN-Cloud` — FastAPI + TimescaleDB + MinIO + İyzico/PayTR
+  (sözleşme: `Universal-CAN-Cloud/docs/API_SPEC.md`).
 
 ---
 
@@ -338,8 +360,8 @@ Derlenmiş taşınabilir sürümü çalıştırmak için `dist/Universal_CAN_Dia
 
 ```bash
 # 1. Depoyu klonlayın ve sanal ortam oluşturun
-git clone https://github.com/si6n/Universal-CAN-Bus-Diagnostic.git
-cd Universal-CAN-Bus-Diagnostic
+git clone https://github.com/si6n/Universal-CAN-BUS-Tool.git
+cd Universal-CAN-BUS-Tool
 python -m venv venv
 venv\Scripts\activate
 
@@ -355,12 +377,14 @@ python src/main.py --interface=pcan --channel=PCAN_USBBUS1 --bitrate=500000
 # 5. Kvaser Leaf Donanımı ile J1939 Ağında Başlatma (250 kbps)
 python src/main.py --interface=kvaser --channel=0 --bitrate=250000
 
-# 6. TMC RP1210 Ağır Vasıta Adaptörü ile Başlatma (Nexiq / Noregon)
-python src/main.py --interface=rp1210 --channel=1 --bitrate=250000
+# 6. Vector Donanımı ile Başlatma (500 kbps)
+python src/main.py --interface=vector --channel=0 --bitrate=500000
 
 # 7. Konsol Sniffer (CLI) Modunda Çalıştırma
 python src/main.py --cli --interface=virtual --channel=vcan0 --bitrate=250000
 ```
+
+> ℹ️ **RP1210 Notu:** TMC RP1210 istemcisi (`src/hal/rp1210/`) kütüphane olarak hazır ve birim testleriyle doğrulanmıştır; ancak `--interface=rp1210` henüz CLI/GUI'ye bağlı DEĞİLDİR. Entegrasyon tamamlandığında bu bölüm güncellenecektir.
 
 ---
 
@@ -368,7 +392,7 @@ python src/main.py --cli --interface=virtual --channel=vcan0 --bitrate=250000
 
 | Parametre | Varsayılan | Seçenekler | Açıklama |
 | :--- | :--- | :--- | :--- |
-| `--interface`, `-i` | `virtual` | `virtual`, `pcan`, `kvaser`, `rp1210`, `vector`, `socketcan` | Donanım arayüzü |
+| `--interface`, `-i` | `virtual` | `virtual`, `pcan`, `kvaser`, `vector`, `socketcan` | Donanım arayüzü |
 | `--channel`, `-c` | `vcan0` | `vcan0`, `PCAN_USBBUS1`, `0`, vb. | Donanım kanal adı / numarası |
 | `--bitrate`, `-b` | `250000` | `125000`, `250000`, `500000`, `1000000` | Standart CAN veri hızı (bps) |
 | `--cli` | `False` | Flag (`--cli`) | GUI yerine konsol sniffer modunda çalıştırır |
@@ -420,19 +444,19 @@ Bu derleme scripti sırasıyla:
 | **Sanal CAN (Virtual)** | Dahili Simülatör | CAN 2.0A/B, CAN-FD, J1939, N2K, Demo | `vcan0` |
 | **PEAK-System** | `PCANBasic.dll` | CAN 2.0A/B, CAN-FD | `PCAN_USBBUS1` |
 | **Kvaser** | `canlib32.dll` | CAN 2.0A/B, CAN-FD, J1939 | `0`, `1` |
-| **TMC RP1210 Adaptörleri** | `rp121032.dll` | Nexiq USB-Link, Noregon DLA, Cummins INLINE, DPA5 | Cihaz ID + Kanal |
+| **TMC RP1210 Adaptörleri** | `rp121032.dll` | Nexiq USB-Link, Noregon DLA, Cummins INLINE, DPA5 *(deneysel — HAL istemcisi hazır, tam sürücü entegrasyonu sürüyor)* | Cihaz ID + Kanal |
 | **Vector Informatik** | `vcan2.dll` | CANoe, CANalyzer VN Donanımları | `0`, `1` |
 | **Linux SocketCAN** | Linux Kernel vcan/can | Classical CAN, CAN-FD | `can0`, `vcan0` |
-| **ReplayBus** | Dahili Oynatıcı | Vector `.asc`, Zaman Damgalı `.csv`, `.blf` | Dosya Yolu |
+| **ReplayBus** | Dahili Oynatıcı | Yalnızca Vector `.asc` *(CSV ve BLF ayrıştırıcıları henüz uygulanmadı)* | Dosya Yolu |
 
 ---
 
 ## 🧪 Testler, Kalite Güvencesi ve Kapsam
 
-Proje genelindeki tüm modüller, güvenlik durum makineleri, taşıma protokolleri, kriptografik lisanslama ve sanal sensörler **274 adet birim, entegrasyon ve tersine mühendislik testi** ile doğrulanmaktadır:
+Proje genelindeki tüm modüller, güvenlik durum makineleri, taşıma protokolleri, kriptografik lisanslama ve sanal sensörler CI'da koşulan tam PyTest paketi ile doğrulanmaktadır (test sayısı CI artefaktından okunur — tek kaynak):
 
 ```bash
-# Tüm test paketini koşturma (274 Test)
+# Tüm test paketini koşturma (tam paket)
 pytest -v
 
 # Protokol ve ikili uyumluluk testleri
@@ -494,7 +518,7 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 │   │   ├── power/
 │   │   │   └── win32_power.py             # Windows Güç & Uyku Yönetimi
 │   │   ├── replay/
-│   │   │   ├── parsers.py                 # Vector ASC & CSV Ayrıştırıcılar
+│   │   │   ├── parsers.py                 # Vector ASC Ayrıştırıcı
 │   │   │   ├── player.py                  # Mikrosaniye Hassasiyetli Oynatıcı
 │   │   │   └── safety_filter.py           # Replay Güvenlik Filtresi
 │   │   └── rp1210/
@@ -522,10 +546,14 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 │   │   ├── gateway.py                     # TX Safety Gateway (Hız Kilidi & Whitelist)
 │   │   ├── multiplexer.py                 # Veri Yolu Çoklayıcı
 │   │   ├── state_machine.py               # Formal Safety State Machine (Fail-Silent)
-│   │   └── watchdog.py                    # 500ms Monotonic TX Watchdog Supervisor
+│   │   └── watchdog.py                    # 800ms Monotonic TX Watchdog Supervisor
 │   ├── security/                          # Lisanslama, Kriptografi ve Anti-Tamper
 │   │   ├── anti_tamper/
 │   │   │   └── guard.py                   # Win32 Anti-Debug & Hooking Koruması
+│   │   ├── cloud/                         # Universal-CAN-Cloud Bulut İstemcisi
+│   │   │   ├── client.py                 # DPAPI credential store + retry'lı HTTP
+│   │   │   ├── license_flow.py            # Cihaz kaydı + Ed25519 bilet aktivasyonu
+│   │   │   └── telemetry_uploader.py      # Parçalı resumable MDF4 yükleme
 │   │   ├── hwid/
 │   │   │   └── collector.py               # CIM Tabanlı Donanım Parmak İzi Toplayıcı
 │   │   ├── knowledge_pack/
@@ -541,7 +569,7 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 │           │   ├── services/              # AI Copilot, Anomaly Detector, Tersine Mühendislik, Simülatör
 │           │   └── types/                 # TypeScript CAN Veri Tipleri
 │           └── package.json
-├── tests/                                 # 274 PyTest Birim, Entegrasyon & Güvenlik Testi
+├── tests/                                 # PyTest Birim, Entegrasyon & Güvenlik Testleri (sayı CI artefaktında)
 ├── pyproject.toml                         # Ruff & PyTest Yapılandırması
 ├── requirements.txt                       # Python Çalışma Zamanı Bağımlılıkları
 └── README.md                              # Ana Dokümantasyon
@@ -550,4 +578,4 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 ---
 
 ### 📄 Lisans ve Kullanım Koşulları
-Bu yazılım kurumsal, kapalı kaynak ticari telemetri ve endüstriyel teşhis standartlarına uygun olarak geliştirilmiştir. PySide6 / Qt bileşenleri dinamik bağlantı ile LGPLv3 uyumlu tutulmuştur. Tüm hakları saklıdır.
+Bu yazılım MIT Lisansı ile lisanslanmıştır (bkz. LICENSE). Endüstriyel teşhis ve telemetri standartlarına (ISO 26262, SAE J1939, ISO 14229) uygun olarak geliştirilmiştir.

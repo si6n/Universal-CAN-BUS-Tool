@@ -6,8 +6,8 @@ Welcome to the **Universal CAN-Bus Diagnostic & Telemetry Platform**! We welcome
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/<your-username>/Universal-CAN-Bus-Diagnostic.git
-   cd Universal-CAN-Bus-Diagnostic
+   git clone https://github.com/<your-username>/Universal-CAN-BUS-Tool.git
+   cd Universal-CAN-BUS-Tool
    ```
 
 2. **Create Virtual Environment & Install Dependencies**:
@@ -30,7 +30,7 @@ Welcome to the **Universal CAN-Bus Diagnostic & Telemetry Platform**! We welcome
 
 - **Zero Unverified Transmissions**: Every frame transmission MUST be guarded by `TxSafetyGateway` and `SafetySupervisor`.
 - **Fail-Silent & Safe-by-Default**: System must default to listen-only (PASSIVE) mode.
-- **Run All 274 Tests**: All pull requests must pass the complete test suite:
+- **Run All Tests**: All pull requests must pass the complete test suite (1000+ unit/e2e tests):
   ```bash
   pytest
   ruff check .
