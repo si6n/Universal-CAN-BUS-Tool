@@ -62,6 +62,9 @@ class CustomClock:
     def now_monotonic_ns(self) -> int:
         return int(self.current_time * 1_000_000_000)
 
+    def now_wall_ns(self) -> int:
+        return int(self.current_time * 1_000_000_000)
+
 
 class CustomSecretProvider:
     """Mock secret provider satisfying SecretProvider protocol."""

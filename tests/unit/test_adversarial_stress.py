@@ -30,6 +30,26 @@ from src.hal.replay.player import ReplayBus
 from src.safety.estop import EmergencyStopSystem, EStopTriggerSource
 from src.security.license.validator import LicenseValidator
 
+
+class FakeWallClock:
+    """Deterministic wall-clock for G3: verify_token reads time from here."""
+
+    def __init__(self, wall_ts: int) -> None:
+        self._wall_ns = int(wall_ts) * 1_000_000_000
+
+    def set(self, wall_ts: int) -> None:
+        self._wall_ns = int(wall_ts) * 1_000_000_000
+
+    def now_monotonic(self) -> float:
+        return 0.0
+
+    def now_monotonic_ns(self) -> int:
+        return 0
+
+    def now_wall_ns(self) -> int:
+        return self._wall_ns
+
+
 # ============================================================================
 # 1. Anti-Tamper & Clock Rollback Empirical Stress Tests
 # ============================================================================
@@ -57,7 +77,8 @@ def test_extreme_clock_rollback_scenarios() -> None:
         last_known_clock_ts=base_ts,
     )
     with pytest.raises(LicenseError) as exc:
-        val_10yr.verify_token(token, current_ts=base_ts - 315_360_000)
+        val_10yr.clock = FakeWallClock(base_ts - 315_360_000)
+        val_10yr.verify_token(token)
     assert exc.value.code == "CLOCK_ROLLBACK_DETECTED"
 
     # 2. 1-second clock rollback (now < last_known_clock_ts)
@@ -67,7 +88,8 @@ def test_extreme_clock_rollback_scenarios() -> None:
         last_known_clock_ts=base_ts,
     )
     with pytest.raises(LicenseError) as exc:
-        val_1s.verify_token(token, current_ts=base_ts - 1)
+        val_1s.clock = FakeWallClock(base_ts - 1)
+        val_1s.verify_token(token)
     assert exc.value.code == "CLOCK_ROLLBACK_DETECTED"
 
     # 3. Monotonic counter drift: Realtime clock frozen while monotonic advances
@@ -83,11 +105,13 @@ def test_extreme_clock_rollback_scenarios() -> None:
         # Expected realtime = base_ts + 300. Tolerance is 60s -> min allowed is base_ts + 240
         # If current_ts is base_ts + 200 (< 240), it must trigger CLOCK_MONOTONIC_MISMATCH
         with pytest.raises(LicenseError) as exc:
-            val_mono.verify_token(token, current_ts=base_ts + 200)
+            val_mono.clock = FakeWallClock(base_ts + 200)
+            val_mono.verify_token(token)
         assert exc.value.code == "CLOCK_MONOTONIC_MISMATCH"
 
         # Edge case: Exactly on boundary (base_ts + 240) -> Allowed
-        res = val_mono.verify_token(token, current_ts=base_ts + 240)
+        val_mono.clock = FakeWallClock(base_ts + 240)
+        res = val_mono.verify_token(token)
         assert res.user_id == "usr_stress"
 
 
@@ -105,40 +129,19 @@ def test_extreme_clock_rollback_scenarios() -> None:
     ],
 )
 def test_corrupted_high_water_mark_disk_files(tmp_path: Path, corrupt_content: bytes) -> None:
-    """Verify that any corrupted HWM file on disk falls back cleanly without crashing and heals on next write."""
+    """Corrupted HWM files fail closed with HWM_CORRUPT instead of silently healing (F-04)."""
     priv_key = ed25519.Ed25519PrivateKey.generate()
     pub_key = priv_key.public_key()
     hwm_file = tmp_path / "corrupted_hwm.dat"
     hwm_file.write_bytes(corrupt_content)
 
-    now = 1_700_000_000
-    payload_dict = {
-        "user_id": "usr_corrupt_test",
-        "tier": "FREE",
-        "hardware_fingerprint": "HW_1",
-        "issued_at": now - 100,
-        "expires_at": now + 10000,
-    }
-    token = LicenseValidator.generate_signed_token(priv_key, payload_dict)
-
-    # Initializing validator with corrupted file falls back to last_known_clock_ts=now
-    validator = LicenseValidator(
-        public_key=pub_key,
-        hardware_fingerprint="HW_1",
-        high_water_mark_path=hwm_file,
-        last_known_clock_ts=now,
-        boot_realtime=now,
-        boot_monotonic=0.0,
-        last_online_sync_ts=now,
-    )
-
-    with patch("time.monotonic", return_value=0.0):
-        # Verification heals the HWM file by overwriting with valid timestamp
-        verified = validator.verify_token(token, current_ts=now)
-        assert verified.user_id == "usr_corrupt_test"
-
-    # Disk file should now be repaired and contain the valid string timestamp with HMAC
-    assert hwm_file.read_text(encoding="utf-8").strip().startswith(f"{now}.")
+    with pytest.raises(LicenseError, match="Corrupted HWM") as exc_info:
+        LicenseValidator(
+            public_key=pub_key,
+            hardware_fingerprint="HW_1",
+            high_water_mark_path=hwm_file,
+        )
+    assert exc_info.value.code == "HWM_CORRUPT"
 
 
 def test_future_tampered_high_water_mark_blocks_validation(tmp_path: Path) -> None:
@@ -146,10 +149,19 @@ def test_future_tampered_high_water_mark_blocks_validation(tmp_path: Path) -> No
     priv_key = ed25519.Ed25519PrivateKey.generate()
     pub_key = priv_key.public_key()
     hwm_file = tmp_path / "future_hwm.dat"
-    # Future timestamp (10,000s in the future) signed with HMAC
+    # Bootstrap a validator to generate the HWM key inside its secret provider,
+    # then forge a future timestamp with that key (F-04: key is per-install random).
+    bootstrapped = LicenseValidator(
+        public_key=pub_key,
+        hardware_fingerprint="HW_1",
+        last_known_clock_ts=1_700_000_000,
+        last_online_sync_ts=1_700_000_000,
+        boot_realtime=1_700_000_000,
+        boot_monotonic=0.0,
+    )
     future_ts = 1_700_010_000
     data = str(future_ts).encode("utf-8")
-    mac = hmac.new(LicenseValidator._HWM_HMAC_KEY, data, hashlib.sha256).hexdigest()
+    mac = hmac.new(bootstrapped._hwm_key, data, hashlib.sha256).hexdigest()
     hwm_file.write_text(f"{future_ts}.{mac}", encoding="utf-8")
 
     now = 1_700_000_000
@@ -170,11 +182,13 @@ def test_future_tampered_high_water_mark_blocks_validation(tmp_path: Path) -> No
         boot_realtime=now,
         boot_monotonic=0.0,
         last_online_sync_ts=now,
+        secret_provider=bootstrapped._secret_provider,
     )
     # HWM loaded future timestamp -> current time now is in the past compared to HWM
     with patch("time.monotonic", return_value=0.0):
         with pytest.raises(LicenseError) as exc:
-            validator.verify_token(token, current_ts=now)
+            validator.clock = FakeWallClock(now)
+            validator.verify_token(token)
         assert exc.value.code == "CLOCK_ROLLBACK_DETECTED"
 
 
@@ -466,7 +480,8 @@ def test_license_bit_flip_and_grace_boundary() -> None:
 
     # 1. Baseline verification succeeds
     with patch("time.monotonic", return_value=0.0):
-        verified = validator.verify_token(token, current_ts=now)
+        validator.clock = FakeWallClock(now)
+        verified = validator.verify_token(token)
         assert verified.user_id == "usr_bitflip"
 
     # 2. Bit-flip in signature
@@ -477,7 +492,8 @@ def test_license_bit_flip_and_grace_boundary() -> None:
 
     with patch("time.monotonic", return_value=0.0):
         with pytest.raises(LicenseError) as exc:
-            validator.verify_token(tampered_token_sig, current_ts=now)
+            validator.clock = FakeWallClock(now)
+            validator.verify_token(tampered_token_sig)
         assert exc.value.code == "INVALID_SIGNATURE"
 
     # 3. Bit-flip in payload
@@ -488,7 +504,8 @@ def test_license_bit_flip_and_grace_boundary() -> None:
 
     with patch("time.monotonic", return_value=0.0):
         with pytest.raises(LicenseError) as exc:
-            validator.verify_token(tampered_token_payload, current_ts=now)
+            validator.clock = FakeWallClock(now)
+            validator.verify_token(tampered_token_payload)
         assert exc.value.code in ("INVALID_SIGNATURE", "MALFORMED_PAYLOAD")
 
     # 4. Offline grace period boundary: exactly 7 days (604,800s)
@@ -502,7 +519,8 @@ def test_license_bit_flip_and_grace_boundary() -> None:
         boot_monotonic=0.0,
     )
     with patch("time.monotonic", return_value=0.0):
-        v = validator_grace_ok.verify_token(token, current_ts=now)
+        validator_grace_ok.clock = FakeWallClock(now)
+        v = validator_grace_ok.verify_token(token)
         assert v.user_id == "usr_bitflip"
 
     # 7 days + 1 second -> EXPIRED
@@ -516,7 +534,8 @@ def test_license_bit_flip_and_grace_boundary() -> None:
     )
     with patch("time.monotonic", return_value=0.0):
         with pytest.raises(LicenseError) as exc:
-            validator_grace_expired.verify_token(token, current_ts=now)
+            validator_grace_expired.clock = FakeWallClock(now)
+            validator_grace_expired.verify_token(token)
         assert exc.value.code == "OFFLINE_GRACE_EXPIRED"
 
 

@@ -464,3 +464,58 @@ async def test_receiver_session_reset_by_unexpected_single_frame() -> None:
 
     result = await receiver.receive(timeout_s=0.5)
     assert result == b"\x50\x01"
+
+
+def test_sync_fc_advertises_configured_bs_and_stmin() -> None:
+    """P2 fix: sync-path Flow Control must advertise configurable BS/STmin."""
+    transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8, rx_block_size=8, rx_st_min=0x05)
+
+    ff = CanFrame.create(
+        channel_id="uds",
+        arbitration_id=0x7E8,
+        data=bytes([0x10, 0x20, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05]),
+        is_extended=False,
+    )
+    _, fc = transport.handle_rx_frame(ff)
+    assert fc is not None
+    assert fc.data[0] == (PCI_FLOW_CONTROL << 4) | 0x00  # FS=CTS
+    assert fc.data[1] == 8  # BS as configured
+    assert fc.data[2] == 0x05  # STmin as configured (5 ms)
+
+
+def test_sync_fc_bs_windowing_emits_next_fc() -> None:
+    """P2 fix: with BS>0 the receiver emits a fresh FC after each full block
+    while the transfer is still in progress."""
+    transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8, rx_block_size=2, rx_st_min=0)
+
+    # 27-byte payload: FF(6) + CF1(7) + CF2(7) + CF3(7)
+    ff = CanFrame.create(
+        channel_id="uds",
+        arbitration_id=0x7E8,
+        data=bytes([0x10, 0x1B, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05]),
+        is_extended=False,
+    )
+    _, fc1 = transport.handle_rx_frame(ff)
+    assert fc1 is not None and fc1.data[1] == 2
+
+    cf1 = CanFrame.create(
+        channel_id="uds", arbitration_id=0x7E8, data=bytes([0x21, 6, 7, 8, 9, 10, 11, 12]), is_extended=False
+    )
+    completed, fc_after_cf1 = transport.handle_rx_frame(cf1)
+    assert completed is None
+    assert fc_after_cf1 is None  # block not yet full (1/2)
+
+    cf2 = CanFrame.create(
+        channel_id="uds", arbitration_id=0x7E8, data=bytes([0x22, 13, 14, 15, 16, 17, 18, 19]), is_extended=False
+    )
+    completed, fc_after_cf2 = transport.handle_rx_frame(cf2)
+    assert completed is None  # transfer still in progress
+    assert fc_after_cf2 is not None  # block of 2 filled -> fresh FC
+    assert fc_after_cf2.data[1] == 2
+
+    cf3 = CanFrame.create(
+        channel_id="uds", arbitration_id=0x7E8, data=bytes([0x23, 20, 21, 22, 23, 24, 25, 26]), is_extended=False
+    )
+    completed, _ = transport.handle_rx_frame(cf3)
+    assert completed is not None
+    assert completed == bytes([0x00, 0x01, 0x02, 0x03, 0x04, 0x05]) + bytes(range(6, 27))

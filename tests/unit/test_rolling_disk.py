@@ -1,29 +1,216 @@
-"""Unit tests for RollingDiskBuffer."""
+"""Unit tests for authenticated RollingDiskBuffer chunks."""
 
-import tempfile
+from __future__ import annotations
 
+import hashlib
+import hmac
+import pickle
+import struct
+import time
+from pathlib import Path
+
+import pytest
+import zstandard as zstd
+
+from src.core.errors import SecurityError
 from src.core.models.can_frame import CanFrame
-from src.engine.buffer.rolling_disk import RollingDiskBuffer
+from src.engine.buffer.rolling_disk import (
+    CHUNK_MAGIC,
+    CHUNK_VERSION,
+    FRAME_FMT,
+    FRAME_SIZE,
+    HEADER_FMT,
+    HEADER_PREFIX_FMT,
+    HEADER_SIZE,
+    RollingDiskBuffer,
+    _deserialize_chunk,
+    _serialize_chunk,
+)
+from src.safety.secret_provider import EphemeralSecretBackend
+
+KEY = b"k" * 32
 
 
-def test_rolling_disk_append_flush_read() -> None:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        disk_buf = RollingDiskBuffer(storage_dir=tmpdir, chunk_frame_threshold=5)
+def _frame(index: int = 1) -> CanFrame:
+    return CanFrame(
+        channel_id="can0",
+        arbitration_id=0x18FF0000 + index,
+        dlc=9,
+        data=bytes(range(12)),
+        is_extended=True,
+        is_fd=True,
+        brs=True,
+        esi=True,
+        direction="tx",
+        timestamp_ns=1_000_000 + index,
+        hardware_timestamp_ns=2_000_000 + index,
+        host_timestamp_ns=3_000_000 + index,
+        sequence=-index,
+        error_state="passive",
+        source="replay",
+    )
 
-        for i in range(12):
-            frame = CanFrame.create(
-                channel_id="ch0",
-                arbitration_id=i,
-                data=bytes([i, i + 1]),
-                timestamp_ns=i * 1000,
-            )
-            disk_buf.append(frame)
 
-        # 12 frames with threshold 5 will produce 2 flushed chunks + 2 pending
-        # read_all_stored_frames() flushes pending and returns all 12
-        stored_frames = disk_buf.read_all_stored_frames()
-        assert len(stored_frames) == 12
-        assert [f.arbitration_id for f in stored_frames] == list(range(12))
+def _provider() -> EphemeralSecretBackend:
+    return EphemeralSecretBackend({"ROLLING_DISK_HMAC_KEY": KEY})
 
-        disk_buf.clear()
-        assert len(disk_buf.read_all_stored_frames()) == 0
+
+def _rebuild_chunk(body: bytes, count: int = 1) -> bytes:
+    prefix = struct.pack(
+        HEADER_PREFIX_FMT,
+        CHUNK_MAGIC,
+        CHUNK_VERSION,
+        0,
+        count,
+        FRAME_SIZE,
+    )
+    mac = hmac.new(KEY, prefix + body, hashlib.sha256).digest()
+    return prefix + mac + body
+
+
+def test_wire_sizes_are_self_consistent() -> None:
+    assert HEADER_SIZE == 48
+    assert struct.calcsize(HEADER_FMT) == HEADER_SIZE
+    assert struct.calcsize(FRAME_FMT) == FRAME_SIZE
+    assert len(_serialize_chunk([_frame()], KEY)) == HEADER_SIZE + FRAME_SIZE
+
+
+def test_roundtrip_preserves_all_can_frame_fields() -> None:
+    frames = [_frame(1), _frame(2)]
+    assert _deserialize_chunk(_serialize_chunk(frames, KEY), KEY) == frames
+
+
+def test_rolling_disk_append_flush_read(tmp_path: Path) -> None:
+    disk_buf = RollingDiskBuffer(
+        storage_dir=tmp_path,
+        chunk_frame_threshold=5,
+        secret_provider=_provider(),
+    )
+
+    frames = [_frame(i + 1) for i in range(12)]
+    for frame in frames:
+        disk_buf.append(frame)
+
+    stored_frames = disk_buf.read_all_stored_frames()
+    assert stored_frames == frames
+    assert len(list(tmp_path.glob("chunk_*.bin.zst"))) == 3
+
+    disk_buf.clear()
+    assert disk_buf.read_all_stored_frames() == []
+
+
+def test_body_tamper_is_rejected() -> None:
+    raw = bytearray(_serialize_chunk([_frame()], KEY))
+    raw[-1] ^= 0x01
+    with pytest.raises(SecurityError, match="HMAC mismatch"):
+        _deserialize_chunk(bytes(raw), KEY)
+
+
+def test_authenticated_header_tamper_is_rejected() -> None:
+    raw = bytearray(_serialize_chunk([_frame()], KEY))
+    raw[12] ^= 0x01
+    with pytest.raises(SecurityError):
+        _deserialize_chunk(bytes(raw), KEY)
+
+
+def test_bad_magic_is_rejected() -> None:
+    raw = bytearray(_serialize_chunk([_frame()], KEY))
+    raw[0] ^= 0x01
+    with pytest.raises(SecurityError, match="magic"):
+        _deserialize_chunk(bytes(raw), KEY)
+
+
+def test_truncated_and_trailing_data_are_rejected() -> None:
+    raw = _serialize_chunk([_frame()], KEY)
+    with pytest.raises(SecurityError, match="length"):
+        _deserialize_chunk(raw[:-1], KEY)
+    with pytest.raises(SecurityError, match="length"):
+        _deserialize_chunk(raw + b"x", KEY)
+
+
+def test_reserved_header_flags_are_rejected() -> None:
+    raw = bytearray(_serialize_chunk([_frame()], KEY))
+    raw[9] = 1
+    with pytest.raises(SecurityError, match="header flags"):
+        _deserialize_chunk(bytes(raw), KEY)
+
+
+def test_reserved_frame_flags_are_rejected_even_with_valid_hmac() -> None:
+    raw = _serialize_chunk([_frame()], KEY)
+    values = list(struct.unpack(FRAME_FMT, raw[HEADER_SIZE:]))
+    values[5] |= 1 << 15
+    body = struct.pack(FRAME_FMT, *values)
+
+    with pytest.raises(SecurityError, match="Reserved frame flag"):
+        _deserialize_chunk(_rebuild_chunk(body), KEY)
+
+
+def test_invalid_hmac_key_length_is_rejected() -> None:
+    with pytest.raises(SecurityError, match="key"):
+        _serialize_chunk([_frame()], b"short")
+
+
+def test_legacy_chunk_is_moved_out_of_active_store(tmp_path: Path) -> None:
+    legacy_frame = CanFrame.create(
+        channel_id="can0",
+        arbitration_id=1,
+        data=b"\x01",
+        timestamp_ns=123,
+    )
+    chunk = tmp_path / "chunk_00000000_00000000000000000123.bin.zst"
+    chunk.write_bytes(zstd.ZstdCompressor().compress(pickle.dumps([legacy_frame])))
+
+    RollingDiskBuffer(tmp_path, secret_provider=_provider())
+
+    assert not chunk.exists()
+    assert (tmp_path / "legacy_pickle" / chunk.name).exists()
+
+
+def test_chunk_naming_and_restart_index_are_preserved(tmp_path: Path) -> None:
+    first = RollingDiskBuffer(tmp_path, chunk_frame_threshold=1, secret_provider=_provider())
+    first.append(_frame(1))
+    second = RollingDiskBuffer(tmp_path, chunk_frame_threshold=1, secret_provider=_provider())
+    second.append(_frame(2))
+
+    names = sorted(path.name for path in tmp_path.glob("chunk_*.bin.zst"))
+    assert names[0].startswith("chunk_00000000_")
+    assert names[1].startswith("chunk_00000001_")
+
+
+def test_retention_budget_is_enforced(tmp_path: Path) -> None:
+    disk_buf = RollingDiskBuffer(
+        tmp_path,
+        max_disk_bytes=1,
+        chunk_frame_threshold=1,
+        secret_provider=_provider(),
+    )
+    disk_buf.append(_frame())
+    assert list(tmp_path.glob("chunk_*.bin.zst")) == []
+
+
+def test_retention_age_is_enforced(tmp_path: Path) -> None:
+    disk_buf = RollingDiskBuffer(
+        tmp_path,
+        max_retention_sec=1,
+        chunk_frame_threshold=1,
+        secret_provider=_provider(),
+    )
+    disk_buf.append(_frame())
+    chunk = next(tmp_path.glob("chunk_*.bin.zst"))
+    old = time.time() - 60
+    chunk.touch()
+    import os
+
+    os.utime(chunk, (old, old))
+    disk_buf._enforce_retention()
+    assert not chunk.exists()
+
+
+def test_decompression_output_limit_is_enforced(tmp_path: Path) -> None:
+    disk_buf = RollingDiskBuffer(tmp_path, secret_provider=_provider())
+    oversized = b"x" * (disk_buf._max_chunk_bytes + 1)
+    chunk = tmp_path / "chunk_00000000_00000000000000000000.bin.zst"
+    chunk.write_bytes(zstd.ZstdCompressor().compress(oversized))
+
+    with pytest.raises(SecurityError, match="decompression limit"):
+        disk_buf.read_all_stored_frames()

@@ -377,7 +377,7 @@ def test_uds_client_rapid_concurrent_async_calls() -> None:
     Verify worker threads execute without thread starvation, lost futures, or exceptions.
     """
     bus = UdsMockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8, max_workers=8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8, max_workers=8)
 
     # Define a simulated fast diagnostic routine
     def mock_diagnostic_worker(routine_id: int) -> dict[str, Any]:
@@ -420,7 +420,7 @@ def test_uds_client_callback_exception_isolation() -> None:
     the ThreadPoolExecutor does not crash and future resolution remains intact.
     """
     bus = UdsMockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8, max_workers=2)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8, max_workers=2)
 
     def exploding_callback(res: Any) -> None:
         raise RuntimeError("Explosion inside callback handler!")
@@ -456,7 +456,7 @@ def test_uds_client_shutdown_during_running_futures() -> None:
     Verify shutdown(wait=True) and shutdown(wait=False) complete cleanly.
     """
     bus = UdsMockDiagnosticBus()
-    client = UdsClient(bus=bus, max_workers=4)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), max_workers=4)
 
     def long_routine(duration: float) -> str:
         time.sleep(duration)

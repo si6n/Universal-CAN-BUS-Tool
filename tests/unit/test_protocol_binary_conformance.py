@@ -12,12 +12,15 @@ Verifies:
 
 from unittest.mock import MagicMock
 
+import pytest
+
+from src.core.errors import ProtocolError
 from src.core.models.can_frame import CanFrame
 from src.protocols.j1939.address_claim import AddressClaimEngine, J1939Name
 from src.protocols.j1939.transport import J1939TransportProtocol
 from src.protocols.nmea2000.fast_packet import Nmea2000FastPacketDecoder
 from src.protocols.nmea2000.pgn_library import Nmea2000PgnDecoder
-from src.protocols.uds.flasher import EcuFlashingEngine, FlashingConfig
+from src.protocols.uds.flasher import EcuFlashingEngine, FlashingConfig, FlashingStep
 from src.protocols.uds.isotp import IsoTpTransport
 from src.protocols.volvo.volvo_decoder import VolvoPentaDecoder
 
@@ -75,7 +78,10 @@ def test_uds_transfer_data_block_sequence_wraparound_to_zero() -> None:
     mock_client.start_routine.return_value = mock_resp
     mock_client.ecu_reset.return_value = mock_resp
 
-    engine = EcuFlashingEngine(uds_client=mock_client)
+    mock_gateway = MagicMock()
+    mock_gateway.estop.is_engaged = False
+
+    engine = EcuFlashingEngine(uds_client=mock_client, gateway=mock_gateway)
 
     # 300 blocks of 1 byte each (Block 1..255, then 256..300)
     config = FlashingConfig(
@@ -101,6 +107,59 @@ def test_uds_transfer_data_block_sequence_wraparound_to_zero() -> None:
     assert calls[255].kwargs["block_sequence"] == 0
     # Block 257 (call index 256) -> block_sequence = 1 (0x01)
     assert calls[256].kwargs["block_sequence"] == 1
+
+
+def test_uds_flashing_failure_triggers_best_effort_recovery() -> None:
+    """P8: a failure after the diagnostic session opened attempts an ECU hard reset."""
+    mock_client = MagicMock()
+    ok_resp = MagicMock(is_positive=True, nrc=0)
+    fail_resp = MagicMock(is_positive=False, nrc=0x72, nrc_description_tr="General Programming Failure")
+    mock_client.change_session.return_value = ok_resp
+    mock_client.request_download.return_value = ok_resp
+    mock_client.transfer_data.return_value = fail_resp  # mid-transfer failure
+    mock_client.ecu_reset.return_value = ok_resp
+
+    mock_gateway = MagicMock()
+    mock_gateway.estop.is_engaged = False
+    engine = EcuFlashingEngine(uds_client=mock_client, gateway=mock_gateway)
+
+    config = FlashingConfig(
+        memory_address=0x08000000,
+        data=b"X" * 4,
+        block_size=2,
+        user_confirmed=True,
+        verify_checksum=False,
+        reset_after_flash=False,  # success path would NOT reset — recovery must
+    )
+
+    with pytest.raises(ProtocolError):
+        engine.execute_flash(config)
+
+    assert engine.current_step == FlashingStep.FAILED
+    # Exactly one reset call — the best-effort recovery, not a success-path reset
+    mock_client.ecu_reset.assert_called_once()
+
+
+def test_uds_flashing_pre_session_failure_skips_recovery() -> None:
+    """P8: a failure before any session is opened must not attempt an ECU reset."""
+    mock_client = MagicMock()
+    mock_gateway = MagicMock()
+    mock_gateway.estop.is_engaged = False
+    engine = EcuFlashingEngine(uds_client=mock_client, gateway=mock_gateway)
+
+    config = FlashingConfig(
+        memory_address=0x08000000,
+        data=b"X" * 4,
+        user_confirmed=False,  # fails step 1, before any session
+    )
+
+    from src.core.errors import SafetyError
+
+    with pytest.raises(SafetyError):
+        engine.execute_flash(config)
+
+    assert engine.current_step == FlashingStep.FAILED
+    mock_client.ecu_reset.assert_not_called()
 
 
 def test_j1939_address_claim_pdu1_canonical_pgn() -> None:

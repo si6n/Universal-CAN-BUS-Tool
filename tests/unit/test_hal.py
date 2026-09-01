@@ -28,7 +28,7 @@ class DummyTestBus(AbstractBus):
         self.is_connected = False
         self.metrics.state = BusState.DISCONNECTED
 
-    def _send_raw(self, frame: CanFrame) -> None:
+    def send(self, frame: CanFrame) -> None:
         self.sent_frames.append(frame)
         self.metrics.tx_frames += 1
 
@@ -128,23 +128,38 @@ def test_abstract_bus_lifecycle_and_context_manager() -> None:
 def test_abstract_bus_requires_send_raw_implementation() -> None:
     """Verify that instantiating AbstractBus without connect/disconnect/recv raises TypeError."""
     class IncompleteBus(AbstractBus):
-        def _send_raw(self, frame: CanFrame) -> None: pass
+        def send(self, frame: CanFrame) -> None: pass
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         IncompleteBus(channel_id="incomplete_0")  # type: ignore[abstract]
 
 
 def test_abstract_bus_unimplemented_send_raw_raises_not_implemented() -> None:
-    """Verify that calling _send_raw on a bus that overrides neither _send_raw nor send raises NotImplementedError."""
+    """D8: `send` is the abstract canonical TX method — a concrete bus that
+    leaves it unimplemented cannot even be instantiated (stricter and
+    recursion-proof, replacing the old runtime NotImplementedError path)."""
     class DummyNoSendBus(AbstractBus):
         def connect(self) -> None: pass
         def disconnect(self) -> None: pass
         def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None: return None
 
-    bus = DummyNoSendBus("no_send_0")
+    with pytest.raises(TypeError, match="Can't instantiate abstract class.*send"):
+        DummyNoSendBus("no_send_0")  # type: ignore[abstract]
+
+
+def test_abstract_bus_privileged_send_routes_through_send() -> None:
+    """D8: the explicit gateway port dispatches via the canonical send()."""
+    class RecordingBus(AbstractBus):
+        def connect(self) -> None: pass
+        def disconnect(self) -> None: pass
+        def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None: return None
+        def send(self, frame: CanFrame) -> None:
+            self.sent = frame
+
+    bus = RecordingBus("rec_0")
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x123, data=b"\x01")
-    with pytest.raises(NotImplementedError, match="must implement _send_raw"):
-        bus._send_raw(frame)
+    bus.privileged_send(frame)
+    assert bus.sent is frame  # type: ignore[attr-defined]
 
 
 def test_virtual_bus_implementation() -> None:

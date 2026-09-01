@@ -1,5 +1,6 @@
 import concurrent.futures
 
+import numpy as np
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -201,3 +202,53 @@ def test_ring_buffer_hypothesis_property_invariants(capacity: int, append_count:
         expected_start_id = append_count - expected_len
         assert [f.arbitration_id for f in latest] == list(range(expected_start_id, append_count))
         assert [f.sequence for f in latest] == list(range(expected_start_id, append_count))
+
+
+# ============================================================================
+# F-33 / E-13: Genuine zero-copy get_latest_view DoD tests
+# ============================================================================
+
+
+def test_get_latest_view_is_true_zero_copy() -> None:
+    """F-33 DoD: both returned parts must share memory with the buffer storage."""
+    buf = BinaryRingBuffer(capacity=8)
+    for i in range(20):
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=bytes([i & 0xFF] * 4)))
+
+    old_part, new_part = buf.get_latest_view(8)
+    assert len(old_part) + len(new_part) == 8
+    # E-13: genuine views — no concatenate, no copy
+    assert np.shares_memory(old_part, buf._buffer)
+    assert np.shares_memory(new_part, buf._buffer) or new_part.size == 0
+    ids = list(old_part["arbitration_id"]) + list(new_part["arbitration_id"])
+    assert ids == list(range(12, 20))
+
+
+def test_get_latest_view_wraparound_ordering() -> None:
+    """F-33: wrapped ranges return (oldest_segment, newest_segment) in order."""
+    buf = BinaryRingBuffer(capacity=4)
+    for i in range(10):
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=b""))
+
+    old_part, new_part = buf.get_latest_view(3)
+    # total_written=10, cap=4: last 3 frames are 7,8,9; wrap index = 10%4 = 2
+    ids = list(old_part["arbitration_id"]) + list(new_part["arbitration_id"])
+    assert ids == [7, 8, 9]
+    # wrapped case: the tail segment (older, lower ids) precedes the
+    # head segment (newer, higher ids written after the wrap point)
+    if len(old_part) > 0 and len(new_part) > 0:
+        assert old_part["arbitration_id"][-1] < new_part["arbitration_id"][0]
+
+
+def test_get_latest_view_empty_request() -> None:
+    """F-33: zero/negative requests return two empty views without error."""
+    buf = BinaryRingBuffer(capacity=8)
+    for i in range(5):
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=b""))
+
+    old_part, new_part = buf.get_latest_view(0)
+    assert old_part.size == 0 and new_part.size == 0
+
+    empty_buf = BinaryRingBuffer(capacity=8)
+    o, n = empty_buf.get_latest_view(10)
+    assert o.size == 0 and n.size == 0

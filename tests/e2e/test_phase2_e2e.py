@@ -1,6 +1,6 @@
 """Universal CAN-Bus Diagnostic & Telemetry Platform - Phase 2 Master E2E Test Suite.
 
-Complies with Phase 2 Architecture (PROJECT.md), docs/audit/TEST_INFRA.md, and Formal Spec Report:
+Complies with Phase 2 Architecture (PROJECT.md), docs/testing/TEST_INFRA.md, and Formal Spec Report:
 - R1: Universal TxPort Choke-Point & UDS Gateway (CAN-02)
 - R2: Cross-Platform SecretProvider & Replay-Protected E-Stop (CAN-05)
 - R3: Fail-Closed Dynamic Whitelist Policy (CAN-06)
@@ -69,9 +69,6 @@ class MockMemoryBus(AbstractBus):
         self.is_connected = False
 
     def send(self, frame: CanFrame) -> None:
-        self._send_raw(frame)
-
-    def _send_raw(self, frame: CanFrame) -> None:
         if not self.is_connected:
             raise SafetyError("Cannot transmit on disconnected bus", code="BUS_DISCONNECTED")
         self.sent_frames.append(frame)
@@ -156,7 +153,7 @@ def test_tier1_txport_gateway_can_frame_transmission() -> None:
 def test_tier1_txport_uds_client_read_did_over_txport() -> None:
     """Tier 1.1.2: Verify UdsClient ReadDID (0x22 0xF190) routing requests via TxPort."""
     bus = MockMemoryBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     resp_frame = CanFrame.create(
         channel_id="mock_vbus_0",
@@ -177,7 +174,7 @@ def test_tier1_txport_uds_client_read_did_over_txport() -> None:
 def test_tier1_txport_uds_client_session_and_routine_controls() -> None:
     """Tier 1.1.3: Verify UdsClient session change and routine controls over TxPort."""
     bus = MockMemoryBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Change Session
     bus.inject_rx(
@@ -191,14 +188,14 @@ def test_tier1_txport_uds_client_session_and_routine_controls() -> None:
     bus.inject_rx(
         CanFrame.create(channel_id="mock_vbus_0", arbitration_id=0x7E8, data=b"\x03\x6e\x01\x00\x00\x00\x00\x00")
     )
-    resp2 = client.write_did(0x0100, b"\x01\x02")
+    resp2 = client.write_did(0x0100, b"\x01\x02", user_confirmed=True)
     assert resp2.is_positive is True
 
     # 3. Start Routine
     bus.inject_rx(
         CanFrame.create(channel_id="mock_vbus_0", arbitration_id=0x7E8, data=b"\x04\x71\x01\x02\x01\x00\x00\x00")
     )
-    resp3 = client.start_routine(0x0201, b"\x01")
+    resp3 = client.start_routine(0x0201, b"\x01", user_confirmed=True)
     assert resp3.is_positive is True
 
     # 4. Stop Routine
@@ -275,7 +272,9 @@ def test_tier1_secret_provider_dynamic_key_provisioning() -> None:
 
 def test_tier1_estop_valid_token_reset() -> None:
     """Tier 1.2.2: Verify valid challenge-response reset disengages E-Stop."""
-    secret = b"estop_production_key_32_bytes!!"
+    # Test fixture secret (32 bytes) — explicitly NOT a production key; the
+    # misleading old name tripped secret-scanner false positives.
+    secret = b"estop_test_fixture_secret_32byte"
     estop = EmergencyStopSystem(reset_secret=secret)
 
     estop.trigger(EStopTriggerSource.SPEED_INTERLOCK_BREACH, reason="Speed violation", vehicle_speed_kmh=45.0)
@@ -365,7 +364,7 @@ def test_tier1_whitelist_unauthorized_id_violation_triggers_estop() -> None:
     assert estop.last_event.trigger == EStopTriggerSource.UNAUTHORIZED_PAYLOAD
 
 
-def test_tier1_whitelist_allow_all_for_testing_permitted() -> None:
+def test_tier1_whitelist_explicit_test_ids_permitted() -> None:
     """Tier 1.3.3: Verify explicit test whitelist allows intended testing IDs."""
     bus = MockMemoryBus()
     test_whitelist = {0x000, 0x100, 0x7E0, 0x7E8, 0x18DAF110, 0x1FFFFFFF}
@@ -637,7 +636,7 @@ def test_tier2_r1_zero_length_payload_classic_and_fd() -> None:
 def test_tier2_r1_maximum_worker_pool_concurrency() -> None:
     """Tier 2.1.5: Verify UdsClient worker pool handles 32 concurrent requests without resource leak."""
     bus = MockMemoryBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8, max_workers=8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8, max_workers=8)
 
     def dummy_task(val: int) -> int:
         return val * 2
@@ -1190,7 +1189,7 @@ def test_tier4_scenario1_full_diagnostic_session_stationary_vehicle() -> None:
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(0.0)
 
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Diagnostic Session Control (0x10 0x03)
     bus.inject_rx(
@@ -1231,7 +1230,7 @@ def test_tier4_scenario1_full_diagnostic_session_stationary_vehicle() -> None:
     bus.inject_rx(
         CanFrame.create(channel_id="mock_vbus_0", arbitration_id=0x7E8, data=b"\x03\x6e\x01\x00\x00\x00\x00\x00")
     )
-    resp_write = client.write_did(0x0100, b"\x01\x02")
+    resp_write = client.write_did(0x0100, b"\x01\x02", user_confirmed=True)
     assert resp_write.is_positive is True
 
     # 6. Tester Present (0x3E 0x80)

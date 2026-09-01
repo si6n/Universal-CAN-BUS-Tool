@@ -241,8 +241,8 @@ def test_j1939_session_collision_handling() -> None:
     )
     _, cts1 = tp.handle_rx_frame(rts1)
     assert cts1 is not None
-    assert (0, 0xF9) in tp._rx_sessions
-    assert tp._rx_sessions[(0, 0xF9)].expected_pgn == 65226
+    assert (0, 0xF9, "ch0") in tp._rx_sessions
+    assert tp._rx_sessions[(0, 0xF9, "ch0")].expected_pgn == 65226
 
     # Ingest 1 DT packet so session is active
     dt1 = CanFrame.create(
@@ -276,8 +276,8 @@ def test_j1939_session_collision_handling() -> None:
     assert int.from_bytes(abort_frame.data[5:8], byteorder="little") == 65226  # Aborted old PGN
 
     # Verify new session for PGN 65227 is established
-    assert (0, 0xF9) in tp._rx_sessions
-    active_session = tp._rx_sessions[(0, 0xF9)]
+    assert (0, 0xF9, "ch0") in tp._rx_sessions
+    active_session = tp._rx_sessions[(0, 0xF9, "ch0")]
     assert active_session.target_pgn == 65227
     assert active_session.expected_pgn == 65227
     assert active_session.total_bytes == 8
@@ -307,6 +307,60 @@ def test_j1939_session_collision_handling() -> None:
     assert ack.data[0] == TP_CTRL_ACK
 
 
+def test_j1939_session_collision_queues_cts_for_new_session() -> None:
+    """P2 regression: collision must abort the old session AND queue the new session's CTS.
+
+    Previously only the abort frame was emitted and the CTS for the new
+    session was silently dropped, leaving the peer's transfer stalled.
+    """
+    tp = J1939TransportProtocol(my_address=0xF9)
+
+    # 1. First RTS establishes a session for PGN 65226 (DM1)
+    rts1_data = bytearray(8)
+    rts1_data[0] = TP_CTRL_RTS
+    rts1_data[1:3] = (14).to_bytes(2, byteorder="little")
+    rts1_data[3] = 2
+    rts1_data[4] = 0xFF
+    rts1_data[5:8] = (65226).to_bytes(3, byteorder="little")
+    rts1 = CanFrame.create(
+        channel_id="ch0",
+        arbitration_id=0x18ECF900,
+        data=bytes(rts1_data),
+        is_extended=True,
+    )
+    tp.handle_rx_frame(rts1)
+    tp.take_pending_tx_frames()  # discard the initial CTS
+
+    # 2. Colliding RTS for same (SA, DA) on PGN 65227 (DM2)
+    rts2_data = bytearray(8)
+    rts2_data[0] = TP_CTRL_RTS
+    rts2_data[1:3] = (8).to_bytes(2, byteorder="little")
+    rts2_data[3] = 2
+    rts2_data[4] = 0xFF
+    rts2_data[5:8] = (65227).to_bytes(3, byteorder="little")
+    rts2 = CanFrame.create(
+        channel_id="ch0",
+        arbitration_id=0x18ECF900,
+        data=bytes(rts2_data),
+        is_extended=True,
+    )
+    _, abort_frame = tp.handle_rx_frame(rts2)
+
+    # Primary response slot carries the abort for the OLD session
+    assert abort_frame is not None
+    assert abort_frame.data[0] == TP_CTRL_ABORT
+    assert int.from_bytes(abort_frame.data[5:8], byteorder="little") == 65226
+
+    # The CTS granting the NEW session must be queued, not dropped
+    pending = tp.take_pending_tx_frames()
+    assert len(pending) == 1
+    cts = pending[0]
+    assert cts.data[0] == TP_CTRL_CTS
+    assert int.from_bytes(cts.data[5:8], byteorder="little") == 65227
+    assert cts.data[1] == 2  # total packets granted
+    assert cts.data[2] == 1  # next expected sequence
+
+
 def test_j1939_bam_sequence_error_silent_eviction() -> None:
     """Verify out-of-order sequence on BAM broadcast evicts session silently without sending abort."""
     tp = J1939TransportProtocol(my_address=0xF9)
@@ -325,7 +379,7 @@ def test_j1939_bam_sequence_error_silent_eviction() -> None:
         is_extended=True,
     )
     tp.handle_rx_frame(bam)
-    assert (0, 255) in tp._rx_sessions
+    assert (0, 255, "ch0") in tp._rx_sessions
 
     # Out of order DT packet (seq=2 instead of 1)
     bad_dt = CanFrame.create(
@@ -363,8 +417,8 @@ def test_j1939_session_keying_strict_node_isolation() -> None:
     )
     tp.handle_rx_frame(rts02)
 
-    assert (1, 255) in tp._rx_sessions
-    assert (2, 0xF9) in tp._rx_sessions
+    assert (1, 255, "ch0") in tp._rx_sessions
+    assert (2, 0xF9, "ch0") in tp._rx_sessions
 
     # Interleave DT packets
     tp.handle_rx_frame(

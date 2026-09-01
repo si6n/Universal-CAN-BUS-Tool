@@ -686,8 +686,8 @@ class TestJ1939CollisionStormsAndEdgeCases:
         assert msg1 is None
         assert cts1 is not None
         assert cts1.data[0] == TP_CTRL_CTS
-        assert (sa, da) in tp._rx_sessions
-        assert tp._rx_sessions[(sa, da)].target_pgn == 0x00EE00
+        assert (sa, da, "ch0") in tp._rx_sessions
+        assert tp._rx_sessions[(sa, da, "ch0")].target_pgn == 0x00EE00
 
         # 2. Second RTS arrives unexpectedly on same (SA, DA) for PGN 0xEF00, 30 bytes
         rts2 = CanFrame.create(
@@ -705,9 +705,9 @@ class TestJ1939CollisionStormsAndEdgeCases:
         assert int.from_bytes(abort_frame.data[5:8], byteorder="little") == 0x00EE00
 
         # Verify new session is active with new PGN 0x00EF00
-        assert (sa, da) in tp._rx_sessions
-        assert tp._rx_sessions[(sa, da)].target_pgn == 0x00EF00
-        assert tp._rx_sessions[(sa, da)].total_bytes == 30
+        assert (sa, da, "ch0") in tp._rx_sessions
+        assert tp._rx_sessions[(sa, da, "ch0")].target_pgn == 0x00EF00
+        assert tp._rx_sessions[(sa, da, "ch0")].total_bytes == 30
 
     def test_j1939_out_of_order_tp_dt_aborts_with_reason_1(self) -> None:
         """Out-of-order TP.DT sequence number triggers Conn_Abort with reason=1 and deletes session."""

@@ -88,8 +88,8 @@ def test_safety_gateway_fail_closed_empty_whitelist() -> None:
     bus.connect()
     estop = EmergencyStopSystem()
 
-    # Empty whitelist without allow_all_for_testing
-    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=set(), allow_all_for_testing=False)
+    # Empty whitelist — production gateway is strictly Fail-Closed
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=set())
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
     with pytest.raises(WhitelistFailClosedError) as exc_info:
@@ -99,18 +99,18 @@ def test_safety_gateway_fail_closed_empty_whitelist() -> None:
     assert estop.is_engaged is False
 
     # None whitelist behaves identically
-    gateway_none = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=None, allow_all_for_testing=False)
+    gateway_none = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=None)
     with pytest.raises(WhitelistFailClosedError):
         gateway_none.validate_and_transmit(frame)
 
     bus.disconnect()
 
 
-def test_safety_gateway_allow_all_for_testing_override() -> None:
-    """Verify allow_all_for_testing=True allows transmission when whitelist is empty."""
+def test_safety_gateway_for_testing_factory_bypasses_whitelist() -> None:
+    """Verify the explicit for_testing() factory allows transmission when whitelist is empty."""
     bus = VirtualBus(channel_id="safety_vbus_testing")
     bus.connect()
-    gateway = TxSafetyGateway(bus=bus, whitelist_ids=set(), allow_all_for_testing=True)
+    gateway = TxSafetyGateway.for_testing(bus=bus, whitelist_ids=set())
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x123, data=b"\x01")
     assert gateway.validate_and_transmit(frame) is True
@@ -201,7 +201,7 @@ def test_safety_gateway_frame_sanity_checks() -> None:
     """Verify Stage 1: Frame Sanity & Range Validation."""
     bus = VirtualBus(channel_id="safety_vbus_sanity")
     bus.connect()
-    gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x100}, allow_all_for_testing=True)
+    gateway = TxSafetyGateway.for_testing(bus=bus, whitelist_ids={0x100})
 
     # 1. Non-CanFrame object
     with pytest.raises(FrameSanityError) as exc1:
@@ -322,3 +322,135 @@ def test_safety_gateway_multithreaded_concurrency() -> None:
     assert all(results)
     assert len(gateway._tx_timestamps) == 50
     bus.disconnect()
+
+
+# ============================================================================
+# F-18: Per-Category Token-Bucket Budget DoD tests
+# ============================================================================
+
+
+def _budget_gateway(channel: str) -> tuple[VirtualBus, TxSafetyGateway]:
+    bus = VirtualBus(channel_id=channel)
+    bus.connect()
+    gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
+    return bus, gateway
+
+
+def test_protocol_burst_budget_allows_full_bam_transfer() -> None:
+    """F-18 DoD: a full J1939 BAM transfer (255 packets) must NOT trip E-Stop."""
+    bus, gateway = _budget_gateway("safety_vbus_bam")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    # 255 CF packets — exactly the BAM maximum; must all pass without E-Stop
+    for _ in range(255):
+        assert gateway.validate_and_transmit(frame, budget_category="protocol_burst") is True
+
+    assert gateway.estop.is_engaged is False
+    assert len(bus.sent_frames) == 255
+    bus.disconnect()
+
+
+def test_protocol_burst_budget_exhaustion_at_capacity_plus_one() -> None:
+    """F-18: protocol_burst capacity is 255 — the 256th burst frame is rejected."""
+    bus, gateway = _budget_gateway("safety_vbus_bam2")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    for _ in range(255):
+        gateway.validate_and_transmit(frame, budget_category="protocol_burst")
+
+    with pytest.raises(RateLimitExceededError, match="protocol_burst"):
+        gateway.validate_and_transmit(frame, budget_category="protocol_burst")
+    bus.disconnect()
+
+
+def test_diagnostic_budget_capacity_is_ten() -> None:
+    """F-18: diagnostic budget (10 tokens, 10/s refill) rejects the 11th frame."""
+    bus, gateway = _budget_gateway("safety_vbus_diag")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    for _ in range(10):
+        assert gateway.validate_and_transmit(frame, budget_category="diagnostic") is True
+
+    with pytest.raises(RateLimitExceededError, match="diagnostic"):
+        gateway.validate_and_transmit(frame, budget_category="diagnostic")
+    bus.disconnect()
+
+
+def test_calibration_budget_capacity_is_five() -> None:
+    """F-18: calibration budget (5 tokens, 5/s refill) rejects the 6th frame."""
+    bus, gateway = _budget_gateway("safety_vbus_cal")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    for _ in range(5):
+        assert gateway.validate_and_transmit(frame, budget_category="calibration") is True
+
+    with pytest.raises(RateLimitExceededError, match="calibration"):
+        gateway.validate_and_transmit(frame, budget_category="calibration")
+    bus.disconnect()
+
+
+def test_unknown_budget_category_is_rejected() -> None:
+    """F-18: an unregistered category fails closed instead of silently passing."""
+    bus, gateway = _budget_gateway("safety_vbus_unk")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    with pytest.raises(FrameSanityError, match="Unknown TX budget category"):
+        gateway.validate_and_transmit(frame, budget_category="nonexistent_category")
+    bus.disconnect()
+
+
+def test_budgets_are_independent_per_category() -> None:
+    """F-18: draining one category must not consume another's tokens."""
+    bus, gateway = _budget_gateway("safety_vbus_indep")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    # Drain diagnostic fully...
+    for _ in range(10):
+        gateway.validate_and_transmit(frame, budget_category="diagnostic")
+    # ...calibration must still have its own 5 tokens
+    for _ in range(5):
+        assert gateway.validate_and_transmit(frame, budget_category="calibration") is True
+    bus.disconnect()
+
+
+def test_whitelist_masks_authorize_id_family() -> None:
+    """E5: a (value, mask) pair authorizes the whole protocol-response family."""
+    bus = VirtualBus(channel_id="safety_vbus_mask")
+    bus.connect()
+
+    # Authorize every TP.CM frame sourced from SA 0xF9 (any peer in the DA byte)
+    masks = [(0x18EC00F9, 0x18EC00FF)]
+    gateway = TxSafetyGateway(bus=bus, whitelist_masks=masks)
+
+    # Responses to two different peers both match (id & mask) == value
+    to_peer_a = CanFrame.create(channel_id="c0", arbitration_id=0x18EC01F9, data=b"\x11", is_extended=True)
+    to_peer_b = CanFrame.create(channel_id="c0", arbitration_id=0x18EC42F9, data=b"\x11", is_extended=True)
+    assert gateway.validate_and_transmit(to_peer_a) is True
+    assert gateway.validate_and_transmit(to_peer_b) is True
+
+    # A frame sourced from a DIFFERENT source address does not match the family
+    other_sa = CanFrame.create(channel_id="c0", arbitration_id=0x18EC01AA, data=b"\x11", is_extended=True)
+    with pytest.raises(WhitelistViolationError):
+        gateway.validate_and_transmit(other_sa)
+    bus.disconnect()
+
+
+def test_whitelist_masks_alone_are_not_fail_closed() -> None:
+    """E5: providing masks (without exact IDs) counts as a configured whitelist."""
+    bus = VirtualBus(channel_id="safety_vbus_mask_only")
+    bus.connect()
+
+    gateway = TxSafetyGateway(bus=bus, whitelist_masks=[(0x7E0, 0x7FF)])
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    # Must not raise WhitelistFailClosedError; the ID matches the mask
+    assert gateway.validate_and_transmit(frame) is True
+    bus.disconnect()
+
+
+def test_production_constructor_has_no_testing_bypass_flag() -> None:
+    """B1 regression: allow_all_for_testing must not be a production constructor knob."""
+    import inspect
+
+    params = inspect.signature(TxSafetyGateway.__init__).parameters
+    assert "allow_all_for_testing" not in params

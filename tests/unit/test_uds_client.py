@@ -38,7 +38,7 @@ class MockDiagnosticBus(AbstractBus):
     def disconnect(self) -> None:
         self.is_connected = False
 
-    def _send_raw(self, frame: CanFrame) -> None:
+    def send(self, frame: CanFrame) -> None:
         self.sent_frames.append(frame)
 
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
@@ -73,6 +73,44 @@ def test_uds_service_builders() -> None:
     assert s3e == b"\x3e\x80"
 
 
+def test_request_download_alfi_widths() -> None:
+    """P2 fix: ALFI nibbles drive address/size byte widths (ISO 14229-0 §9.3.1)."""
+    # Default 0x44 stays byte-identical to the legacy 4/4 layout
+    s44 = UdsServiceBuilder.build_request_download(0xA0000000, 0x00010000)
+    assert s44 == b"\x34\x00\x44" + bytes.fromhex("A0000000") + bytes.fromhex("00010000")
+
+    # 0x22 -> 2-byte address, 2-byte size
+    s22 = UdsServiceBuilder.build_request_download(
+        0xB800, 0x0100, address_and_length_format_identifier=0x22
+    )
+    assert s22 == b"\x34\x00\x22\xb8\x00\x01\x00"
+
+    # 0x11 -> 1-byte address, 1-byte size
+    s11 = UdsServiceBuilder.build_request_download(
+        0x40, 0x20, address_and_length_format_identifier=0x11
+    )
+    assert s11 == b"\x34\x00\x11\x40\x20"
+
+
+def test_request_download_alfi_validation() -> None:
+    """Invalid widths and overflow raise clean ValueError, not OverflowError."""
+    import pytest
+
+    # Nibble 0 is invalid on either side
+    with pytest.raises(ValueError):
+        UdsServiceBuilder.build_request_download(0x1234, 0x10, address_and_length_format_identifier=0x40)
+    with pytest.raises(ValueError):
+        UdsServiceBuilder.build_request_download(0x1234, 0x10, address_and_length_format_identifier=0x04)
+    # Nibble > 4 is invalid
+    with pytest.raises(ValueError):
+        UdsServiceBuilder.build_request_download(0x1234, 0x10, address_and_length_format_identifier=0x55)
+    # Value wider than the declared width overflows cleanly
+    with pytest.raises(ValueError):
+        UdsServiceBuilder.build_request_download(0xAABBCCDD, 0x10, address_and_length_format_identifier=0x24)
+    with pytest.raises(ValueError):
+        UdsServiceBuilder.build_request_download(0x1000, 0x10000, address_and_length_format_identifier=0x42)
+
+
 def test_parse_positive_and_negative_responses() -> None:
     # Positive response to 0x22 (0x62 + DID 0xF190 + VIN bytes)
     pos_raw = b"\x62\xf1\x90\x57\x42\x41"
@@ -93,7 +131,7 @@ def test_parse_positive_and_negative_responses() -> None:
 
 def test_uds_client_sync_read_did() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # Queue single-frame ISO-TP response: 4 bytes payload (0x62 0xF1 0x90 0x41)
     # ISO-TP Single Frame: Byte 0 = 0x04, Bytes 1..4 = 62 F1 90 41
@@ -115,7 +153,7 @@ def test_uds_client_sync_read_did() -> None:
 
 def test_uds_client_sync_routines_and_session() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Change session
     bus.inject_rx(
@@ -137,7 +175,7 @@ def test_uds_client_sync_routines_and_session() -> None:
             data=b"\x03\x6e\x01\x00\x00\x00\x00\x00",
         )
     )
-    resp2 = client.write_did(0x0100, b"\xaa\xbb")
+    resp2 = client.write_did(0x0100, b"\xaa\xbb", user_confirmed=True)
     assert resp2.is_positive is True
 
     # 3. Start Routine
@@ -148,7 +186,7 @@ def test_uds_client_sync_routines_and_session() -> None:
             data=b"\x04\x71\x01\x02\x01\x00\x00\x00",
         )
     )
-    resp3 = client.start_routine(0x0201, b"\x01")
+    resp3 = client.start_routine(0x0201, b"\x01", user_confirmed=True)
     assert resp3.is_positive is True
 
     # 4. Stop Routine
@@ -194,7 +232,7 @@ def test_uds_client_sync_routines_and_session() -> None:
 
 def test_uds_client_timeout_raises_protocol_error() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # No response injected -> should raise ProtocolError with UDS_TIMEOUT
     with pytest.raises(ProtocolError) as exc_info:
@@ -205,7 +243,7 @@ def test_uds_client_timeout_raises_protocol_error() -> None:
 
 def test_uds_client_execute_async_with_callbacks() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # Queue response for async read_did
     bus.inject_rx(
@@ -247,7 +285,7 @@ def test_uds_client_execute_async_with_callbacks() -> None:
 
 def test_uds_client_execute_async_error_callback() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     received_errors: list[Exception] = []
 

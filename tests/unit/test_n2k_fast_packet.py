@@ -70,3 +70,99 @@ def test_decode_fluid_level() -> None:
     assert res.fluid_instance == 1
     assert res.level_percent == 75.0
     assert res.capacity_liters == 500.0
+
+
+def _fp_first_frame(total_bytes: int, pgn_id: int = 0x19F20100, seq: int = 0, payload: bytes = b"") -> CanFrame:
+    """Fast Packet index-0 frame: header = seq<<5, total length in byte 1."""
+    header = (seq << 5) & 0xFF
+    data = bytes([header, total_bytes]) + payload[:6] + b"\xff" * max(0, 6 - len(payload[:6]))
+    return CanFrame.create(
+        channel_id="n2k",
+        arbitration_id=pgn_id,
+        data=data,
+        is_extended=True,
+    )
+
+
+def _fp_next_frame(index: int, payload: bytes, pgn_id: int = 0x19F20100, seq: int = 0) -> CanFrame:
+    header = ((seq << 5) | (index & 0x1F)) & 0xFF
+    data = bytes([header]) + payload + b"\xff" * (7 - len(payload))
+    return CanFrame.create(
+        channel_id="n2k",
+        arbitration_id=pgn_id,
+        data=data[:8],
+        is_extended=True,
+    )
+
+
+def test_n2k_boundary_223_bytes_accepted() -> None:
+    """223 bytes = 6 + 7*31 is the maximum legal Fast Packet size and must complete."""
+    decoder = Nmea2000FastPacketDecoder()
+    payload = bytes((i % 256) for i in range(223))
+
+    assert decoder.handle_rx_frame(_fp_first_frame(223, payload=payload)) is None
+    res = None
+    for idx in range(1, 32):
+        res = decoder.handle_rx_frame(_fp_next_frame(idx, payload[6 + (idx - 1) * 7 : 6 + idx * 7]))
+    assert res is not None
+    assert res.data == payload
+
+
+def test_n2k_boundary_224_bytes_rejected() -> None:
+    """224 bytes exceeds the 6+7*31 limit — the session must never open."""
+    decoder = Nmea2000FastPacketDecoder()
+    assert decoder.handle_rx_frame(_fp_first_frame(224)) is None
+    # A subsequent CF finds no session and is dropped silently
+    assert decoder.handle_rx_frame(_fp_next_frame(1, b"\x01" * 7)) is None
+    assert len(decoder._sessions) == 0
+
+
+def test_n2k_min_boundary_8_bytes_rejected() -> None:
+    """Below 9 bytes there is no need for Fast Packet at all — rejected."""
+    decoder = Nmea2000FastPacketDecoder()
+    assert decoder.handle_rx_frame(_fp_first_frame(8)) is None
+    assert len(decoder._sessions) == 0
+
+
+def test_n2k_sequence_mismatch_drops_session() -> None:
+    """An out-of-order CF must evict the session — partial data never completes."""
+    decoder = Nmea2000FastPacketDecoder()
+    decoder.handle_rx_frame(_fp_first_frame(20))
+
+    # Skip index 1, deliver index 2
+    assert decoder.handle_rx_frame(_fp_next_frame(2, b"\x41" * 7)) is None
+    # Session evicted: even the correct next index finds nothing
+    assert decoder.handle_rx_frame(_fp_next_frame(1, b"\x42" * 7)) is None
+    assert len(decoder._sessions) == 0
+
+
+def test_n2k_index0_restart_drops_stale_session() -> None:
+    """A mid-transfer restart (index 0) replaces stale state — new data wins."""
+    decoder = Nmea2000FastPacketDecoder()
+    decoder.handle_rx_frame(_fp_first_frame(20))
+    decoder.handle_rx_frame(_fp_next_frame(1, b"\x41" * 7))  # in-flight, 13/20 bytes
+
+    # Sender restarts with a fresh 16-byte message for the same key
+    payload = bytes(range(16))
+    restarted = decoder.handle_rx_frame(_fp_first_frame(16, payload=payload))
+    assert restarted is None
+    assert len(decoder._sessions) == 1  # stale dropped, one fresh session
+
+    assert decoder.handle_rx_frame(_fp_next_frame(1, payload[6:13])) is None
+    res = decoder.handle_rx_frame(_fp_next_frame(2, payload[13:16]))
+    assert res is not None
+    assert res.data == payload  # the RESTARTED payload, not stale bytes
+
+
+def test_n2k_timeout_evicts_session() -> None:
+    """500 ms of silence must evict an in-flight session."""
+    import time as _time
+
+    decoder = Nmea2000FastPacketDecoder()
+    decoder.handle_rx_frame(_fp_first_frame(20))
+    assert len(decoder._sessions) == 1
+
+    _time.sleep(0.55)
+    # Any subsequent frame triggers the expired-session sweep first
+    decoder.handle_rx_frame(_fp_next_frame(1, b"\x41" * 7))
+    assert len(decoder._sessions) == 0

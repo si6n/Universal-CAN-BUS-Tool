@@ -85,3 +85,39 @@ def test_replay_safety_filter_sequence() -> None:
     assert len(safe_frames) == 2
     assert safe_frames[0].arbitration_id == 0x0CF00400
     assert safe_frames[1].arbitration_id == 0x100
+
+
+def test_dm4_dm5_correct_pgn_values_blocked() -> None:
+    """D4: DM4=65229 / DM5=65230 must be blocked (old table blocked the wrong
+    PGNs — 65235/65234 — and so never stopped the freeze-frame clear path)."""
+    f = ReplaySafetyFilter()
+
+    dm4 = CanFrame.create(channel_id="can0", arbitration_id=0x18FED500, data=b"\x00" * 8, is_extended=True)
+    dm5 = CanFrame.create(channel_id="can0", arbitration_id=0x18FED600, data=b"\x00" * 8, is_extended=True)
+    dm11 = CanFrame.create(channel_id="can0", arbitration_id=0x18FEDA00, data=b"\x00" * 8, is_extended=True)
+
+    ok4, r4 = f.is_frame_safe(dm4)
+    ok5, r5 = f.is_frame_safe(dm5)
+    ok11, r11 = f.is_frame_safe(dm11)
+    assert not ok4 and "BLOCKED_J1939_PGN" in r4
+    assert not ok5 and "BLOCKED_J1939_PGN" in r5
+    assert not ok11 and "BLOCKED_J1939_PGN" in r11
+
+
+def test_transport_tunnel_pgn_blocked_by_default() -> None:
+    """D5: TP.CM/TP.DT replay can tunnel any blocked payload in 7-byte slices —
+    blocked unless explicitly opted out."""
+    f = ReplaySafetyFilter()
+
+    tp_cm = CanFrame.create(channel_id="can0", arbitration_id=0x18ECFF00, data=b"\x20\x0e\x00\x02\xff\xec\xfe\x00", is_extended=True)
+    tp_dt = CanFrame.create(channel_id="can0", arbitration_id=0x18EBFF00, data=b"\x01" + b"\x00" * 7, is_extended=True)
+
+    ok_cm, r_cm = f.is_frame_safe(tp_cm)
+    ok_dt, r_dt = f.is_frame_safe(tp_dt)
+    assert not ok_cm and "BLOCKED_TP_TUNNEL" in r_cm
+    assert not ok_dt and "BLOCKED_TP_TUNNEL" in r_dt
+
+    # Explicit opt-out is honoured (analysis-only replay pipelines)
+    f_opt = ReplaySafetyFilter(block_transport_tunneling=False)
+    assert f_opt.is_frame_safe(tp_cm)[0] is True
+    assert f_opt.is_frame_safe(tp_dt)[0] is True

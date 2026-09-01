@@ -142,6 +142,9 @@ class MinimalDuckClockProvider:
     def now_monotonic_ns(self) -> int:
         return 123456000000
 
+    def now_wall_ns(self) -> int:
+        return 1780000000000000000
+
 
 class ClockMissingNs:
     """Missing now_monotonic_ns."""

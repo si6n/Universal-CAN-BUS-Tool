@@ -211,3 +211,42 @@ def test_gemini_fallback_on_http_errors() -> None:
         )
         assert report.ai_model_used == "Yerel Otomotiv Uzman Motoru (Çevrimdışı)"
         assert report.severity == FaultSeverity.CRITICAL_STOP
+
+
+# ============================================================================
+# F-03: API key transport DoD tests — key in x-goog-api-key header,
+# never in the URL (CWE-598)
+# ============================================================================
+
+
+def test_gemini_request_carries_key_in_header_not_url() -> None:
+    """F-03 DoD: the Gemini call must pass the key via x-goog-api-key header."""
+    captured: dict = {}
+
+    def fake_urlopen(req, timeout=None):  # noqa: ANN001
+        captured["url"] = req.full_url
+        captured["headers"] = {k.lower(): v for k, v in req.header_items()}
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(
+            {"candidates": [{"content": {"parts": [{"text": "OK"}]}}]}
+        ).encode("utf-8")
+        mock_resp.__enter__.return_value = mock_resp
+        return mock_resp
+
+    copilot = AiDiagnosticCopilot(gemini_api_key="AIza-mock-key-0123456789abcdef")
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        copilot.analyze_live_telemetry(
+            rpm=1800.0, boost_bar=1.6, coolant_temp=85.0, dtc_codes=["P0300"], user_prompt="Sorun ne?"
+        )
+
+    assert "?key=" not in captured["url"], "API key leaked into URL"
+    assert "apikey=" not in captured["url"].lower()
+    assert captured["headers"].get("x-goog-api-key") == "AIza-mock-key-0123456789abcdef"
+
+
+def test_gemini_endpoint_constant_matches_readme_model() -> None:
+    """F-42/E-9 DoD: single endpoint constant pinned to gemini-2.0-flash."""
+    from src.engine.ai.diagnostic_copilot import GEMINI_ENDPOINT
+
+    assert GEMINI_ENDPOINT.endswith("gemini-2.0-flash:generateContent")
+    assert "?key=" not in GEMINI_ENDPOINT

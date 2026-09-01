@@ -52,6 +52,26 @@ from src.security.hwid.collector import (
 )
 from src.security.license.validator import LicenseValidator
 
+
+class FakeWallClock:
+    """Deterministic wall-clock for G3: verify_token reads time from here."""
+
+    def __init__(self, wall_ts: int) -> None:
+        self._wall_ns = int(wall_ts) * 1_000_000_000
+
+    def set(self, wall_ts: int) -> None:
+        self._wall_ns = int(wall_ts) * 1_000_000_000
+
+    def now_monotonic(self) -> float:
+        return 0.0
+
+    def now_monotonic_ns(self) -> int:
+        return 0
+
+    def now_wall_ns(self) -> int:
+        return self._wall_ns
+
+
 # ============================================================================
 # Dummy Bus for Testing
 # ============================================================================
@@ -290,9 +310,18 @@ def test_license_clock_rollback_attack_vectors(tmp_path: Path) -> None:
     priv = ed25519.Ed25519PrivateKey.generate()
     pub = priv.public_key()
     hwm_file = tmp_path / "hwm.dat"
-    # Save initial HWM at T=1,000,000 with HMAC
+    # Bootstrap a validator so the HWM key is generated inside its secret provider,
+    # then persist the initial HWM at T=1,000,000 with that key (F-04).
+    bootstrapped = LicenseValidator(
+        public_key=pub,
+        hardware_fingerprint="HWID_TEST_NODE_1",
+        last_known_clock_ts=1000000,
+        last_online_sync_ts=1000000,
+        boot_realtime=1000000,
+        boot_monotonic=0.0,
+    )
     data = b"1000000"
-    mac = hmac.new(LicenseValidator._HWM_HMAC_KEY, data, hashlib.sha256).hexdigest()
+    mac = hmac.new(bootstrapped._hwm_key, data, hashlib.sha256).hexdigest()
     hwm_file.write_text(f"1000000.{mac}", encoding="utf-8")
 
     validator = LicenseValidator(
@@ -303,6 +332,7 @@ def test_license_clock_rollback_attack_vectors(tmp_path: Path) -> None:
         last_online_sync_ts=1000000,
         boot_realtime=1000000,
         boot_monotonic=0.0,
+        secret_provider=bootstrapped._secret_provider,
     )
 
     token = LicenseValidator.generate_signed_token(
@@ -319,17 +349,21 @@ def test_license_clock_rollback_attack_vectors(tmp_path: Path) -> None:
 
     # 1. Rollback to 999,999 (1 sec backward)
     with pytest.raises(LicenseError, match="System clock manipulation detected"):
-        validator.verify_token(token, current_ts=999999)
+        validator.clock = FakeWallClock(999999)
+        validator.verify_token(token)
 
     # 2. Rollback to 500,000 (huge backward jump)
     with pytest.raises(LicenseError, match="System clock manipulation detected"):
-        validator.verify_token(token, current_ts=500000)
+        validator.clock = FakeWallClock(500000)
+        validator.verify_token(token)
 
     # 3. Forward time at 1,000,100 should succeed and advance HWM
     with patch("time.monotonic", return_value=100.0):
-        payload = validator.verify_token(token, current_ts=1000100)
+        validator.clock = FakeWallClock(1000100)
+        payload = validator.verify_token(token)
         assert payload.user_id == "test_user"
-        assert hwm_file.read_text(encoding="utf-8").strip().startswith("1000100.")
+        # G2 format: "<hwm_ts>:<last_online_sync_ts>.<hmac>"
+        assert hwm_file.read_text(encoding="utf-8").strip().startswith("1000100:1000000.")
 
 
 def test_license_signature_mutilation_attack(tmp_path: Path) -> None:
@@ -368,11 +402,12 @@ def test_license_signature_mutilation_attack(tmp_path: Path) -> None:
 
         with patch("time.monotonic", return_value=10.0):
             with pytest.raises(LicenseError, match="signature is invalid"):
-                validator.verify_token(bad_token, current_ts=1000010)
+                validator.clock = FakeWallClock(1000010)
+                validator.verify_token(bad_token)
 
 
 def test_license_wildcard_hwid_behavior() -> None:
-    """Verify wildcard '*' HWID allows multi-machine activation."""
+    """Wildcard '*' HWID is rejected by default and only works with explicit opt-in (F-05)."""
     priv = ed25519.Ed25519PrivateKey.generate()
     pub = priv.public_key()
 
@@ -391,6 +426,7 @@ def test_license_wildcard_hwid_behavior() -> None:
         last_online_sync_ts=1000,
         boot_realtime=1000,
         boot_monotonic=0.0,
+        allow_wildcard_license=True,
     )
 
     wildcard_token = LicenseValidator.generate_signed_token(
@@ -405,9 +441,13 @@ def test_license_wildcard_hwid_behavior() -> None:
     )
 
     with patch("time.monotonic", return_value=10.0):
-        res_a = validator_node_a.verify_token(wildcard_token, current_ts=1010)
-        res_b = validator_node_b.verify_token(wildcard_token, current_ts=1010)
-        assert res_a.user_id == "floating_user"
+        # Production default: rejected on any machine
+        with pytest.raises(LicenseError, match="different machine hardware"):
+            validator_node_a.clock = FakeWallClock(1010)
+            validator_node_a.verify_token(wildcard_token)
+        # Explicit test mode: accepted on another machine
+        validator_node_b.clock = FakeWallClock(1010)
+        res_b = validator_node_b.verify_token(wildcard_token)
         assert res_b.user_id == "floating_user"
 
 
@@ -419,7 +459,7 @@ def test_license_wildcard_hwid_behavior() -> None:
 def test_uds_client_negative_response_code_handling() -> None:
     """Verify handling of NRC frames (0x7F <SID> <NRC>)."""
     bus = MockTestingBus()
-    client = UdsClient(bus=bus, tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
 
     # Simulate ECU responding with NRC 0x11 (ServiceNotSupported) to DiagnosticSessionControl (0x10)
     # ISO-TP Single Frame: [Length=3, 0x7F, 0x10, 0x11, 0x00, 0x00, 0x00, 0x00]

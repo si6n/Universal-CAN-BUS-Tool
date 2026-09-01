@@ -50,3 +50,29 @@ def test_listen_only_mode_blocks_tx() -> None:
             bus.send(frame)
     finally:
         bus.disconnect()
+
+
+def test_listen_only_passes_busstate_enum_to_driver(monkeypatch: pytest.MonkeyPatch) -> None:
+    # D1 regression: vendor drivers check `state in [BusState.ACTIVE, BusState.PASSIVE]`;
+    # BusState is a plain Enum, so the former string "PASSIVE" raised ValueError
+    # and silently broke listen-only connections and bitrate scanning.
+    import can as can_module
+
+    captured: dict[str, object] = {}
+
+    class _FakeBus:
+        def shutdown(self) -> None:
+            pass
+
+    def _fake_bus_factory(**kwargs: object) -> _FakeBus:
+        captured.update(kwargs)
+        return _FakeBus()
+
+    monkeypatch.setattr(can_module, "Bus", _fake_bus_factory)
+
+    bus = PythonCanBus(interface="pcan", channel="PCAN_USBBUS1", listen_only=True)
+    bus.connect()
+
+    assert bus.is_connected is True
+    assert captured["state"] is can_module.BusState.PASSIVE
+    assert not isinstance(captured["state"], str)

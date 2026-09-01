@@ -47,3 +47,19 @@ def test_volvo_evc_helm_telemetry() -> None:
     assert state.station_active is True
     assert round(state.trim_angle_deg, 1) == 5.0
     assert round(state.rudder_angle_deg, 1) == -10.0
+
+
+def test_volvo_evc_edp_frame_is_rejected() -> None:
+    """P2 fix: EDP=1 frames must not alias onto the 18-bit EVC PGN mask.
+
+    Without the guard, an ID like 0x36FF5000 (EDP=1, DP=1, PF=0xFF, PS=0x50)
+    masks down to PGN 65360 and would be false-decoded as helm telemetry.
+    """
+    frame_data = b"\xaf\x01\x01\x26\x02\x20\x03\xff"
+    edp_frame = CanFrame.create(
+        channel_id="volvo_can",
+        arbitration_id=0x18FF5000 | (0x01 << 25),  # EDP set, same masked PGN
+        data=frame_data,
+        is_extended=True,
+    )
+    assert VolvoPentaDecoder.decode_evc_can_frame(edp_frame) is None

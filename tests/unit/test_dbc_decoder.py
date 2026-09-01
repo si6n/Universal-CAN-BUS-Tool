@@ -138,3 +138,44 @@ def test_from_dbc_file_with_custom_cache_size() -> None:
         assert len(decoder.db.messages) == 2
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def test_sentinel_msb_ranges_flagged_for_16bit_signals() -> None:
+    """E4 regression: the whole J1939-71 MSB sentinel range is invalid, not just 0xFFFE/0xFFFF.
+
+    EngineSpeed is a 16-bit little-endian signal in bytes 3 (LSB) and 4 (MSB)
+    of EEC1. Any MSB of 0xFE means Error and any MSB of 0xFF means Not
+    Available; previously only the exact values 0xFFFE and 0xFFFF were caught.
+    """
+    from src.engine.decoder.dbc_decoder import SignalStatus
+
+    decoder = DbcSignalDecoder.from_dbc_string(SAMPLE_DBC)
+
+    def decode_engine_speed(raw16: int):
+        data = bytearray(8)
+        data[3] = raw16 & 0xFF
+        data[4] = (raw16 >> 8) & 0xFF
+        frame = CanFrame.create(
+            channel_id="ch0",
+            arbitration_id=0x0CF00400,  # EEC1 on-wire ID (DBC id minus the 0x80000000 ext flag)
+            data=bytes(data),
+            is_extended=True,
+        )
+        decoded = decoder.decode_frame(frame)
+        assert decoded is not None
+        return decoded.signals["EngineSpeed"]
+
+    # Mid-range Error encoding (0xFE57) — the regression case
+    sig_err = decode_engine_speed(0xFE57)
+    assert sig_err.is_valid is False
+    assert sig_err.status == SignalStatus.ERROR
+
+    # Mid-range Not Available encoding (0xFF00)
+    sig_na = decode_engine_speed(0xFF00)
+    assert sig_na.is_valid is False
+    assert sig_na.status == SignalStatus.NOT_AVAILABLE
+
+    # Normal value stays valid
+    sig_ok = decode_engine_speed(0x1F40)  # 8000 -> 1000 rpm
+    assert sig_ok.is_valid is True
+    assert sig_ok.status == SignalStatus.VALID

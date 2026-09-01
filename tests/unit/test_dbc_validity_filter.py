@@ -79,8 +79,9 @@ def test_dbc_signal_not_available_discrete_values_detected() -> None:
 def test_dbc_signal_parameter_error_discrete_values_detected() -> None:
     decoder = DbcSignalDecoder.from_dbc_string(TEST_VALIDITY_DBC)
 
-    # 8-bit signal with raw 0xFE (254) -> Parameter Error
-    # 16-bit signal with raw 0xFFFE (65534) -> Parameter Error
+    # J1939-71 MSB sentinel ranges: for a 16-bit signal any 0xFF** value
+    # (incl. 0xFFFE) is Not Available, any 0xFE** is Error; an 8-bit 0xFE is
+    # Error; a 4-bit discrete max-1 is Error, max is Not Available.
     frame_err = CanFrame.create(
         channel_id="ch0",
         arbitration_id=0x0CF00400,
@@ -90,13 +91,21 @@ def test_dbc_signal_parameter_error_discrete_values_detected() -> None:
     decoded = decoder.decode_frame(frame_err)
     assert decoded is not None
 
+    # EngineSpeed: bytes 3..4 = FE FF (LE) -> raw 0xFFFE -> MSB range 0xFF** -> NOT_AVAILABLE
     sig_speed = decoded.signals["EngineSpeed"]
     assert sig_speed.raw_value == 65534
     assert sig_speed.is_valid is False
-    assert sig_speed.status == SignalStatus.ERROR
+    assert sig_speed.status == SignalStatus.NOT_AVAILABLE
     assert sig_speed.confidence == "UNKNOWN"
 
+    # ActualEnginePercentTorque: byte 2 = 0xFE -> ERROR
     sig_torque = decoded.signals["ActualEnginePercentTorque"]
     assert sig_torque.raw_value == 254
     assert sig_torque.is_valid is False
     assert sig_torque.status == SignalStatus.ERROR
+
+    # EngineStarterMode (4-bit discrete, low nibble of byte 1 = 0x0E = max-1) -> ERROR
+    sig_mode = decoded.signals["EngineStarterMode"]
+    assert sig_mode.raw_value == 14
+    assert sig_mode.is_valid is False
+    assert sig_mode.status == SignalStatus.ERROR
