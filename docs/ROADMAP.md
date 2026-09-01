@@ -1,10 +1,11 @@
 # Kalan İşler — Universal CAN-Bus Tool
 
-> **Durum baz tarihi:** 2026-09-01 · 1190/1190 test PASSED · ruff 0 hata · 26 commit
+> **Durum baz tarihi:** 2026-09-01 · 1191/1191 test PASSED · ruff 0 hata · 28 commit
 > Bu dosya, tamamlanmış kapsamlı review + düzeltme dalgalarının (78 bulgu, P0/P1/P2
 > protokol düzeltmeleri, Dalga 1-5, K1-K4, "Küçükler" grubu, RP1210/CSV/BLF entegrasyonu,
 > gateway lock-scope refactor, Hypothesis property süiti, Bulut UI SaaS köprüsü,
-> DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü], Sinyal Keşif & Kanıt Motoru)
+> DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü], Sinyal Keşif & Kanıt Motoru,
+> K1(b) H1 Cihaz Bağı ve K2 E-Stop Challenge-Response Köprüsü)
 > ardından **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
 
 ---
@@ -12,15 +13,13 @@
 ## 1. Ürün Kararı Gerektirenler (kod hazır, bağlama kararı kullanıcıda)
 
 ### K2 — Bağımsız E-Stop Doğrulayıcı
-- **Durum:** Reset token'ı aynı süreçte üretilip tüketiliyor ("yerel kurtarma" olarak
-  kodda + README'de dürüstçe sınıflandırıldı). Gerçek çoklu-operatör yetkilendirmesi
-  için: UI'da operatör challenge akışı tasarımı + ayrı bileşen. Kod yapısı
-  (`create_reset_token` / `reset` ayrık) buna hazır.
+- **Durum:** K2 E-Stop challenge-response reset API'leri (`estop_request_challenge`,
+  `estop_submit_reset_token`, `estop_reset_local`) hem backend hem TypeScript köprüsüne
+  bağlandı. Çoklu-operatör yetkilendirme altyapısı devrede.
 
 ### K1(b) — Lisans Yığınının Composition Root'a Bağlanması
-- **Durum:** Altyapı testli (Ed25519, HWM, grace, anti-rollback); başlangıçta lisans
-  denetimi + özellik kilitleme akışı ürün kararı ister: hangi özellikler lisanslı,
-  sunucu dağıtımı, anahtar üretimi. K1(a) UI köprüsü bağlandığı için doğal aday.
+- **Durum:** H1 cihaz bağı (`device_id` DPAPI eşleşmesi) bağlandı ve test edildi.
+  İleride ticari ürün kararıyla zorunlu aktivasyon kapısı `main.py` başlangıcına konabilir.
 
 ---
 

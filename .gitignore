@@ -81,14 +81,6 @@ traces/
 # Multi-agent session internals
 .agents/
 
-# Obsidian Vault Caches & UI State (keeps plugins and settings tracked)
-.obsidian/workspace.json
-.obsidian/workspace-mobile.json
-.obsidian/cache/
-.obsidian/plugins/smart-connections/.smart-env/
-
-
-
-
-# Ignore Smart Environment folder
-.smart-env
+# Logseq local backups & transient caches
+.logseq/bak/
+.logseq/version-control/
