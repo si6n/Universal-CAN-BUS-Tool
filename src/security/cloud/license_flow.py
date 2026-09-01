@@ -97,8 +97,9 @@ class LicenseFlow:
             hwid_resets_remaining=data.get("hwid_resets_remaining", 0),
         )
 
-        # Persist the device token under DPAPI (never plaintext on disk).
+        # Persist the device token and device ID under DPAPI (never plaintext on disk).
         self.client.store_device_token(registration.device_token)
+        self.client.store_device_id(registration.device_id)
         logger.info(
             "Device registered with cloud",
             extra={"device_id": registration.device_id, "hwid": payload["hwid"][:8] + "…"},
@@ -147,7 +148,7 @@ class LicenseFlow:
     # ------------------------------------------------------------------
     # Local verification of the Ed25519 ticket (trust anchor: embedded key)
     # ------------------------------------------------------------------
-    def verify_cloud_ticket(self, token: str) -> CloudLicenseClaims:
+    def verify_cloud_ticket(self, token: str, expected_device_id: str | None = None) -> CloudLicenseClaims:
         """Verify signature + canonical schema; raise LicenseError on any flaw."""
         parts = token.strip().split(".")
         if len(parts) != 2:
@@ -185,6 +186,18 @@ class LicenseFlow:
             raise LicenseError("Incomplete cloud ticket schema", code="INCOMPLETE_SCHEMA")
         if data["iss"] != "universal-can-cloud" or data["aud"] != "diagnostic-desktop-app":
             raise LicenseError("Ticket issuer/audience mismatch", code="ISSUER_MISMATCH")
+
+        # Enforce H1 device binding check
+        target_device_id = expected_device_id or self.client.get_device_id()
+        if target_device_id and data["device_id"] != target_device_id:
+            logger.error(
+                "Cloud ticket device binding mismatch",
+                extra={"ticket_device_id": data["device_id"], "registered_device_id": target_device_id},
+            )
+            raise LicenseError(
+                f"Cloud license ticket device mismatch: ticket is bound to {data['device_id']}, but current device is {target_device_id}.",
+                code="DEVICE_MISMATCH",
+            )
 
         import time
 

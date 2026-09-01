@@ -22,6 +22,7 @@ logger = get_logger("security.cloud.client")
 
 _SESSION_SECRET_NAME = "CLOUD_SESSION_TOKEN"
 _DEVICE_TOKEN_SECRET_NAME = "CLOUD_DEVICE_TOKEN"
+_DEVICE_ID_SECRET_NAME = "CLOUD_DEVICE_ID"
 LICENSE_TICKET_SECRET_NAME = "CLOUD_LICENSE_TICKET"
 
 # Retry policy: transient network/5xx failures are retried with linear backoff.
@@ -102,6 +103,19 @@ class CloudClient:
     def clear_device_token(self) -> None:
         if self._secrets.has_secret(_DEVICE_TOKEN_SECRET_NAME):
             self._secrets.delete_secret(_DEVICE_TOKEN_SECRET_NAME)
+
+    def store_device_id(self, device_id: str) -> None:
+        self._secrets.store_secret(_DEVICE_ID_SECRET_NAME, device_id.encode("utf-8"))
+        logger.info("Cloud device ID stored (DPAPI)")
+
+    def get_device_id(self) -> str | None:
+        if not self._secrets.has_secret(_DEVICE_ID_SECRET_NAME):
+            return None
+        return self._secrets.get_secret(_DEVICE_ID_SECRET_NAME).decode("utf-8")
+
+    def clear_device_id(self) -> None:
+        if self._secrets.has_secret(_DEVICE_ID_SECRET_NAME):
+            self._secrets.delete_secret(_DEVICE_ID_SECRET_NAME)
 
     def store_license_ticket(self, ticket_token: str) -> None:
         """Persist the signed license ticket for offline re-verification (grace)."""

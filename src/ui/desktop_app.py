@@ -80,6 +80,18 @@ class DesktopApiBridge:
     def get_safety_state(self) -> str:
         return self.app.supervisor.current_state.value
 
+    def estop_request_challenge(self) -> dict[str, Any]:
+        """Issue a cryptographic reset challenge for multi-operator/independent verification."""
+        return self.app.request_estop_challenge()
+
+    def estop_submit_reset_token(self, token_str: str) -> dict[str, Any]:
+        """Submit and verify a cryptographic reset token."""
+        return self.app.reset_estop_with_token(token_str)
+
+    def estop_reset_local(self) -> dict[str, Any]:
+        """Local single-operator recovery helper."""
+        return self.app.reset_estop_local()
+
     # ------------------------------------------------------------------
     # Cloud & SaaS Bridge APIs (Universal-CAN-Cloud)
     # ------------------------------------------------------------------
@@ -340,24 +352,49 @@ class UniversalCanDesktopApp:
         self.estop.trigger(EStopTriggerSource.USER_UI_BUTTON, "Operator Pressed E-STOP")
         self.supervisor.trigger_fault("Operator Pressed E-STOP button in desktop interface")
 
+    def request_estop_challenge(self) -> dict[str, Any]:
+        """Issue a cryptographic reset challenge for multi-operator/independent verification."""
+        challenge = self.estop.request_reset_challenge()
+        if challenge is None:
+            return {"success": False, "error": "E-Stop is not currently engaged"}
+        return {
+            "success": True,
+            "epoch": challenge.epoch,
+            "nonce": challenge.nonce.hex(),
+            "timestampMonotonicNs": challenge.timestamp_monotonic_ns,
+            "maxAgeMs": challenge.max_age_ns // 1_000_000,
+            "action": challenge.action,
+        }
+
+    def reset_estop_with_token(self, token_str: str) -> dict[str, Any]:
+        """Cryptographically verify and consume a reset token (multi-operator or local)."""
+        try:
+            success = self.estop.reset(token_str.strip())
+            if success:
+                self._set_ui_state(_is_estop=False)
+                if self.supervisor.is_fault:
+                    self.supervisor.transition_to(
+                        SafetyState.PASSIVE, reason="E-Stop cryptographically reset — PASSIVE"
+                    )
+                return {"success": True}
+            return {"success": False, "error": "Reset rejected by safety system"}
+        except Exception as exc:
+            logger.error("E-Stop cryptographic reset failed", exc_info=True)
+            return {"success": False, "error": str(exc)}
+
+    def reset_estop_local(self) -> dict[str, Any]:
+        """Local single-operator recovery helper (K2)."""
+        token = self.estop.create_reset_token()
+        if token is None:
+            return {"success": False, "error": "E-Stop reset challenge unavailable; refusing to leave FAULT"}
+        return self.reset_estop_with_token(token.to_token_string())
+
     def toggle_simulator(self) -> bool:
         if self._is_estop:
-            # F-17: leaving FAULT requires the cryptographic reset challenge —
-            # no tokenless escape hatch.
-            # K2 classification: the token is minted and consumed by the same
-            # process, so this is a LOCAL RECOVERY flow, not multi-operator
-            # authorization. An independent verifier (UI challenge issued by
-            # a separate component/operator) is planned.
-            token = self.estop.create_reset_token()
-            if token is None:
+            res = self.reset_estop_local()
+            if not res.get("success"):
                 logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
                 return self._is_simulating
-            self.estop.reset(token)
-            self._set_ui_state(_is_estop=False)
-            if self.supervisor.is_fault:
-                self.supervisor.transition_to(
-                    SafetyState.PASSIVE, reason="E-Stop cryptographically reset — PASSIVE"
-                )
 
         # E14: toggle under one lock so two rapid JS clicks cannot read the
         # same stale value and both flip it the same way.

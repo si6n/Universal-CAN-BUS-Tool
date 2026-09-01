@@ -289,6 +289,39 @@ def test_ticket_verification_rejects_wrong_issuer(flow) -> None:
         flow.verify_cloud_ticket(token)
 
 
+def test_ticket_verification_rejects_device_mismatch(flow) -> None:
+    import time
+
+    from src.core.errors import LicenseError
+
+    now = int(time.time())
+    body = json.dumps(
+        {
+            "iss": "universal-can-cloud",
+            "aud": "diagnostic-desktop-app",
+            "kid": "key-2026-v1",
+            "license_id": "lic_valid",
+            "organization_id": "org_x",
+            "device_id": "alien-device-999",
+            "tier": "marine_pro",
+            "features": ["j1939"],
+            "iat": now,
+            "exp": now + 3600,
+            "offline_until": now + 86400,
+            "schema_version": 1,
+            "nonce": "n" * 12,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    sig = STATE.private_key.sign(body)
+    token = base64.urlsafe_b64encode(body).decode() + "." + base64.urlsafe_b64encode(sig).decode()
+
+    # Pass an explicit expected device ID that doesn't match
+    with pytest.raises(LicenseError, match="device mismatch"):
+        flow.verify_cloud_ticket(token, expected_device_id="my-local-device-001")
+
+
 # ---------------------------------------------------------------------------
 # Resumable telemetry upload (Task 5.4)
 # ---------------------------------------------------------------------------

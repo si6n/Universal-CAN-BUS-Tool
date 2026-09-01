@@ -44,6 +44,10 @@ declare global {
         save_settings: (settings: Record<string, any>) => Promise<void>;
         inject_fault?: (faultType: string) => Promise<void>;
         set_simulation_speed?: (speed: number) => Promise<void>;
+        // E-Stop Cryptographic Challenge / Multi-Operator APIs
+        estop_request_challenge?: () => Promise<{ success: boolean; epoch?: number; nonce?: string; timestampMonotonicNs?: number; maxAgeMs?: number; action?: string; error?: string }>;
+        estop_submit_reset_token?: (tokenStr: string) => Promise<{ success: boolean; error?: string }>;
+        estop_reset_local?: () => Promise<{ success: boolean; error?: string }>;
         // Cloud APIs
         cloud_test_connection?: (url?: string, sessionToken?: string) => Promise<{ success: boolean; status?: number; user?: any; error?: string }>;
         cloud_save_config?: (url: string, sessionToken?: string) => Promise<{ success: boolean; error?: string }>;
@@ -103,6 +107,27 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.set_simulation_speed) {
       await window.pywebview.api.set_simulation_speed(speed);
     }
+  }
+
+  public static async estopRequestChallenge(): Promise<{ success: boolean; epoch?: number; nonce?: string; timestampMonotonicNs?: number; maxAgeMs?: number; action?: string; error?: string }> {
+    if (this.isNative() && window.pywebview?.api?.estop_request_challenge) {
+      return await window.pywebview.api.estop_request_challenge();
+    }
+    return { success: true, epoch: 1, nonce: 'local_nonce', maxAgeMs: 30000, action: 'ESTOP_RESET' };
+  }
+
+  public static async estopSubmitResetToken(tokenStr: string): Promise<{ success: boolean; error?: string }> {
+    if (this.isNative() && window.pywebview?.api?.estop_submit_reset_token) {
+      return await window.pywebview.api.estop_submit_reset_token(tokenStr);
+    }
+    return { success: true };
+  }
+
+  public static async estopResetLocal(): Promise<{ success: boolean; error?: string }> {
+    if (this.isNative() && window.pywebview?.api?.estop_reset_local) {
+      return await window.pywebview.api.estop_reset_local();
+    }
+    return { success: true };
   }
 
   public static async updateSettings(settings: Record<string, any>): Promise<void> {
