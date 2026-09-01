@@ -89,36 +89,46 @@ class ReplayBus:
         callback: Callable[[CanFrame], None],
         speed: float = 1.0,
         stop_event: Any | None = None,
+        loop: bool = False,
     ) -> None:
-        """Play through all frames with accurate inter-frame timing delta."""
+        """Play through frames with accurate inter-frame timing delta.
+
+        Supports looping playback with timestamp re-anchoring on rewind (H4).
+        """
         if not self._frames:
             return
 
         if speed <= 0:
             raise ValueError(f"Replay speed must be positive, got {speed}")
 
-        self.reset()
-        t_base = time.perf_counter()
-        t_base_ns = self._frames[0].timestamp_ns
+        while True:
+            self.reset()
+            t_base = time.perf_counter()
+            t_base_ns = self._frames[0].timestamp_ns
 
-        while self.has_next:
-            if stop_event and hasattr(stop_event, "is_set") and stop_event.is_set():
-                break
+            while self.has_next:
+                if stop_event and hasattr(stop_event, "is_set") and stop_event.is_set():
+                    return
 
-            frame = self.step()
-            if frame is None:
-                break
-
-            target_offset_s = (frame.timestamp_ns - t_base_ns) / (1_000_000_000.0 * speed)
-            target_time = t_base + target_offset_s
-
-            # High precision hybrid spinloop
-            while True:
-                now = time.perf_counter()
-                remaining = target_time - now
-                if remaining <= 0:
+                frame = self.step()
+                if frame is None:
                     break
-                if remaining > 0.005:
-                    time.sleep(remaining - 0.003)
 
-            callback(frame)
+                target_offset_s = (frame.timestamp_ns - t_base_ns) / (1_000_000_000.0 * speed)
+                target_time = t_base + target_offset_s
+
+                # High precision hybrid sleep loop
+                while True:
+                    now = time.perf_counter()
+                    remaining = target_time - now
+                    if remaining <= 0:
+                        break
+                    if stop_event and hasattr(stop_event, "is_set") and stop_event.is_set():
+                        return
+                    if remaining > 0.005:
+                        time.sleep(remaining - 0.003)
+
+                callback(frame)
+
+            if not loop or (stop_event and hasattr(stop_event, "is_set") and stop_event.is_set()):
+                break
