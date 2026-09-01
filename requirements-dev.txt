@@ -10,9 +10,11 @@ pytest-qt>=4.4.0
 pytest-cov>=4.1.0
 hypothesis>=6.98.0
 
-# Code Quality & Formatting
+# Code Quality & Security Scanning
 ruff>=0.3.0
 mypy>=1.9.0
+bandit>=1.7.8
+pip-audit>=2.7.3
 
 # Standalone C++ Compilation
 Nuitka>=2.1.0
