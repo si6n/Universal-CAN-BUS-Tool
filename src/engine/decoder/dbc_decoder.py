@@ -78,7 +78,7 @@ class DbcSignalDecoder:
 
     def _get_signal_metadata(self, msg_def: Any) -> tuple[dict[str, str], dict[str, Any]]:
         """Fetch pre-cached signal metadata for O(1) lookups."""
-        fid = id(msg_def)
+        fid = getattr(msg_def, "frame_id", id(msg_def))
         if fid not in self._signal_units_cache:
             self._signal_units_cache[fid] = {s.name: (s.unit or "") for s in msg_def.signals}
             self._signal_defs_cache[fid] = {s.name: s for s in msg_def.signals}
