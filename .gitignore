@@ -77,3 +77,6 @@ traces/
 
 # Local review/benchmark scratch — never commit
 .scratch/
+
+# Multi-agent session internals
+.agents/
