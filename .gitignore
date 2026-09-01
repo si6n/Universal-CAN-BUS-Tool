@@ -74,3 +74,6 @@ traces/
 # AI Agent Workspaces & Local Prompts
 .agents/
 .agent/
+
+# Local review/benchmark scratch — never commit
+.scratch/
