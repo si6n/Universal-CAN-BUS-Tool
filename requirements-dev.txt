@@ -17,4 +17,4 @@ mypy>=1.9.0
 # Standalone C++ Compilation
 Nuitka>=2.1.0
 ordered-set>=4.1.0
-zstandard>=0.22.0
+zstandard>=0.25.0
