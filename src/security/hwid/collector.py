@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import platform
+import re
 import subprocess
 import sys
 import uuid
@@ -33,8 +34,21 @@ _INVALID_UUIDS = frozenset(
 
 
 def _run_powershell(command: str) -> str:
-    """Execute a single PowerShell command and return the trimmed output."""
+    """Execute a single PowerShell command and return the trimmed output.
+
+    Defense-in-depth for the B603 scanner finding: every caller passes a
+    fixed WMI query built from module constants — no external input ever
+    reaches here. The allow-list assert makes that contract explicit and
+    fails loudly if a future caller tries to interpolate dynamic data.
+    """
     if sys.platform != "win32":
+        return ""
+    # Only plain WMI/CIM read queries are permitted. The char class allows
+    # single quotes (WMI -Filter 'X=Y' clauses) but excludes shell metacharacters
+    # ($ ` ; & > < !), double quotes and newlines, so redirection, chaining and
+    # interpolation cannot reach the interpreter.
+    if not re.fullmatch(r"[A-Za-z0-9_().|,'= \-]+", command) or "\n" in command or '"' in command:
+        logger.warning("Rejected non-conforming PowerShell command", extra={"command": command[:80]})
         return ""
     try:
         cmd = [

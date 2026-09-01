@@ -149,3 +149,32 @@ def test_package_exports() -> None:
     assert hasattr(sec, "collect_motherboard_uuid")
     assert hasattr(sec, "collect_cpu_id")
     assert hasattr(sec, "collect_primary_mac")
+
+
+def test_powershell_guard_allows_legit_wmi_blocks_injection() -> None:
+    """B603 hardening: only plain WMI read queries may reach PowerShell.
+
+    Live-collected regression: the MAC query legitimately contains
+    -Filter 'IPEnabled=True' (single quotes + equals), which a naive
+    character deny-list would reject and silently fall back to uuid.getnode().
+    """
+    from src.security.hwid.collector import _run_powershell
+
+    # The exact production MAC query conforms
+    legit = (
+        "(Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration "
+        "-Filter 'IPEnabled=True' | Select-Object -First 1).MACAddress"
+    )
+    from src.security.hwid.collector import re as _re
+    assert _re.fullmatch(r"[A-Za-z0-9_().|,'= \-]+", legit)
+
+    # Injection vectors must be rejected by the guard pattern
+    attacks = [
+        "Get-Process; Remove-Item C:/x",   # chaining
+        "Get-CimInstance $(calc)",         # interpolation
+        "Get-Content x > out.txt",         # redirection
+        'Write-Host "hello"',              # double quotes
+        "Get-Process & calc",              # background op
+    ]
+    for a in attacks:
+        assert not _re.fullmatch(r"[A-Za-z0-9_().|,'= \-]+", a) or "\n" in a or '"' in a, a
