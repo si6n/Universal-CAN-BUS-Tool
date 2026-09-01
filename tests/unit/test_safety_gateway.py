@@ -454,3 +454,163 @@ def test_production_constructor_has_no_testing_bypass_flag() -> None:
 
     params = inspect.signature(TxSafetyGateway.__init__).parameters
     assert "allow_all_for_testing" not in params
+
+
+# ============================================================================
+# Lock-Scope Refactor Regression Tests (H2)
+# ============================================================================
+
+
+def test_estop_callback_does_not_block_on_slow_driver_io() -> None:
+    """H2 Regression: E-Stop callback completes immediately even when privileged_send blocks.
+
+    Verifies that the gateway lock is released before calling privileged_send, so
+    E-Stop callbacks (which acquire the same lock) do not wait for driver I/O.
+    """
+    import threading
+
+    # Controllable mock bus with event-gated send
+    class SlowBus:
+        def __init__(self) -> None:
+            self.send_gate = threading.Event()
+            self.privileged_send_entered = threading.Event()
+            self.sent_frames: list[CanFrame] = []
+
+        def connect(self) -> None:
+            pass
+
+        def disconnect(self) -> None:
+            pass
+
+        def privileged_send(self, frame: CanFrame) -> None:
+            self.privileged_send_entered.set()
+            self.send_gate.wait()  # Block until gate is opened
+            self.sent_frames.append(frame)
+
+    bus = SlowBus()
+    estop = EmergencyStopSystem()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    callback_completed = threading.Event()
+
+    def estop_callback(event: object) -> None:
+        callback_completed.set()
+
+    estop.register_callback(estop_callback)
+
+    # Start transmit in background (will block in privileged_send)
+    def transmit_worker() -> None:
+        try:
+            gateway.validate_and_transmit(frame)
+        except SafetyError:
+            pass
+
+    tx_thread = threading.Thread(target=transmit_worker)
+    tx_thread.start()
+
+    # Wait for privileged_send to be entered
+    assert bus.privileged_send_entered.wait(timeout=2.0), "privileged_send was not entered"
+
+    # Trigger E-Stop while send is blocked
+    estop.trigger(EStopTriggerSource.USER_UI_BUTTON, "Operator pressed red button")
+
+    # Callback must complete immediately (not block on driver I/O)
+    assert callback_completed.wait(timeout=2.0), "E-Stop callback blocked on gateway lock"
+
+    # Unblock the send and clean up
+    bus.send_gate.set()
+    tx_thread.join(timeout=2.0)
+
+    assert estop.is_engaged
+
+
+def test_estop_race_window_snapshot_already_engaged() -> None:
+    """H2 Regression: E-Stop engaged during Stage 2 → tokens rolled back on Phase 2 rejection.
+
+    Scenario: estop.is_engaged=True at snapshot time (caught in Stage 2 or between
+    Stage 2 and snapshot). Tokens are consumed but frame is rejected in Phase 2.
+    Verify rollback occurs.
+    """
+    bus = VirtualBus(channel_id="safety_vbus_race_engaged")
+    bus.connect()
+    estop = EmergencyStopSystem()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    # Engage E-Stop before validation
+    estop.trigger(EStopTriggerSource.USER_UI_BUTTON, "Pre-engaged")
+    assert estop.is_engaged
+
+    initial_timestamps = len(gateway._tx_timestamps)
+    initial_budget_tokens = gateway._budgets["default"]._tokens
+
+    # Attempt transmission — should be rejected in Stage 2 (no token consumption)
+    with pytest.raises(SafetyError, match="Emergency Stop is currently ENGAGED"):
+        gateway.validate_and_transmit(frame)
+
+    # Verify no tokens were consumed (Stage 2 rejection happens before Stage 6)
+    assert len(gateway._tx_timestamps) == initial_timestamps
+    assert gateway._budgets["default"]._tokens == initial_budget_tokens
+    assert len(bus.sent_frames) == 0
+
+    bus.disconnect()
+
+
+def test_estop_race_window_triggered_between_phases() -> None:
+    """H2 Regression: E-Stop triggered between Phase 1 (lock release) and Phase 3 (send).
+
+    Scenario: estop snapshot clear → estop.trigger() in another thread → Phase 2
+    detects engagement → tokens rolled back, frame rejected, no send.
+    """
+    import threading
+    from unittest.mock import Mock
+
+    estop = EmergencyStopSystem()
+
+    # Mock bus that signals when privileged_send is about to be called
+    bus = Mock()
+    bus.sent_frames = []
+
+    phase1_completed = threading.Event()
+    estop_triggered = threading.Event()
+
+    # Patch estop.is_engaged property to trigger E-Stop after Phase 1 snapshot
+    call_count = [0]
+    def patched_is_engaged_getter(self: EmergencyStopSystem) -> bool:
+        call_count[0] += 1
+        # First call: Stage 2 check (inside lock) → return False
+        # Second call: snapshot at lock release → return False, signal Phase 1 done
+        # Third call: Phase 2 double-check → trigger estop, return True
+        if call_count[0] == 2:
+            phase1_completed.set()
+        elif call_count[0] == 3:
+            if not estop_triggered.is_set():
+                estop._is_engaged = True
+                estop_triggered.set()
+        return estop._is_engaged
+
+    # Monkey-patch the property
+    original_property = type(estop).is_engaged
+    type(estop).is_engaged = property(lambda self: patched_is_engaged_getter(self))
+
+    try:
+        gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+        frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+        initial_budget_tokens = gateway._budgets["default"]._tokens
+
+        # Attempt transmission — Phase 2 should detect estop and rollback
+        with pytest.raises(SafetyError, match="Emergency Stop is currently ENGAGED"):
+            gateway.validate_and_transmit(frame)
+
+        # Verify tokens were rolled back
+        assert len(gateway._tx_timestamps) == 0
+        assert gateway._budgets["default"]._tokens == initial_budget_tokens
+        assert not bus.privileged_send.called
+        assert estop._is_engaged
+    finally:
+        # Restore original property
+        type(estop).is_engaged = original_property

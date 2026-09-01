@@ -65,6 +65,11 @@ class TxBudget:
                 return True
             return False
 
+    def refund(self, n: int = 1) -> None:
+        """Refund `n` previously consumed tokens back to the bucket (capped at capacity)."""
+        with self._lock:
+            self._tokens = min(float(self.capacity), self._tokens + n)
+
 
 class TxSafetyGateway:
     """Security and Functional Safety Gateway filtering all outgoing CAN transmissions."""
@@ -165,7 +170,18 @@ class TxSafetyGateway:
         user_confirmed: bool = False,
         budget_category: str = "default",
     ) -> bool:
-        """Enforce strict 6-stage policy evaluation order before transmitting onto HAL."""
+        """Enforce strict 6-stage policy evaluation order before transmitting onto HAL.
+
+        Lock structure: validation + token consumption under lock → snapshot estop
+        state → release lock → final estop guard with rollback → transmit outside lock.
+        This ensures watchdog/estop callbacks never block on driver I/O.
+        """
+        # -----------------------------------------------------------------
+        # PHASE 1: VALIDATION + STATE MUTATION (under gateway lock)
+        # -----------------------------------------------------------------
+        timestamp_consumed = False
+        budget_consumed = False
+
         with self._lock:
             now_ns = time.monotonic_ns()
 
@@ -281,7 +297,7 @@ class TxSafetyGateway:
             # -----------------------------------------------------------------
             # Stage 6: Rate Budget Enforcement
             # The sliding window (Stage 6a) throttles the general traffic lane.
-             # Categorised bursts are governed by their own token bucket (Stage
+            # Categorised bursts are governed by their own token bucket (Stage
             # 6b) — e.g. a J1939 BAM transfer legitimately sends up to 255
             # packets well above MAX_TX_RATE_PER_SEC, so it is exempt from the
             # default-lane window and bounded by its bucket instead.
@@ -303,6 +319,7 @@ class TxSafetyGateway:
                     raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
 
                 self._tx_timestamps.append(now_ns)
+                timestamp_consumed = True
 
             # Stage 6b: per-category token bucket (F-18) — bursts like a J1939
             # BAM transfer (<=255 packets) fit the protocol_burst budget.
@@ -320,11 +337,36 @@ class TxSafetyGateway:
                 raise RateLimitExceededError(
                     f"TX budget '{budget_category}' exhausted (capacity {budget.capacity})",
                 )
+            budget_consumed = True
 
-            # D8: privileged dispatch through the explicit gateway port — no
-            # more duck-typed reach into the driver's private _send_raw
-            self.bus.privileged_send(frame)
-            return True
+            # Snapshot estop state at the moment of lock release
+            estop_snapshot = self.estop.is_engaged
+
+        # -----------------------------------------------------------------
+        # PHASE 2: FINAL E-STOP GUARD (lock-free)
+        # estop.is_engaged acquires estop's own RLock (leaf lock), which does
+        # not enter the gateway lock ordering — no deadlock risk.
+        # -----------------------------------------------------------------
+        if estop_snapshot or self.estop.is_engaged:
+            # E-Stop was engaged either during Stage 2 validation or in the
+            # window between lock release and this check. Rollback consumed tokens.
+            with self._lock:
+                if timestamp_consumed and self._tx_timestamps:
+                    self._tx_timestamps.pop()
+                if budget_consumed:
+                    budget.refund()
+            raise SafetyError(
+                "Transmission blocked: Emergency Stop is currently ENGAGED",
+                code="ESTOP_ACTIVE",
+            )
+
+        # -----------------------------------------------------------------
+        # PHASE 3: TRANSMIT (outside lock, no rollback after this point)
+        # D8: privileged dispatch through the explicit gateway port — no
+        # more duck-typed reach into the driver's private _send_raw
+        # -----------------------------------------------------------------
+        self.bus.privileged_send(frame)
+        return True
 
     def send_sync(self, frame: CanFrame) -> None:
         """Synchronously transmit frame conforming to TxPort protocol."""
