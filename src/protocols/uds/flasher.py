@@ -81,7 +81,7 @@ class EcuFlashingEngine:
     def __init__(
         self,
         uds_client: UdsClient,
-        gateway: TxSafetyGateway | None = None,
+        gateway: TxSafetyGateway,
         on_progress: Callable[[FlashingProgress], None] | None = None,
         on_log: Callable[[str, str], None] | None = None,
     ) -> None:
@@ -154,6 +154,7 @@ class EcuFlashingEngine:
             "info",
         )
 
+        recovery_needed = False
         try:
             # 1. Safety Validation
             self._emit_progress(FlashingStep.SAFETY_VALIDATION, 1, 0, total_bytes, start_time, crc_hex)
@@ -161,9 +162,8 @@ class EcuFlashingEngine:
             if not config.user_confirmed:
                 raise SafetyError("Flashing işlemi operatörün açık çift onayını (Dual-Confirmation) gerektirir.")
 
-            if self.gateway is not None:
-                if self.gateway.estop.is_engaged:
-                    raise SafetyError("Acil Durdurma (E-Stop) aktifken flashing yapılamaz!")
+            if self.gateway.estop.is_engaged:
+                raise SafetyError("Acil Durdurma (E-Stop) aktifken flashing yapılamaz!")
 
             # 2. Extended Diagnostic Session
             self._emit_progress(FlashingStep.EXTENDED_SESSION, 2, 0, total_bytes, start_time, crc_hex)
@@ -171,6 +171,9 @@ class EcuFlashingEngine:
             resp = self.uds_client.change_session(DiagnosticSessionType.EXTENDED_DIAGNOSTIC_SESSION)
             if not resp.is_positive:
                 raise ProtocolError(f"Genişletilmiş oturum açılamadı: {resp.nrc_description_tr} (NRC 0x{resp.nrc:02X})")
+            # From here on the ECU is out of its default session; a failure
+            # must attempt best-effort recovery before surfacing the error.
+            recovery_needed = True
 
             # 3. Security Access (Optional/If configured)
             self._emit_progress(FlashingStep.SECURITY_ACCESS, 3, 0, total_bytes, start_time, crc_hex)
@@ -204,6 +207,7 @@ class EcuFlashingEngine:
             resp = self.uds_client.request_download(
                 memory_address=config.memory_address,
                 memory_size=total_bytes,
+                user_confirmed=config.user_confirmed,
             )
             if not resp.is_positive:
                 raise ProtocolError(f"RequestDownload ECU tarafından reddedildi: {resp.nrc_description_tr}")
@@ -251,6 +255,7 @@ class EcuFlashingEngine:
                 resp = self.uds_client.start_routine(
                     routine_id=config.checksum_routine_id,
                     options=crc_bytes,
+                    user_confirmed=config.user_confirmed,
                 )
                 if not resp.is_positive:
                     raise ProtocolError(f"Sağlama toplamı doğrulama başarısız: {resp.nrc_description_tr}")
@@ -262,7 +267,9 @@ class EcuFlashingEngine:
             self._emit_progress(FlashingStep.ECU_RESET, 9, total_bytes, total_bytes, start_time, crc_hex)
             if config.reset_after_flash:
                 self._log("Adım 9/10: ECU yeniden başlatılıyor (Hard Reset 0x11)...", "info")
-                with_reset_resp = self.uds_client.ecu_reset(reset_type=config.reset_type)
+                with_reset_resp = self.uds_client.ecu_reset(
+                    reset_type=config.reset_type, user_confirmed=config.user_confirmed
+                )
                 if not with_reset_resp.is_positive:
                     self._log(f"ECU Reset uyarısı: {with_reset_resp.nrc_description_tr}", "warning")
                 else:
@@ -277,4 +284,24 @@ class EcuFlashingEngine:
         except Exception as exc:
             self.current_step = FlashingStep.FAILED
             self._log(f"❌ Flashing Hatası: {exc}", "error")
+            if recovery_needed:
+                self._best_effort_recovery()
             raise
+
+    def _best_effort_recovery(self) -> None:
+        """Attempt to return the ECU to a safe state after a failed flash.
+
+        The incomplete transfer is deliberately NOT finalized (no 0x37); a hard
+        reset (0x11 0x01) lets the bootloader validate/discard the uncommitted
+        image on its own. Recovery failures are logged and swallowed so they
+        never mask the original error.
+        """
+        self._log("Kurtarma: ECU güvenli duruma döndürülmeye çalışılıyor (Hard Reset)...", "warning")
+        try:
+            resp = self.uds_client.ecu_reset(reset_type=0x01, user_confirmed=True)
+            if resp.is_positive:
+                self._log("Kurtarma: ECU Hard Reset kabul edildi.", "info")
+            else:
+                self._log(f"Kurtarma: ECU Hard Reset reddedildi: {resp.nrc_description_tr}", "warning")
+        except Exception as recovery_exc:  # noqa: BLE001
+            self._log(f"Kurtarma başarısız (ECU olduğu durumda bırakıldı): {recovery_exc}", "error")

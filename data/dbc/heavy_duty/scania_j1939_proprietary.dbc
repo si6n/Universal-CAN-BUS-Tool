@@ -1,0 +1,64 @@
+VERSION "Scania_J1939_Proprietary_v1.0"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: EMS_Scania RET_Scania
+
+BO_ 2583664640 Scania_DPF_Aftertreatment: 8 EMS_Scania
+ SG_ SootMassGram : 0|16@1+ (0.1,0) [0|6553.5] "g" Vector__XXX
+ SG_ AshMassGram : 16|16@1+ (0.1,0) [0|6553.5] "g" Vector__XXX
+ SG_ DPF_DifferentialPressure : 32|8@1+ (0.5,0) [0|127.5] "kPa" Vector__XXX
+ SG_ DPF_InletTemperature : 40|8@1+ (5,-40) [-40|1235] "degC" Vector__XXX
+ SG_ DPF_OutletTemperature : 48|8@1+ (5,-40) [-40|1235] "degC" Vector__XXX
+ SG_ RegenState : 56|8@1+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 2583667200 Scania_Retarder_Telemetry: 8 RET_Scania
+ SG_ ActualRetarderTorquePct : 0|8@1+ (1,-125) [-125|125] "%" Vector__XXX
+ SG_ RetarderSelectedStage : 8|4@1+ (1,0) [0|15] "" Vector__XXX
+ SG_ RetarderOilTemperature : 16|8@1+ (1,-40) [-40|215] "degC" Vector__XXX
+ SG_ RetarderCoolantTemp : 24|8@1+ (1,-40) [-40|215] "degC" Vector__XXX
+ SG_ RetarderDemandTorquePct : 32|8@1+ (1,-125) [-125|125] "%" Vector__XXX
+
+BO_ 2583669760 Scania_Cylinder_Balancing: 8 EMS_Scania
+ SG_ Cyl1_FuelCorrection : 0|16@1- (0.01,0) [-327.68|327.67] "mg/stroke" Vector__XXX
+ SG_ Cyl2_FuelCorrection : 16|16@1- (0.01,0) [-327.68|327.67] "mg/stroke" Vector__XXX
+ SG_ Cyl3_FuelCorrection : 32|16@1- (0.01,0) [-327.68|327.67] "mg/stroke" Vector__XXX
+ SG_ Cyl4_FuelCorrection : 48|16@1- (0.01,0) [-327.68|327.67] "mg/stroke" Vector__XXX
+
+CM_ "Scania Truck & Bus Proprietary J1939 DBC (EMS S6/S7/S8, DC09/DC13/DC16, Retarder R3500/R4100)";
+CM_ BO_ 2583664640 "PGN 65400 (0xFF78): Scania Aftertreatment DPF Soot/Ash & Regeneration State";
+CM_ BO_ 2583667200 "PGN 65410 (0xFF82): Scania Retarder R3500/R4100 Actual Torque & Temperatures";
+CM_ BO_ 2583669760 "PGN 65420 (0xFF8C): Scania Cylinder Fuel Balancing & Injection Correction";
+
+VAL_ 2583664640 RegenState 0 "Not Required" 1 "Automatic Highway Running" 2 "Parked Regen Required" 3 "Parked Regen Running" 4 "Inhibited by Driver" 5 "Aborted High Temp" 6 "System Fault" ;
+VAL_ 2583667200 RetarderSelectedStage 0 "Off" 1 "Stage 1 (20%)" 2 "Stage 2 (40%)" 3 "Stage 3 (60%)" 4 "Stage 4 (80%)" 5 "Stage 5 (100%)" 6 "Aquatarder Auto Brake" ;

@@ -1,0 +1,84 @@
+VERSION "canboat-J1939-curated"
+
+NS_ :
+    NS_DESC_
+    CM_
+    BA_DEF_
+    BA_
+    VAL_
+    CAT_DEF_
+    CAT_
+    FILTER
+    BA_DEF_DEF_
+    EV_DATA_
+    ENVVAR_DATA_
+    SGTYPE_
+    SGTYPE_VAL_
+    BA_DEF_SGTYPE_
+    BA_SGTYPE_
+    SIG_TYPE_REF_
+    VAL_TABLE_
+    SIG_GROUP_
+    SIG_VALTYPE_
+    SIGTYPE_VALTYPE_
+    BO_TX_BU_
+    BA_DEF_REL_
+    BA_REL_
+    BA_DEF_DEF_REL_
+    BU_SG_REL_
+    BU_EV_REL_
+    BU_BO_REL_
+    SG_MUL_VAL_
+
+BS_:
+
+BU_: Vector__XXX
+
+BO_ 2550202097 PGN_65265_ccvs1: 8 Vector__XXX
+ SG_ Speed_Override : 0|1@1+ (1.0,0) [0|1] "" Vector__XXX
+ SG_ Brake_Switch : 1|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Clutch_Switch : 3|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Active : 5|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Enable_Switch_State : 7|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Set_Switch_State : 9|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Accelerate_Switch_State : 11|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Decelerate_Switch_State : 13|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Resume_Switch_State : 15|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Pause_Switch_State : 17|2@1+ (1.0,0) [0|3] "" Vector__XXX
+ SG_ Cruise_Control_Set_Speed : 19|16@1+ (0.00390625,0) [0.0|255.99609375] "km/h" Vector__XXX
+ SG_ Wheel_Based_Vehicle_Speed : 35|16@1+ (0.00390625,0) [0.0|255.99609375] "km/h" Vector__XXX
+ SG_ Cruise_Control_States : 51|8@1+ (1.0,0) [0|255] "" Vector__XXX
+
+CM_ BO_ 402718449 "J1939: PGN 65265 - Cruise Control / Vehicle Speed 1 (CCVS1) (type: Single)";
+CM_ SG_ 402718449 Speed_Override "SPN 1185; canboat type: NUMBER";
+CM_ SG_ 402718449 Brake_Switch "SPN 597; canboat type: NUMBER";
+CM_ SG_ 402718449 Clutch_Switch "SPN 938; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Active "SPN 695; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Enable_Switch_State "SPN 598; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Set_Switch_State "SPN 596; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Accelerate_Switch_State "SPN 595; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Decelerate_Switch_State "SPN 594; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Resume_Switch_State "SPN 593; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Pause_Switch_State "SPN 3885; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_Set_Speed "SPN 84 speed but field 1184 per J1939-71 — actually SPN 1184; canboat type: NUMBER";
+CM_ SG_ 402718449 Wheel_Based_Vehicle_Speed "SPN 84: physical value; resolution 1/256 km/h per bit per SAE J1939-71; canboat type: NUMBER";
+CM_ SG_ 402718449 Cruise_Control_States "SPN 5901; canboat type: NUMBER";
+
+
+
+
+
+CM_ BU_ Vector__XXX "Converted from canboat database (Apache-2.0). J1939 PGN definitions. NOT AN OFFICIAL SAE/NMEA RELEASE; see repository README for attribution requirements.";
+
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 60000;
+BA_DEF_ BO_ "ProtocolType" STRING;
+BA_DEF_ "BusType" STRING;
+BA_ "BusType" "CAN";
+BA_ "ProtocolType" "J1939";
+
+BA_DEF_ BO_ "J1939PGN" INT 0 262143;
+
+BA_ "J1939PGN" BO_ 402718449 65265;
+BA_ "GenMsgCycleTime" BO_ 402718449 100;
+
+CM_ "Generated from canboat (Apache-2.0). 1 PGN, 13 signal, 0 enum tablosu.";

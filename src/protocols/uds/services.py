@@ -52,6 +52,10 @@ class UdsResponse:
     is_positive: bool
     data: bytes
     nrc: UdsNrc = UdsNrc.POSITIVE_RESPONSE
+    # Raw NRC byte as received on the wire. Diverges from `nrc` only for
+    # vendor-specific codes absent from UdsNrc, which would otherwise be
+    # silently remapped to GENERAL_REJECT.
+    raw_nrc: int | None = None
 
     @property
     def nrc_description_en(self) -> str:
@@ -115,8 +119,25 @@ class UdsServiceBuilder:
         data_format_identifier: int = 0x00,
         address_and_length_format_identifier: int = 0x44,
     ) -> bytes:
-        addr_bytes = memory_address.to_bytes(4, byteorder="big")
-        size_bytes = memory_size.to_bytes(4, byteorder="big")
+        # ALFI high nibble = memory address size in bytes, low nibble = memory
+        # size in bytes (ISO 14229-0 §9.3.1). Widths other than 1..4 (or
+        # values that overflow their width) are rejected up front instead of
+        # emitting an inconsistent request.
+        addr_width = (address_and_length_format_identifier >> 4) & 0x0F
+        size_width = address_and_length_format_identifier & 0x0F
+        if not (1 <= addr_width <= 4 and 1 <= size_width <= 4):
+            raise ValueError(
+                f"Invalid ALFI 0x{address_and_length_format_identifier:02X}: "
+                f"address width {addr_width}, size width {size_width} (each must be 1..4)"
+            )
+        try:
+            addr_bytes = memory_address.to_bytes(addr_width, byteorder="big")
+            size_bytes = memory_size.to_bytes(size_width, byteorder="big")
+        except OverflowError as exc:
+            raise ValueError(
+                f"Value does not fit ALFI 0x{address_and_length_format_identifier:02X} widths "
+                f"(address {addr_width}B, size {size_width}B)"
+            ) from exc
         return (
             bytes(
                 [
@@ -155,11 +176,13 @@ class UdsServiceBuilder:
                 raise ValueError("Negative response requires at least 3 bytes")
             rejected_sid = payload[1]
             nrc_val = payload[2]
+            known_nrc = nrc_val in UdsNrc._value2member_map_
             return UdsResponse(
                 service_id=rejected_sid,
                 is_positive=False,
                 data=payload[3:],
-                nrc=UdsNrc(nrc_val) if nrc_val in UdsNrc._value2member_map_ else UdsNrc.GENERAL_REJECT,
+                nrc=UdsNrc(nrc_val) if known_nrc else UdsNrc.GENERAL_REJECT,
+                raw_nrc=nrc_val,
             )
 
         # Positive Response (SID + 0x40)

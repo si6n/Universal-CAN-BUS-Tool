@@ -5,6 +5,7 @@ Complies with ISO 11783-3 / NMEA 2000 Fast Packet specification (up to 223 bytes
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -47,6 +48,7 @@ class Nmea2000FastPacketDecoder:
 
     def __init__(self) -> None:
         self._sessions: dict[tuple[int, int, int], FastPacketSession] = {}
+        self._sessions_lock = threading.RLock()  # F-24: concurrent dict access
 
     def handle_rx_frame(self, frame: CanFrame) -> N2KCompletedMessage | None:
         """Process incoming 29-bit CAN frame for NMEA 2000 Fast Packet reassembly."""
@@ -67,11 +69,30 @@ class Nmea2000FastPacketDecoder:
         session_key = (source_address, pgn, sequence_id)
         now = time.monotonic()
 
-        # Clean expired sessions
-        self._clean_expired(now)
+        with self._sessions_lock:
+            # Clean expired sessions
+            self._clean_expired(now)
+            return self._handle_locked(frame, frame_index, sequence_id, source_address, pgn, session_key, now)
 
+    def _handle_locked(
+        self,
+        frame: CanFrame,
+        frame_index: int,
+        sequence_id: int,
+        source_address: int,
+        pgn: int,
+        session_key: tuple[int, int, int],
+        now: float,
+    ) -> N2KCompletedMessage | None:
         if frame_index == 0:
-            # First Frame of Fast Packet
+            # First Frame of Fast Packet — F-25: a restart (index 0) for an
+            # in-flight session drops the stale session instead of leaking it
+            if session_key in self._sessions:
+                stale = self._sessions.pop(session_key)
+                logger.warning(
+                    "N2K Fast Packet restarted mid-transfer; stale session dropped",
+                    extra={"pgn": pgn, "sa": source_address, "stale_bytes": len(stale.received_bytes)},
+                )
             total_bytes = frame.data[1]
             if not (9 <= total_bytes <= 223):
                 logger.debug(

@@ -119,6 +119,8 @@ class IsoTpRxSession:
     tx_id: int = 0x7E0
     is_fd: bool = False
     max_buffer_size: int = 1048576
+    # CFs received since the last Flow Control we emitted (BS windowing)
+    block_count: int = 0
 
 
 # ============================================================================
@@ -137,11 +139,19 @@ class IsoTpTransport:
         rx_id: int = 0x7E8,
         channel_id: str = "uds_ch0",
         pad_byte: int | None = 0xCC,
+        rx_block_size: int = 0,
+        rx_st_min: int = 0,
     ) -> None:
         self.tx_id = tx_id
         self.rx_id = rx_id
         self.channel_id = channel_id
         self.pad_byte = pad_byte
+        # Flow Control advertisement to senders: block size 0 = unlimited
+        # (legacy behaviour), non-zero bounds each CTS window and makes the
+        # receiver emit a fresh FC after every block. STmin is the raw
+        # ISO 15765-2 byte (0..0x7F ms, 0xF1..0xF9 = 100 µs units).
+        self.rx_block_size = rx_block_size
+        self.rx_st_min = rx_st_min
         self._rx_session: IsoTpRxSession | None = None
 
     def segment_message(self, data: bytes, is_fd: bool = False) -> list[CanFrame]:
@@ -392,11 +402,11 @@ class IsoTpTransport:
                 self._rx_session = None
                 return completed, None
 
-            # Generate Flow Control (CTS, BS=0, STmin=0)
+            # Generate Flow Control (CTS with configured BS/STmin)
             fc_data = bytearray(8)
             fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
-            fc_data[1] = 0x00  # Block size = 0 (send all)
-            fc_data[2] = 0x00  # STmin = 0 ms
+            fc_data[1] = self.rx_block_size & 0xFF  # Block size (0 = send all)
+            fc_data[2] = self.rx_st_min & 0xFF  # STmin (raw ISO 15765-2 byte)
             for i in range(3, 8):
                 fc_data[i] = 0xCC
 
@@ -418,6 +428,15 @@ class IsoTpTransport:
                 return None, None
 
             session = self._rx_session
+
+            # F-20: a CF arriving on a different channel must not corrupt an
+            # in-flight session opened on another bus.
+            if session.channel_id != frame.channel_id:
+                logger.warning(
+                    "ISO-TP CF channel mismatch — ignoring frame",
+                    extra={"session_channel": session.channel_id, "frame_channel": frame.channel_id},
+                )
+                return None, None
 
             # Check N_Cr timeout
             if (now - session.last_activity_time) > self.TIMEOUT_SEC:
@@ -447,6 +466,28 @@ class IsoTpTransport:
                 completed = bytes(session.received_bytes[: session.total_bytes])
                 self._rx_session = None
                 return completed, None
+
+            # BS windowing: after rx_block_size consecutive frames the sender
+            # needs a fresh FC (CTS) before it may continue transmitting.
+            if self.rx_block_size > 0:
+                session.block_count += 1
+                if session.block_count >= self.rx_block_size:
+                    session.block_count = 0
+                    fc_data = bytearray(8)
+                    fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
+                    fc_data[1] = self.rx_block_size & 0xFF
+                    fc_data[2] = self.rx_st_min & 0xFF
+                    for i in range(3, 8):
+                        fc_data[i] = 0xCC
+                    fc_frame = CanFrame.create(
+                        channel_id=frame.channel_id,
+                        arbitration_id=self.tx_id,
+                        data=bytes(fc_data),
+                        is_extended=frame.is_extended,
+                        is_fd=frame.is_fd,
+                        direction="tx",
+                    )
+                    return None, fc_frame
 
             return None, None
 
@@ -513,6 +554,44 @@ class IsoTpSender:
                 direction="tx",
             )
 
+    async def _send_with_n_as(self, frame: CanFrame) -> None:
+        """Transmit one frame enforcing the N_As timeout.
+
+        N_As (ISO 15765-2 §4.6.1) bounds the time for the network layer to
+        complete a single frame transmission after the request. A TxPort
+        that blocks longer than n_as_timeout_s is treated as a timeout.
+        """
+        send_task: asyncio.Future[None] = asyncio.ensure_future(self.tx_port.send(frame))
+        elapsed = 0.0
+        start = self.clock.now_monotonic()
+        while True:
+            remaining = self.n_as_timeout_s - (self.clock.now_monotonic() - start)
+            if remaining <= 0:
+                if not send_task.done():
+                    send_task.cancel()
+                raise IsoTpTimeoutError(
+                    f"N_As timeout ({self.n_as_timeout_s * 1000:.0f}ms) transmitting ISO-TP frame",
+                    timeout_type="N_As",
+                    elapsed_ms=elapsed * 1000.0,
+                    limit_ms=self.n_as_timeout_s * 1000.0,
+                )
+            try:
+                await asyncio.wait_for(asyncio.shield(send_task), timeout=remaining)
+                return
+            except asyncio.TimeoutError:
+                elapsed = self.clock.now_monotonic() - start
+                if elapsed >= self.n_as_timeout_s:
+                    send_task.cancel()
+                    raise IsoTpTimeoutError(
+                        f"N_As timeout ({self.n_as_timeout_s * 1000:.0f}ms) transmitting ISO-TP frame",
+                        timeout_type="N_As",
+                        elapsed_ms=elapsed * 1000.0,
+                        limit_ms=self.n_as_timeout_s * 1000.0,
+                    ) from None
+                # Shield raced with completion; re-check
+                if send_task.done() and not send_task.cancelled() and send_task.exception() is None:
+                    return
+
     async def _apply_st_min(self, st_min_byte: int) -> None:
         """Execute STmin pacing delay via sleep or high-precision spin-wait."""
         if st_min_byte == 0x00:
@@ -570,13 +649,13 @@ class IsoTpSender:
         if not self.is_fd and data_len <= 7:
             sf_raw = bytes([(PCI_SINGLE_FRAME << 4) | (data_len & 0x0F)]) + payload
             frame = self._build_frame(sf_raw, is_fd=False)
-            await self.tx_port.send(frame)
+            await self._send_with_n_as(frame)
             return
 
         if self.is_fd and data_len <= 62:
             sf_raw = bytes([0x00, data_len]) + payload
             frame = self._build_frame(sf_raw, is_fd=True)
-            await self.tx_port.send(frame)
+            await self._send_with_n_as(frame)
             return
 
         # 2. Multi-Frame First Frame
@@ -589,7 +668,7 @@ class IsoTpSender:
 
         ff_chunk = payload[:ff_payload_size]
         ff_frame = self._build_frame(ff_header + ff_chunk, is_fd=self.is_fd)
-        await self.tx_port.send(ff_frame)
+        await self._send_with_n_as(ff_frame)
 
         bytes_sent = len(ff_chunk)
         seq_num = 1
@@ -629,7 +708,7 @@ class IsoTpSender:
                     chunk = payload[bytes_sent : bytes_sent + max_cf_chunk]
                     cf_raw = bytes([(PCI_CONSECUTIVE_FRAME << 4) | (seq_num & 0x0F)]) + chunk
                     cf_frame = self._build_frame(cf_raw, is_fd=self.is_fd)
-                    await self.tx_port.send(cf_frame)
+                    await self._send_with_n_as(cf_frame)
 
                     bytes_sent += len(chunk)
                     seq_num = (seq_num + 1) & 0x0F

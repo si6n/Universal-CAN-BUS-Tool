@@ -5,6 +5,7 @@ Complies with SAE J1939-81 and MASTER_PLAN.md Section 4.2.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar
@@ -105,6 +106,11 @@ class AddressClaimEngine:
         self.channel_id = channel_id
         self.state = AddressClaimState.UNINITIALIZED
         self._address_table: dict[int, J1939Name] = {}  # SA -> NAME
+        self._claim_timer: threading.Timer | None = None  # F-31: 250ms claim window
+        # P6: address table + current address + state mutate from the rx path
+        # and the timer callback concurrently; RLock because the confirmation
+        # timer callback re-enters engine state.
+        self._engine_lock = threading.RLock()
 
     @property
     def is_address_claimed(self) -> bool:
@@ -113,25 +119,48 @@ class AddressClaimEngine:
 
     def start_claiming(self) -> CanFrame:
         """Initiate address claiming sequence and return the Address Claim frame to transmit."""
-        self.current_address = self.preferred_address
-        self.state = AddressClaimState.CLAIMING
+        with self._engine_lock:
+            self.current_address = self.preferred_address
+            self.state = AddressClaimState.CLAIMING
 
-        # Construct J1939 29-bit CAN ID: Priority 6, PGN 60928 (0xEE00), DA 255, SA
-        # 0x18EEFF00 | SA
-        can_id = 0x18EEFF00 | (self.current_address & 0xFF)
-        claim_frame = CanFrame.create(
-            channel_id=self.channel_id,
-            arbitration_id=can_id,
-            data=self.name.to_bytes(),
-            is_extended=True,
-            direction="tx",
-        )
+            # Construct J1939 29-bit CAN ID: Priority 6, PGN 60928 (0xEE00), DA 255, SA
+            # 0x18EEFF00 | SA
+            can_id = 0x18EEFF00 | (self.current_address & 0xFF)
+            claim_frame = CanFrame.create(
+                channel_id=self.channel_id,
+                arbitration_id=can_id,
+                data=self.name.to_bytes(),
+                is_extended=True,
+                direction="tx",
+            )
 
-        logger.info(
-            "Broadcasting Address Claim",
-            extra={"address": self.current_address, "name_int": hex(self.name.to_int64())},
+            # F-31: J1939-81 claim window — if no contention arrives within 250 ms
+            # the claim finalizes automatically (daemon timer).
+            self._arm_claim_confirmation_timer()
+
+            logger.info(
+                "Broadcasting Address Claim",
+                extra={"address": self.current_address, "name_int": hex(self.name.to_int64())},
+            )
+            return claim_frame
+
+    CLAIM_CONFIRM_WINDOW_MS: ClassVar[float] = 250.0  # F-31 (J1939-81 250 ms window)
+
+    def _arm_claim_confirmation_timer(self) -> None:
+        """Start the daemon-thread timer that finalizes an uncontested claim (F-31)."""
+        if self._claim_timer is not None:
+            self._claim_timer.cancel()
+        self._claim_timer = threading.Timer(
+            self.CLAIM_CONFIRM_WINDOW_MS / 1000.0, self.confirm_claimed
         )
-        return claim_frame
+        self._claim_timer.daemon = True
+        self._claim_timer.start()
+
+    def cancel_pending_claim_timer(self) -> None:
+        """Cancel any in-flight claim confirmation timer (contention received)."""
+        if self._claim_timer is not None:
+            self._claim_timer.cancel()
+            self._claim_timer = None
 
     def handle_rx_frame(self, frame: CanFrame) -> CanFrame | None:
         """Process incoming frame. If Address Claim contention occurs, handles arbitration."""
@@ -150,28 +179,40 @@ class AddressClaimEngine:
             return None
 
         other_name = J1939Name.from_bytes(frame.data)
-        self._address_table[source_address] = other_name
 
-        # If claim is from another SA, no collision with our current SA
-        if source_address != self.current_address:
+        # P6: a peer echoing our exact 64-bit NAME is our own claim reflected
+        # back (or a duplicate transmitter) — not contention. Re-asserting
+        # against it would ping-pong forever and could evict us from a valid
+        # address on a single bus glitch.
+        if other_name.to_int64() == self.name.to_int64():
+            logger.debug("Ignoring address claim with identical NAME (self-echo)", extra={"sa": source_address})
             return None
 
-        # Contention detected on our address! Compare 64-bit NAMEs
-        my_val = self.name.to_int64()
-        other_val = other_name.to_int64()
+        with self._engine_lock:
+            self._address_table[source_address] = other_name
 
-        if my_val < other_val:
-            # We have higher priority (lower numerical NAME). Re-assert our address!
-            logger.info("Defending address claim against higher numerical NAME", extra={"sa": self.current_address})
-            can_id = 0x18EEFF00 | (self.current_address & 0xFF)
-            return CanFrame.create(
-                channel_id=self.channel_id,
-                arbitration_id=can_id,
-                data=self.name.to_bytes(),
-                is_extended=True,
-                direction="tx",
-            )
-        else:
+            # If claim is from another SA, no collision with our current SA
+            if source_address != self.current_address:
+                return None
+
+            # Contention detected on our address! Compare 64-bit NAMEs
+            # F-31: contention inside the window cancels auto-confirmation
+            self.cancel_pending_claim_timer()
+            my_val = self.name.to_int64()
+            other_val = other_name.to_int64()
+
+            if my_val < other_val:
+                # We have higher priority (lower numerical NAME). Re-assert our address!
+                logger.info("Defending address claim against higher numerical NAME", extra={"sa": self.current_address})
+                can_id = 0x18EEFF00 | (self.current_address & 0xFF)
+                return CanFrame.create(
+                    channel_id=self.channel_id,
+                    arbitration_id=can_id,
+                    data=self.name.to_bytes(),
+                    is_extended=True,
+                    direction="tx",
+                )
+
             # We lost contention.
             logger.warning("Lost address claim contention", extra={"sa": self.current_address})
             if self.name.arbitrary_address_capable:
@@ -181,6 +222,10 @@ class AddressClaimEngine:
                         self.current_address = candidate_sa
                         can_id = 0x18EEFF00 | (self.current_address & 0xFF)
                         logger.info("Attempting next fallback address", extra={"new_sa": candidate_sa})
+                        # The fallback claim is a fresh claim: it needs its own
+                        # 250 ms contention window or it can never confirm and
+                        # is_address_claimed stays False (J1939 TX permanently dead).
+                        self._arm_claim_confirmation_timer()
                         return CanFrame.create(
                             channel_id=self.channel_id,
                             arbitration_id=can_id,
@@ -204,6 +249,7 @@ class AddressClaimEngine:
 
     def confirm_claimed(self) -> None:
         """Call after claim contention timeout (250 ms) without collision to finalize claim."""
-        if self.state == AddressClaimState.CLAIMING and self.current_address != NULL_ADDRESS:
-            self.state = AddressClaimState.CLAIMED
-            logger.info("Address Claim Confirmed", extra={"sa": self.current_address})
+        with self._engine_lock:
+            if self.state == AddressClaimState.CLAIMING and self.current_address != NULL_ADDRESS:
+                self.state = AddressClaimState.CLAIMED
+                logger.info("Address Claim Confirmed", extra={"sa": self.current_address})

@@ -11,18 +11,21 @@ from src.core.contracts.ports import RxSubscription, TxPort
 from src.core.errors import ProtocolError
 from src.core.logging import get_logger
 from src.protocols.uds.isotp import IsoTpTransport
+from src.protocols.uds.nrc import UdsNrc
 from src.protocols.uds.services import (
     DiagnosticSessionType,
     RoutineControlType,
     UdsResponse,
     UdsServiceBuilder,
 )
-from src.safety.gateway import TxSafetyGateway
 
 if TYPE_CHECKING:
     from src.hal.base import AbstractBus
 
 logger = get_logger("protocols.uds.client")
+
+# ISO 14229 P2* server: extended response window granted per NRC 0x78 (F-14)
+P2_STAR_TIMEOUT_S = 5.0
 
 
 class UdsClient:
@@ -47,9 +50,22 @@ class UdsClient:
             if isinstance(bus, TxPort):
                 self.tx_port = bus
             else:
-                self.tx_port = TxSafetyGateway(bus=bus, allow_all_for_testing=True)
+                # Fail closed (F-21): an implicit gateway must not bypass the
+                # whitelist — pass an explicit tx_port to customize policy.
+                raise ValueError(
+                    "tx_port is required — use TxSafetyGateway with an explicit whitelist "
+                    "instead of an implicit permissive fallback"
+                )
         else:
             raise ValueError("Either bus or tx_port must be provided to UdsClient")
+
+        # P4: without any receive path every request/response exchange would
+        # silently run into UDS_TIMEOUT — fail fast instead.
+        if bus is None and rx_sub is None:
+            raise ValueError(
+                "UdsClient has no receive path — provide a bus (synchronous "
+                "request/response) or an rx_sub (asynchronous one-shot queries)"
+            )
 
         self.bus = bus
         self.rx_sub = rx_sub
@@ -116,8 +132,12 @@ class UdsClient:
         req_payload = UdsServiceBuilder.build_read_data_by_identifier(did)
         return self._send_and_receive(req_payload)
 
-    def write_did(self, did: int, data: bytes, user_confirmed: bool = True) -> UdsResponse:
-        """Write Data Identifier (0x2E) - Critical command."""
+    def write_did(self, did: int, data: bytes, user_confirmed: bool = False) -> UdsResponse:
+        """Write Data Identifier (0x2E) - Critical command.
+
+        Requires explicit operator confirmation; dual confirmation is NOT
+        granted by default.
+        """
         req_payload = UdsServiceBuilder.build_write_data_by_identifier(did, data)
         return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
@@ -127,9 +147,13 @@ class UdsClient:
         memory_size: int,
         data_format_identifier: int = 0x00,
         address_and_length_format_identifier: int = 0x44,
-        user_confirmed: bool = True,
+        user_confirmed: bool = False,
     ) -> UdsResponse:
-        """Request Download (0x34) - Critical command."""
+        """Request Download (0x34) - Critical command.
+
+        Requires explicit operator confirmation; dual confirmation is NOT
+        granted by default.
+        """
         req_payload = UdsServiceBuilder.build_request_download(
             memory_address=memory_address,
             memory_size=memory_size,
@@ -148,13 +172,21 @@ class UdsClient:
         req_payload = UdsServiceBuilder.build_request_transfer_exit()
         return self._send_and_receive(req_payload)
 
-    def ecu_reset(self, reset_type: int = 0x01, user_confirmed: bool = True) -> UdsResponse:
-        """ECU Reset (0x11) - Critical command."""
+    def ecu_reset(self, reset_type: int = 0x01, user_confirmed: bool = False) -> UdsResponse:
+        """ECU Reset (0x11) - Critical command.
+
+        Requires explicit operator confirmation; dual confirmation is NOT
+        granted by default.
+        """
         req_payload = UdsServiceBuilder.build_ecu_reset(reset_type=reset_type)
         return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
-    def start_routine(self, routine_id: int, options: bytes = b"", user_confirmed: bool = True) -> UdsResponse:
-        """Start ECU Routine (0x31) - Critical command."""
+    def start_routine(self, routine_id: int, options: bytes = b"", user_confirmed: bool = False) -> UdsResponse:
+        """Start ECU Routine (0x31) - Critical command.
+
+        Requires explicit operator confirmation; dual confirmation is NOT
+        granted by default.
+        """
         req_payload = UdsServiceBuilder.build_routine_control(RoutineControlType.START_ROUTINE, routine_id, options)
         return self._send_and_receive(req_payload, is_critical_command=True, user_confirmed=user_confirmed)
 
@@ -180,7 +212,7 @@ class UdsClient:
         self,
         payload: bytes,
         is_critical_command: bool = False,
-        user_confirmed: bool = True,
+        user_confirmed: bool = False,
     ) -> None:
         frames = self.transport.segment_message(payload)
         for frame in frames:
@@ -198,17 +230,40 @@ class UdsClient:
         payload: bytes,
         timeout_s: float = 2.0,
         is_critical_command: bool = False,
-        user_confirmed: bool = True,
+        user_confirmed: bool = False,
     ) -> UdsResponse:
-        """Send segmented UDS request and wait for complete ISO-TP reassembled response."""
+        """Send segmented UDS request and wait for complete ISO-TP reassembled response.
+
+        A negative response NRC 0x78 (Response Pending) extends the wait window
+        by P2* (F-14) instead of surfacing as a timeout while the ECU is working.
+        """
+        # P4: the synchronous path reads frames from the bus; an rx_sub-only
+        # client must use the asynchronous one-shot query API instead.
+        if self.bus is None:
+            raise ProtocolError(
+                "Synchronous UDS request/response requires a bus; this client "
+                "was constructed with an rx_sub only",
+                code="UDS_NO_RX_PATH",
+                details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id)},
+            )
+
         self._send_payload(payload, is_critical_command=is_critical_command, user_confirmed=user_confirmed)
 
         start_time = time.monotonic()
+        deadline = start_time + timeout_s
 
-        while (time.monotonic() - start_time) < timeout_s:
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ProtocolError(
+                    f"UDS Request timed out waiting for response from ECU (0x{self.rx_id:03X})",
+                    code="UDS_TIMEOUT",
+                    details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id)},
+                )
+
             rx_frame = None
             if self.bus is not None:
-                rx_frame = self.bus.recv(timeout_s=0.1)
+                rx_frame = self.bus.recv(timeout_s=min(0.1, remaining))
 
             if rx_frame is not None and rx_frame.arbitration_id == self.rx_id:
                 completed_data, resp_frame = self.transport.handle_rx_frame(rx_frame)
@@ -219,10 +274,13 @@ class UdsClient:
                     else:
                         self.tx_port.send_sync(resp_frame)
                 if completed_data is not None:
-                    return UdsServiceBuilder.parse_response(completed_data)
-
-        raise ProtocolError(
-            f"UDS Request timed out waiting for response from ECU (0x{self.rx_id:03X})",
-            code="UDS_TIMEOUT",
-            details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id)},
-        )
+                    resp = UdsServiceBuilder.parse_response(completed_data)
+                    if (
+                        not resp.is_positive
+                        and resp.nrc == UdsNrc.REQUEST_CORRECTLY_RECEIVED_RESPONSE_PENDING
+                        and time.monotonic() < deadline
+                    ):
+                        # P2* extension: ECU signalled pending; keep waiting.
+                        deadline = time.monotonic() + P2_STAR_TIMEOUT_S
+                        continue
+                    return resp

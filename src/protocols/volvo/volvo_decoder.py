@@ -117,6 +117,12 @@ class VolvoPentaDecoder:
         if not frame.is_extended or len(frame.data) < 8:
             return None
 
+        # Reject Extended Data Page frames: the EVC PGNs live in the standard
+        # PGN space and an 18-bit mask would otherwise alias EDP=1 IDs onto
+        # them (false-decode of unrelated traffic).
+        if (frame.arbitration_id >> 25) & 0x01:
+            return None
+
         pgn = (frame.arbitration_id >> 8) & 0x3FFFF
 
         if pgn == cls.PGN_EVC_HELM:
