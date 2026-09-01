@@ -4,7 +4,7 @@
 # CAN Hardware & Protocol Stack
 python-can>=4.4.0
 can-isotp>=2.0.2
-cantools>=39.0.0
+cantools>=43.0.2
 
 # Telemetry & Math Processing
 numpy>=1.26.0
