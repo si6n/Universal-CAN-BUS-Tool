@@ -1,12 +1,16 @@
 # Kalan İşler — Universal CAN-Bus Tool
 
-> **Durum baz tarihi:** 2026-09-01 · 1197/1197 test PASSED · ruff 0 hata · 30 commit
-> Bu dosya, tamamlanmış kapsamlı review + düzeltme dalgalarının (78 bulgu, P0/P1/P2
-> protokol düzeltmeleri, Dalga 1-5, K1-K4, "Küçükler" grubu, RP1210/CSV/BLF entegrasyonu,
-> gateway lock-scope refactor, Hypothesis property süiti, Bulut UI SaaS köprüsü,
-> DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü], Sinyal Keşif & Kanıt Motoru,
-> K1(b) H1 Cihaz Bağı, K2 E-Stop Challenge-Response Köprüsü, Nuitka C++ Derleme Zırhı ve
-> Desktop Launcher & Auto-Updater Altyapısı) ardından **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
+> **Durum baz tarihi:** 2026-09-01 · 1200/1200 test PASSED · ruff 0 hata · 35 commit
+> Bu dosya, tamamlanmış kapsamlı review + düzeltme dalgalarının (CODE_REVIEW-KIMIK3 ve
+> CODE_REVIEW-DEEPSEEK üzerindeki tüm 78+ bulgunun çözümü: Dalga 1-5, P0/P1/P2
+> protokol düzeltmeleri, JsonFormatter extra alanları, tahrif edilemez kanonik rapor SHA-256,
+> hız fail-closed kilidi, ISO-TP tampon aşımı, UDS routine CRC32 doğrulaması, J1939 CTS monotonluğu,
+> NMEA2000 sentinel sınırları, ReplayBus loop desteği, DBC C-identifier sanitizasyonu,
+> RP1210/CSV/BLF entegrasyonu, gateway lock-scope refactor, Hypothesis property süiti,
+> Bulut UI SaaS köprüsü, DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü],
+> Sinyal Keşif & Kanıt Motoru, K1(b) H1 Cihaz Bağı, K2 E-Stop Challenge-Response Köprüsü,
+> Nuitka C++ Derleme Zırhı ve Desktop Launcher & Auto-Updater Altyapısı) ardından
+> **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
 
 ---
 
