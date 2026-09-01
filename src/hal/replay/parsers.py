@@ -1,4 +1,4 @@
-"""Vector ASCII (.asc) and timestamped CSV (.csv) Trace Parsers.
+"""Vector ASCII (.asc), timestamped CSV (.csv), and Vector Binary Logging (.blf) Trace Parsers.
 
 CSV format (K3-a): header-based RFC-4180 files with flexible column names.
 Recognized headers (case-insensitive) — `time`/`timestamp`, `id`/`identifier`
@@ -7,7 +7,7 @@ optionally space-separated), `channel`, `dir`/`direction` (rx/tx),
 `extended`/`is_extended` (0/1/true/false). Unparseable rows are logged and
 skipped — a malformed trace line never aborts the replay load.
 
-Binary .blf files remain unsupported (yield zero frames with a log note).
+BLF format (K3-b): Vector binary logging format parsed via python-can BLFReader.
 """
 
 from __future__ import annotations
@@ -15,10 +15,12 @@ from __future__ import annotations
 import csv
 import re
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
+
+import can
 
 from src.core.logging import get_logger
-from src.core.models.can_frame import CanFrame
+from src.core.models.can_frame import CanFrame, dlc_to_length, length_to_dlc
 
 logger = get_logger("hal.replay.parsers")
 
@@ -251,5 +253,96 @@ class CsvParser:
             is_fd=False,
             direction=direction,
             timestamp_ns=int(time_sec * 1_000_000_000),
+            source="replay",
+        )
+
+
+class VectorBlfParser:
+    """Parser for Vector Binary Logging Format (.blf) trace files using python-can (K3-b)."""
+
+    @classmethod
+    def parse_file(cls, file_path: str | Path, channel_prefix: str = "ch") -> list[CanFrame]:
+        """Parse complete .blf file into chronological CanFrame list."""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"Trace file not found: {path}")
+
+        frames: list[CanFrame] = []
+        try:
+            reader = can.BLFReader(str(path))
+            for msg in reader:
+                frame = cls._convert_message(msg, channel_prefix=channel_prefix)
+                if frame is not None:
+                    frames.append(frame)
+        except Exception as exc:
+            logger.warning(
+                "Error reading BLF trace file or corrupted content",
+                extra={"file": str(path), "error": str(exc)},
+            )
+
+        logger.info(
+            "Loaded BLF trace",
+            extra={"file": str(path), "frame_count": len(frames)},
+        )
+        return frames
+
+    @classmethod
+    def _convert_message(cls, msg: Any, channel_prefix: str = "ch") -> CanFrame | None:
+        """Convert a python-can Message to canonical CanFrame."""
+        if getattr(msg, "is_error_frame", False) or getattr(msg, "is_remote_frame", False):
+            return None
+
+        arb_id = int(getattr(msg, "arbitration_id", 0))
+        if arb_id < 0 or arb_id > 0x1FFFFFFF:
+            return None
+
+        data_bytes = bytes(getattr(msg, "data", b"") or b"")
+        if len(data_bytes) > 64:
+            return None
+
+        is_fd = bool(getattr(msg, "is_fd", False))
+        is_extended = bool(getattr(msg, "is_extended_id", arb_id > 0x7FF))
+        brs = bool(getattr(msg, "bitrate_switch", False))
+        esi = bool(getattr(msg, "error_state_indicator", False))
+        is_rx = getattr(msg, "is_rx", True)
+        direction = "rx" if is_rx else "tx"
+
+        raw_dlc = getattr(msg, "dlc", None)
+        if raw_dlc is not None and 0 <= raw_dlc <= 15:
+            if dlc_to_length(raw_dlc) >= len(data_bytes):
+                dlc = raw_dlc
+            else:
+                dlc = length_to_dlc(len(data_bytes))
+        else:
+            dlc = length_to_dlc(len(data_bytes))
+
+        ch = getattr(msg, "channel", None)
+        if ch is None:
+            channel_id = f"{channel_prefix}1"
+        elif isinstance(ch, int):
+            channel_id = f"{channel_prefix}{ch}"
+        else:
+            ch_str = str(ch).strip()
+            if ch_str.isdigit():
+                channel_id = f"{channel_prefix}{ch_str}"
+            elif ch_str:
+                channel_id = ch_str
+            else:
+                channel_id = f"{channel_prefix}1"
+
+        ts_sec = getattr(msg, "timestamp", 0.0) or 0.0
+        timestamp_ns = max(0, int(ts_sec * 1_000_000_000))
+
+        return CanFrame(
+            channel_id=channel_id,
+            arbitration_id=arb_id,
+            dlc=dlc,
+            data=data_bytes,
+            is_extended=is_extended,
+            is_fd=is_fd,
+            brs=brs,
+            esi=esi,
+            direction=direction,
+            timestamp_ns=timestamp_ns,
             source="replay",
         )

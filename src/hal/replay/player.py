@@ -9,7 +9,7 @@ from typing import Any
 
 from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame
-from src.hal.replay.parsers import CsvParser, VectorAscParser
+from src.hal.replay.parsers import CsvParser, VectorAscParser, VectorBlfParser
 
 logger = get_logger("hal.replay")
 
@@ -36,20 +36,27 @@ class ReplayBus:
         return cls(frames)
 
     @classmethod
-    def from_trace_file(cls, file_path: str | Path) -> ReplayBus:
-        """Load a trace by file extension: .asc → Vector ASCII, .csv → CSV.
+    def from_blf_file(cls, file_path: str | Path) -> ReplayBus:
+        """Create ReplayBus instance loaded from a Vector BLF binary trace file (K3-b)."""
+        frames = VectorBlfParser.parse_file(file_path)
+        logger.info("Loaded BLF trace into ReplayBus", extra={"file": str(file_path), "frame_count": len(frames)})
+        return cls(frames)
 
-        Unknown extensions raise ValueError — an accidental .blf must fail
-        loudly instead of silently parsing to zero frames.
+    @classmethod
+    def from_trace_file(cls, file_path: str | Path) -> ReplayBus:
+        """Load a trace by file extension: .asc → Vector ASCII, .csv → CSV, .blf → Vector BLF.
+
+        Unknown extensions raise ValueError.
         """
         suffix = Path(file_path).suffix.lower()
         if suffix == ".asc":
             return cls.from_asc_file(file_path)
         if suffix == ".csv":
             return cls.from_csv_file(file_path)
+        if suffix == ".blf":
+            return cls.from_blf_file(file_path)
         raise ValueError(
-            f"Unsupported trace format '{suffix or '(none)'}' — supported: .asc, .csv "
-            f"(binary .blf is not implemented)"
+            f"Unsupported trace format '{suffix or '(none)'}' — supported: .asc, .csv, .blf"
         )
 
     def load_frames(self, frames: Sequence[CanFrame]) -> None:

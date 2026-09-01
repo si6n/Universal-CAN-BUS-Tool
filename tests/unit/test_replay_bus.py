@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.core.models.can_frame import CanFrame
-from src.hal.replay.parsers import CsvParser, VectorAscParser
+from src.hal.replay.parsers import CsvParser, VectorAscParser, VectorBlfParser
 from src.hal.replay.player import ReplayBus
 
 SAMPLE_ASC_CONTENT = """date Mon Aug 24 12:00:00 2026
@@ -269,12 +269,117 @@ def test_replay_bus_from_trace_file_routes_by_extension() -> None:
     finally:
         asc_path.unlink(missing_ok=True)
 
-    # Unknown extension (.blf!) fails LOUDLY instead of parsing to zero frames
-    with tempfile.NamedTemporaryFile("w", suffix=".blf", delete=False) as tmp:
+    # .csv routes to the CSV parser
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write(SAMPLE_CSV_CONTENT)
+        csv_path = Path(tmp.name)
+    try:
+        bus = ReplayBus.from_trace_file(csv_path)
+        assert bus.frame_count == 3
+    finally:
+        csv_path.unlink(missing_ok=True)
+
+    # Unknown extension (.xyz!) fails LOUDLY
+    with tempfile.NamedTemporaryFile("w", suffix=".xyz", delete=False) as tmp:
         tmp.write("whatever")
-        blf_path = Path(tmp.name)
+        xyz_path = Path(tmp.name)
     try:
         with pytest.raises(ValueError, match="Unsupported trace format"):
-            ReplayBus.from_trace_file(blf_path)
+            ReplayBus.from_trace_file(xyz_path)
     finally:
-        blf_path.unlink(missing_ok=True)
+        xyz_path.unlink(missing_ok=True)
+
+
+# ============================================================================
+# VectorBlfParser + BLF replay routing (K3-b)
+# ============================================================================
+
+def test_blf_parser_classic_and_fd_roundtrip() -> None:
+    import can
+
+    with tempfile.NamedTemporaryFile(suffix=".blf", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
+    try:
+        writer = can.BLFWriter(str(tmp_path))
+        # Classic CAN J1939 frame
+        msg1 = can.Message(
+            arbitration_id=0x18FEEE00,
+            is_extended_id=True,
+            is_fd=False,
+            is_rx=True,
+            channel=1,
+            data=b"\x01\x02\x03\x04\x05\x06\x07\x08",
+            timestamp=0.0,
+        )
+        # CAN-FD frame with BRS
+        msg2 = can.Message(
+            arbitration_id=0x123,
+            is_extended_id=False,
+            is_fd=True,
+            bitrate_switch=True,
+            error_state_indicator=False,
+            is_rx=False,
+            channel=2,
+            data=b"\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0",
+            timestamp=0.05,
+        )
+        writer.on_message_received(msg1)
+        writer.on_message_received(msg2)
+        writer.stop()
+
+        frames = VectorBlfParser.parse_file(tmp_path)
+        assert len(frames) == 2
+
+        f1 = frames[0]
+        assert f1.channel_id == "ch1"
+        assert f1.arbitration_id == 0x18FEEE00
+        assert f1.is_extended is True
+        assert f1.is_fd is False
+        assert f1.dlc == 8
+        assert f1.data == b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        assert f1.direction == "rx"
+        assert f1.timestamp_ns == 0
+        assert f1.source == "replay"
+
+        f2 = frames[1]
+        assert f2.channel_id == "ch2"
+        assert f2.arbitration_id == 0x123
+        assert f2.is_extended is False
+        assert f2.is_fd is True
+        assert f2.brs is True
+        assert f2.esi is False
+        assert f2.dlc == 12
+        assert f2.data == b"\x10\x20\x30\x40\x50\x60\x70\x80\x90\xA0\xB0\xC0"
+        assert f2.direction == "tx"
+        assert f2.timestamp_ns == 50_000_000
+
+        # Also test via ReplayBus.from_blf_file and from_trace_file
+        bus1 = ReplayBus.from_blf_file(tmp_path)
+        assert bus1.frame_count == 2
+        assert bus1.step() == f1
+
+        bus2 = ReplayBus.from_trace_file(tmp_path)
+        assert bus2.frame_count == 2
+        assert bus2.step() == f1
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_blf_parser_corrupted_file_resilience() -> None:
+    with tempfile.NamedTemporaryFile(suffix=".blf", delete=False) as tmp:
+        tmp.write(b"CORRUPTED_BLF_HEADER_BYTES_RANDOM_NOISE_1234567890")
+        tmp_path = Path(tmp.name)
+
+    try:
+        # Malformed BLF should return empty frame list gracefully without unhandled crash
+        frames = VectorBlfParser.parse_file(tmp_path)
+        assert frames == []
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_blf_parser_nonexistent_file_raises_filenotfound() -> None:
+    with pytest.raises(FileNotFoundError, match="Trace file not found"):
+        VectorBlfParser.parse_file("nonexistent_path_test_blf.blf")
+
