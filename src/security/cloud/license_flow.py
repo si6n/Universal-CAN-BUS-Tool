@@ -28,6 +28,8 @@ from src.security.hwid.collector import generate_hardware_fingerprint
 
 logger = get_logger("security.cloud.license_flow")
 
+DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64 = "eX3vJQWpo/pKrkpi5Y+f7m5ooUCRbCyY201DTnAjz/Q="
+
 
 @dataclass(slots=True, frozen=True)
 class CloudLicenseClaims:
