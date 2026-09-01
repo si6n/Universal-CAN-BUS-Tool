@@ -1,12 +1,12 @@
 # Kalan İşler — Universal CAN-Bus Tool
 
-> **Durum baz tarihi:** 2026-09-01 · 1191/1191 test PASSED · ruff 0 hata · 28 commit
+> **Durum baz tarihi:** 2026-09-01 · 1197/1197 test PASSED · ruff 0 hata · 30 commit
 > Bu dosya, tamamlanmış kapsamlı review + düzeltme dalgalarının (78 bulgu, P0/P1/P2
 > protokol düzeltmeleri, Dalga 1-5, K1-K4, "Küçükler" grubu, RP1210/CSV/BLF entegrasyonu,
 > gateway lock-scope refactor, Hypothesis property süiti, Bulut UI SaaS köprüsü,
 > DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü], Sinyal Keşif & Kanıt Motoru,
-> K1(b) H1 Cihaz Bağı ve K2 E-Stop Challenge-Response Köprüsü)
-> ardından **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
+> K1(b) H1 Cihaz Bağı, K2 E-Stop Challenge-Response Köprüsü, Nuitka C++ Derleme Zırhı ve
+> Desktop Launcher & Auto-Updater Altyapısı) ardından **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
 
 ---
 
@@ -54,10 +54,11 @@ entegrasyonu (K4-a), CSV replay (K3-a), BLF replay (K3-b), Bulut/Lisans UI SaaS
 köprüsü (K1-a), DBC decoder cache key frame_id geçişi, DBC Knowledge Pack
 (133 DBC, 12518 mesaj, 57862 sinyal), Golden-Traces 14 benchmark vektörü ve
 entegrasyon süiti, Sinyal Keşif ve Kanıt Motoru (Signal Discovery & Evidence Engine
-ve 9 birim/entegrasyon testi), doküman hijyeni (82→13 md).
+ve 9 birim/entegrasyon testi), Nuitka C++ derleme hattı (`scripts/build_nuitka.py`),
+Masaüstü Launcher & Auto-Updater (`src/launcher/`), doküman hijyeni (82→13 md).
 Detaylar: git geçmişi (Türkçe commit mesajları) ve `docs/testing/traceability.md`.
 
 ## 5. Uzak Depo
 
-- [ ] Tüm commit'ler yalnızca yerelde (`main` dalı, 26 commit) — push kullanıcı
+- [ ] Tüm commit'ler yalnızca yerelde (`main` dalı, 30 commit) — push kullanıcı
   kararı/talimatıyla.
