@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from src.core.models.can_frame import CanFrame
-from src.hal.replay.parsers import VectorAscParser
+from src.hal.replay.parsers import CsvParser, VectorAscParser
 from src.hal.replay.player import ReplayBus
 
 SAMPLE_ASC_CONTENT = """date Mon Aug 24 12:00:00 2026
@@ -154,3 +154,127 @@ def test_replay_bus_load_frames() -> None:
     assert bus.frame_count == 1
     assert bus.step() == f1
     assert bus.has_next is False
+
+
+# ============================================================================
+# CsvParser + from_trace_file routing (K3-a)
+# ============================================================================
+
+SAMPLE_CSV_CONTENT = """time,id,dlc,data,channel,dir,extended
+0.000000,0x18FEEE00,8,01 02 03 04 05 06 07 08,1,rx,1
+0.050000,1F4,2,DE AD,2,tx,0
+0.100000,0x123,4,aa bb cc dd,,,,
+not-a-time,0x1,1,FF,1,rx,0
+0.200000,0x2,2,
+"""
+
+
+def test_csv_parser_full_header() -> None:
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write(SAMPLE_CSV_CONTENT)
+        tmp_path = Path(tmp.name)
+
+    try:
+        frames = CsvParser.parse_file(tmp_path)
+        # 3 valid rows; malformed time row and empty-data row skipped
+        assert len(frames) == 3
+
+        f1 = frames[0]
+        assert f1.arbitration_id == 0x18FEEE00
+        assert f1.is_extended is True
+        assert f1.dlc == 8
+        assert f1.data == b"\x01\x02\x03\x04\x05\x06\x07\x08"
+        assert f1.channel_id == "1"
+        assert f1.direction == "rx"
+        assert f1.timestamp_ns == 0
+        assert f1.source == "replay"
+
+        f2 = frames[1]
+        assert f2.arbitration_id == 0x1F4  # bare hex, no 0x prefix
+        assert f2.is_extended is False  # explicit 0
+        assert f2.dlc == 2
+        assert f2.data == b"\xDE\xAD"
+        assert f2.direction == "tx"
+
+        f3 = frames[2]
+        assert f3.channel_id != ""  # empty channel falls back to file stem
+        assert f3.is_extended is False  # 0x123 < 0x7FF auto-detected
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_csv_parser_alias_headers_and_dlc_default() -> None:
+    content = """Timestamp,Identifier,Payload
+0.100,0x7FF,AA BB CC
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+    try:
+        frames = CsvParser.parse_file(tmp_path)
+        assert len(frames) == 1
+        f = frames[0]
+        assert f.arbitration_id == 0x7FF
+        assert f.dlc == 3  # dlc column absent -> payload byte count
+        assert f.data == b"\xAA\xBB\xCC"
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_csv_parser_missing_mandatory_column_returns_empty() -> None:
+    content = """time,channel
+0.1,1
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+    try:
+        assert CsvParser.parse_file(tmp_path) == []
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_csv_parser_empty_file_returns_empty() -> None:
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write("")
+        tmp_path = Path(tmp.name)
+    try:
+        assert CsvParser.parse_file(tmp_path) == []
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_replay_bus_from_csv_file_roundtrip() -> None:
+    with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="") as tmp:
+        tmp.write(SAMPLE_CSV_CONTENT)
+        tmp_path = Path(tmp.name)
+    try:
+        bus = ReplayBus.from_csv_file(tmp_path)
+        assert bus.frame_count == 3
+        first = bus.step()
+        assert first is not None
+        assert first.arbitration_id == 0x18FEEE00
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_replay_bus_from_trace_file_routes_by_extension() -> None:
+    # .asc routes to the Vector parser
+    with tempfile.NamedTemporaryFile("w", suffix=".asc", delete=False) as tmp:
+        tmp.write(SAMPLE_ASC_CONTENT)
+        asc_path = Path(tmp.name)
+    try:
+        bus = ReplayBus.from_trace_file(asc_path)
+        assert bus.frame_count == 3
+    finally:
+        asc_path.unlink(missing_ok=True)
+
+    # Unknown extension (.blf!) fails LOUDLY instead of parsing to zero frames
+    with tempfile.NamedTemporaryFile("w", suffix=".blf", delete=False) as tmp:
+        tmp.write("whatever")
+        blf_path = Path(tmp.name)
+    try:
+        with pytest.raises(ValueError, match="Unsupported trace format"):
+            ReplayBus.from_trace_file(blf_path)
+    finally:
+        blf_path.unlink(missing_ok=True)

@@ -149,7 +149,7 @@ graph TD
         RP1210[TMC RP1210 Client: Nexiq, Noregon, Cummins]
         Vector[Vector Informatik XL Driver]
         SocketCAN[Linux SocketCAN: can0, vcan0]
-        Replay[ReplayBus: Vector ASC Player with Safety Filter]
+        Replay[ReplayBus: ASC/CSV Player with Safety Filter]
     end
 
     Layer1 --> Layer2
@@ -206,7 +206,7 @@ stateDiagram-v2
 * **Dinamik Beyaz Liste (Whitelist):** Yalnızca tanımlı güvenli CAN ID'lerinin iletimine izin verilir; yabancı ID'ler tespit edildiğinde E-Stop tetiklenir.
 
 ### 4. Replay Trace Güvenlik Filtresi
-* Log dosyalarından (Vector `.asc`) simülasyon veya test amaçlı geriye oynatma (*Replay*) yapılırken, canlı veri yolunu bozabilecek komutlar filtrelenerek hatta basılması engellenir:
+* Log dosyalarından (Vector `.asc`, header-tabanlı `.csv`) simülasyon veya test amaçlı geriye oynatma (*Replay*) yapılırken, canlı veri yolunu bozabilecek komutlar filtrelenerek hatta basılması engellenir:
   * **J1939-81 Adres Yönetimi:** Address Claiming (PGN 60928), Commanded Address (PGN 65240)
   * **J1939-73 Teşhis Yazma Yolları:** DM2 (65227), DM4 Freeze Frame Clear (65229), DM5 Diagnostic Readiness (65230), DM11 Diagnostic Data Clear (65242), Request PGN (59904)
   * **J1939-21 Tünel Engeli:** TP.CM (60416) / TP.DT (60160) çerçeveleri herhangi bir engelli komutu 7 baytlık dilimler içinde taşıyabildiğinden varsayılan olarak engellenir (yalnızca açık `block_transport_tunneling=False` ile devre dışı)
@@ -450,7 +450,7 @@ Bu derleme scripti sırasıyla:
 | **TMC RP1210 Adaptörleri** | `rp121032.dll` | Nexiq USB-Link, Noregon DLA, Cummins INLINE, DPA5 *(klasik CAN; canlı donanım saha doğrulaması sürüyor)* | Cihaz ID (`1`, `2`, vb.) |
 | **Vector Informatik** | `vcan2.dll` | CANoe, CANalyzer VN Donanımları | `0`, `1` |
 | **Linux SocketCAN** | Linux Kernel vcan/can | Classical CAN, CAN-FD | `can0`, `vcan0` |
-| **ReplayBus** | Dahili Oynatıcı | Yalnızca Vector `.asc` *(CSV ve BLF ayrıştırıcıları henüz uygulanmadı)* | Dosya Yolu |
+| **ReplayBus** | Dahili Oynatıcı | Vector `.asc` + header-tabanlı `.csv` (esnek sütun adları, bozuk satır dayanıklılığı) *(BLF ayrıştırıcısı henüz yok — `.blf` dosyaları açık hata verir)* | Dosya Yolu |
 
 ---
 
@@ -521,7 +521,7 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 │   │   ├── power/
 │   │   │   └── win32_power.py             # Windows Güç & Uyku Yönetimi
 │   │   ├── replay/
-│   │   │   ├── parsers.py                 # Vector ASC Ayrıştırıcı
+│   │   │   ├── parsers.py                 # Vector ASC + CSV Ayrıştırıcılar
 │   │   │   ├── player.py                  # Mikrosaniye Hassasiyetli Oynatıcı
 │   │   │   └── safety_filter.py           # Replay Güvenlik Filtresi
 │   │   └── rp1210/
