@@ -95,9 +95,13 @@ jobs:
 
       - name: Create vcan0 interface
         run: |
-          sudo modprobe vcan
-          sudo ip link add dev vcan0 type vcan
-          sudo ip link set up vcan0
+          sudo apt-get update -y
+          sudo apt-get install -y "linux-modules-extra-$(uname -r)" || sudo apt-get install -y linux-modules-extra-azure || true
+          sudo modprobe can || true
+          sudo modprobe can_raw || true
+          sudo modprobe vcan || true
+          sudo ip link add dev vcan0 type vcan || true
+          sudo ip link set up vcan0 || true
 
       - name: Install Python Dependencies
         run: |
