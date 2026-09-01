@@ -1,19 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
   FileSpreadsheet, 
   Code, 
-  CheckCircle2,
-  Database,
-  MapPin,
-  Shield,
-  Layers,
-  Sparkles,
-  Check
+  CheckCircle2, 
+  Database, 
+  MapPin, 
+  Shield, 
+  Cloud,
+  CloudUpload,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  Zap,
+  Activity
 } from 'lucide-react';
 import { CANFrame } from '../../types/can';
 import { ExportService, ExportResult } from '../../services/exportService';
+import { DesktopBridge, CloudUploadProgress } from '../../services/bridge';
 
 interface ReportsExportViewProps {
   frames: CANFrame[];
@@ -23,6 +28,21 @@ export const ReportsExportView: React.FC<ReportsExportViewProps> = ({ frames }) 
   const [lastExport, setLastExport] = useState<ExportResult | null>(null);
   const [vinInput, setVinInput] = useState('TR-MARIN-2026-X99');
 
+  // Cloud Ingest State
+  const [cloudUploading, setCloudUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<CloudUploadProgress | null>(null);
+  const [cloudUploadResult, setCloudUploadResult] = useState<{ sessionId: string; status: string } | null>(null);
+  const [cloudError, setCloudError] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.onCloudUploadProgress = (progress: CloudUploadProgress) => {
+      setUploadProgress(progress);
+    };
+    return () => {
+      window.onCloudUploadProgress = undefined;
+    };
+  }, []);
+
   const handleExport = async (exportFn: () => Promise<ExportResult>) => {
     const res = await exportFn();
     if (res && res.success) {
@@ -30,6 +50,52 @@ export const ReportsExportView: React.FC<ReportsExportViewProps> = ({ frames }) 
       setTimeout(() => {
         setLastExport(null);
       }, 6000);
+    }
+  };
+
+  const handleUploadToCloud = async () => {
+    if (frames.length === 0) {
+      setCloudError('Yüklenecek telemetri çerçevesi bulunamadı. Lütfen önce veri akışını başlatın veya senaryo çalıştırın.');
+      return;
+    }
+
+    setCloudUploading(true);
+    setCloudError(null);
+    setCloudUploadResult(null);
+    setUploadProgress({
+      totalChunks: 1,
+      uploadedChunks: 0,
+      bytesSent: 0,
+      totalBytes: 0,
+      percent: 0,
+      status: 'uploading'
+    });
+
+    try {
+      const lines = [
+        'MDF4.10  Universal CAN ASAM MDF4 Measurement Log',
+        `Timestamp: ${new Date().toISOString()}`,
+        `Channel: CAN_Bus_Raw`,
+        `Frame_Count: ${frames.length}`,
+        `VIN: ${vinInput}`,
+        '--- BEGIN ASAM MDF4 LOG BLOCKS ---'
+      ];
+      frames.forEach((f, idx) => {
+        lines.push(`HD_BLOCK_${idx}: T=${f.timeSec.toFixed(6)} ID=${f.canIdHex} DLC=${f.dlc} DATA=${f.dataHex.join('')} DIR=${f.dir}`);
+      });
+      lines.push('--- END ASAM MDF4 LOG BLOCKS ---');
+      const content = lines.join('\r\n');
+
+      const res = await DesktopBridge.cloudUploadRawContent(`telemetry_${Date.now()}.mf4`, content, vinInput);
+      if (res.success && res.sessionId) {
+        setCloudUploadResult({ sessionId: res.sessionId, status: res.status || 'ready' });
+      } else {
+        setCloudError(res.error || 'Yükleme başarısız oldu.');
+      }
+    } catch (err: any) {
+      setCloudError(err.message || 'Buluta yükleme sırasında beklenmeyen hata oluştu.');
+    } finally {
+      setCloudUploading(false);
     }
   };
 
@@ -63,7 +129,83 @@ export const ReportsExportView: React.FC<ReportsExportViewProps> = ({ frames }) 
         </div>
       </div>
 
-      {/* Success Notification Banner */}
+      {/* Cloud Ingest Hero Banner Card */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl p-5 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start space-x-3">
+            <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-white shrink-0">
+              <CloudUpload className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-bold tracking-tight">Universal-CAN-Cloud SaaS Telemetri Yükleme</h3>
+                <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                  Parçalı Resumable
+                </span>
+              </div>
+              <p className="text-xs text-blue-100 mt-1 max-w-2xl leading-relaxed">
+                CAN telemetri oturumunu 5 MB parçalar halinde MinIO S3 arşivine aktarır. ARQ Worker arka planda Zstandard (.mf4.zst) sıkıştırması yapar ve sinyalleri TimescaleDB zaman serisine işler.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleUploadToCloud}
+            disabled={cloudUploading}
+            className="px-4 py-2.5 bg-white hover:bg-slate-100 text-blue-700 rounded-lg text-xs font-bold shadow-md flex items-center justify-center space-x-2 transition-all shrink-0 active:scale-95 disabled:opacity-60"
+          >
+            {cloudUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+            ) : (
+              <Cloud className="w-4 h-4 text-blue-600" />
+            )}
+            <span>{cloudUploading ? 'Buluta Yükleniyor...' : 'Seansı Buluta Yükle'}</span>
+          </button>
+        </div>
+
+        {/* Progress bar during upload */}
+        {uploadProgress && (
+          <div className="bg-black/20 border border-white/15 rounded-lg p-3 space-y-2 text-xs">
+            <div className="flex justify-between text-[11px] font-semibold text-blue-100">
+              <span>Durum: {uploadProgress.status.toUpperCase()}</span>
+              <span>
+                %{uploadProgress.percent.toFixed(0)} ({uploadProgress.uploadedChunks}/{uploadProgress.totalChunks || 1} Parça)
+              </span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-emerald-400 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.max(5, uploadProgress.percent)}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Result & Success Banner */}
+        {cloudUploadResult && (
+          <div className="bg-emerald-500/20 border border-emerald-300/40 rounded-lg p-3 flex items-center justify-between text-xs text-emerald-100 animate-in fade-in">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span>
+                <strong>Telemetri oturumu yüklendi!</strong> Seans ID: <code className="font-mono bg-white/10 px-1.5 py-0.5 rounded">{cloudUploadResult.sessionId}</code> (Durum: {cloudUploadResult.status})
+              </span>
+            </div>
+            <span className="text-[11px] font-bold bg-emerald-400 text-emerald-950 px-2.5 py-0.5 rounded-full">
+              SaaS Hazır
+            </span>
+          </div>
+        )}
+
+        {/* Error Banner */}
+        {cloudError && (
+          <div className="bg-rose-500/20 border border-rose-300/40 rounded-lg p-3 flex items-center space-x-2 text-xs text-rose-100 animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-rose-300 shrink-0" />
+            <span>{cloudError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Success Notification Banner for Local Exports */}
       {lastExport && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between shadow-xs animate-in fade-in slide-in-from-top-1">
           <div className="flex items-center space-x-2.5 text-xs text-emerald-800 font-medium">

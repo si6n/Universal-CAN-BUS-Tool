@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import concurrent.futures
 import json
 import math
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import webview
+from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from src.core.errors import PlatformError
 from src.core.logging import get_logger
@@ -29,8 +31,14 @@ from src.safety.gateway import TxSafetyGateway
 from src.safety.secret_provider import get_default_secret_provider
 from src.safety.state_machine import SafetyState, SafetySupervisor
 from src.safety.watchdog import TxWatchdogSupervisor
+from src.security.cloud.client import CloudClient, CloudConfig
+from src.security.cloud.license_flow import LicenseFlow
+from src.security.cloud.telemetry_uploader import TelemetryUploader, UploadProgress
+from src.security.hwid.collector import generate_hardware_fingerprint
 
 logger = get_logger("app.desktop")
+
+DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64 = "eX3vJQWpo/pKrkpi5Y+f7m5ooUCRbCyY201DTnAjz/Q="
 
 
 class DesktopApiBridge:
@@ -71,6 +79,137 @@ class DesktopApiBridge:
 
     def get_safety_state(self) -> str:
         return self.app.supervisor.current_state.value
+
+    # ------------------------------------------------------------------
+    # Cloud & SaaS Bridge APIs (Universal-CAN-Cloud)
+    # ------------------------------------------------------------------
+    def cloud_test_connection(self, url: str | None = None, session_token: str | None = None) -> dict[str, Any]:
+        try:
+            if url:
+                self.app.cloud_client.config.base_url = url.rstrip("/")
+            resp = self.app.cloud_client.request("GET", "/health", health_endpoint=True)
+            if resp.status == 200:
+                user_info = None
+                if session_token:
+                    test_resp = self.app.cloud_client.request(
+                        "GET", "/auth/me", extra_headers={"Cookie": f"ucan_session={session_token.strip()}"}
+                    )
+                    if test_resp.status == 200:
+                        user_info = test_resp.json()
+                elif self.app.cloud_client.has_session_token():
+                    test_resp = self.app.cloud_client.request("GET", "/auth/me")
+                    if test_resp.status == 200:
+                        user_info = test_resp.json()
+                return {"success": True, "status": resp.status, "user": user_info}
+            return {"success": False, "error": f"Sağlık kontrolü başarısız (HTTP {resp.status})"}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_save_config(self, url: str, session_token: str | None = None) -> dict[str, Any]:
+        try:
+            if url:
+                self.app.cloud_client.config.base_url = url.rstrip("/")
+            if session_token is not None:
+                if session_token.strip():
+                    self.app.cloud_client.store_session_token(session_token.strip())
+                else:
+                    self.app.cloud_client.clear_session_token()
+            return {"success": True}
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_get_status(self) -> dict[str, Any]:
+        try:
+            hwid = generate_hardware_fingerprint()
+            has_session = self.app.cloud_client.has_session_token()
+            device_token = self.app.cloud_client.get_device_token()
+            license_claims = None
+            if self.app._secret_provider.has_secret("CLOUD_LICENSE_TICKET") and self.app.license_flow:
+                ticket_str = self.app._secret_provider.get_secret("CLOUD_LICENSE_TICKET").decode("utf-8")
+                try:
+                    claims = self.app.license_flow.verify_cloud_ticket(ticket_str)
+                    license_claims = {
+                        "licenseId": claims.license_id,
+                        "tier": claims.tier,
+                        "features": list(claims.features),
+                        "expiresAt": claims.expires_at,
+                        "offlineUntil": claims.offline_until,
+                        "issuedAt": claims.issued_at,
+                    }
+                except Exception:
+                    pass
+
+            return {
+                "success": True,
+                "baseUrl": self.app.cloud_client.config.base_url,
+                "hasSessionToken": has_session,
+                "hasDeviceToken": bool(device_token),
+                "hwid": hwid,
+                "license": license_claims,
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_register_device(self, device_name: str = "Desktop Diagnostic Tool") -> dict[str, Any]:
+        try:
+            if not self.app.license_flow:
+                return {"success": False, "error": "Lisans akışı başlatılamadı"}
+            reg = self.app.license_flow.register_device(device_name=device_name)
+            return {
+                "success": True,
+                "deviceId": reg.device_id,
+                "resetsRemaining": reg.hwid_resets_remaining,
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_activate_license(self, license_ref: str) -> dict[str, Any]:
+        try:
+            if not self.app.license_flow:
+                return {"success": False, "error": "Lisans akışı başlatılamadı"}
+            claims = self.app.license_flow.activate_license(license_ref.strip())
+            return {
+                "success": True,
+                "licenseId": claims.license_id,
+                "tier": claims.tier,
+                "features": list(claims.features),
+                "expiresAt": claims.expires_at,
+                "offlineUntil": claims.offline_until,
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_upload_session(self, file_path: str, vehicle_vin: str | None = None) -> dict[str, Any]:
+        try:
+            result = self.app.telemetry_uploader.upload_file(file_path=file_path, vehicle_vin=vehicle_vin)
+            return {
+                "success": True,
+                "sessionId": result.session_id,
+                "status": result.status,
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
+
+    def cloud_upload_raw_content(self, filename: str, content: str, vehicle_vin: str | None = None) -> dict[str, Any]:
+        import tempfile
+        try:
+            with tempfile.NamedTemporaryFile(suffix=f"_{filename}", delete=False, mode="wb") as tf:
+                tf.write(content.encode("utf-8"))
+                temp_path = tf.name
+            try:
+                result = self.app.telemetry_uploader.upload_file(file_path=temp_path, vehicle_vin=vehicle_vin)
+                return {
+                    "success": True,
+                    "sessionId": result.session_id,
+                    "status": result.status,
+                }
+            finally:
+                try:
+                    Path(temp_path).unlink(missing_ok=True)
+                except Exception:
+                    pass
+        except Exception as exc:
+            return {"success": False, "error": str(exc)}
 
 
 class UniversalCanDesktopApp:
@@ -117,6 +256,17 @@ class UniversalCanDesktopApp:
             max_workers=1, thread_name_prefix="copilot_query"
         )
 
+        # Cloud Subsystem (Universal-CAN-Cloud)
+        self._cloud_config = CloudConfig(base_url="http://127.0.0.1:8000")
+        self.cloud_client = CloudClient(config=self._cloud_config, secret_provider=self._secret_provider)
+        try:
+            pub_bytes = base64.b64decode(DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64)
+            self._cloud_pubkey = ed25519.Ed25519PublicKey.from_public_bytes(pub_bytes)
+        except Exception:
+            self._cloud_pubkey = None
+        self.license_flow = LicenseFlow(self.cloud_client, self._cloud_pubkey) if self._cloud_pubkey else None
+        self.telemetry_uploader = TelemetryUploader(self.cloud_client, progress_callback=self._on_upload_progress)
+
         # F-28: real CAN ingestion pipeline — bus -> FrameRouter -> decoders -> UI
         self.router = FrameRouter()
         self.ring_buffer = BinaryRingBuffer()
@@ -154,6 +304,25 @@ class UniversalCanDesktopApp:
         # One small lock guards writes; reads of single attributes remain
         # lock-free (atomic in CPython).
         self._ui_state_lock = threading.Lock()
+
+    def _on_upload_progress(self, progress: UploadProgress) -> None:
+        if self._window is None:
+            return
+        try:
+            progress_data = {
+                "sessionId": progress.session_id,
+                "totalChunks": progress.total_chunks,
+                "uploadedChunks": progress.uploaded_chunks,
+                "bytesSent": progress.bytes_sent,
+                "totalBytes": progress.total_bytes,
+                "percent": progress.percent,
+                "status": progress.status,
+                "error": progress.error,
+            }
+            js = f"if (window.onCloudUploadProgress) window.onCloudUploadProgress({json.dumps(progress_data)});"
+            self._window.evaluate_js(js)
+        except Exception as exc:
+            logger.debug("Upload progress UI push failed", extra={"error": str(exc)})
 
     def _bump_stat(self, attr: str, delta: int) -> None:
         """Thread-safe stat increment (E15)."""
@@ -284,6 +453,14 @@ class UniversalCanDesktopApp:
             # F-08: the key is stored in the secret vault, never a plain attribute
             self._secret_provider.store_secret("GEMINI_API_KEY", settings["apiKey"].encode("utf-8"))
             self.copilot.set_key_provider(self._secret_provider)
+        if "cloudBaseUrl" in settings and settings["cloudBaseUrl"]:
+            self.cloud_client.config.base_url = settings["cloudBaseUrl"].rstrip("/")
+        if "cloudSessionToken" in settings:
+            tok = settings["cloudSessionToken"]
+            if tok and str(tok).strip():
+                self.cloud_client.store_session_token(str(tok).strip())
+            elif tok == "":
+                self.cloud_client.clear_session_token()
 
     def _reconnect_bus(self) -> None:
         """Rebind the single bus instance to the new interface/channel/bitrate (F-30).
