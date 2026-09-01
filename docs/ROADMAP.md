@@ -1,10 +1,11 @@
 # Kalan İşler — Universal CAN-Bus Tool
 
-> **Durum baz tarihi:** 2026-09-01 · 1166/1166 test PASSED · ruff 0 hata · 22 commit
+> **Durum baz tarihi:** 2026-09-01 · 1190/1190 test PASSED · ruff 0 hata · 26 commit
 > Bu dosya, tamamlanmış kapsamlı review + düzeltme dalgalarının (78 bulgu, P0/P1/P2
 > protokol düzeltmeleri, Dalga 1-5, K1-K4, "Küçükler" grubu, RP1210/CSV/BLF entegrasyonu,
-> gateway lock-scope refactor, Hypothesis property süiti, Bulut UI SaaS köprüsü) ardından
-> **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
+> gateway lock-scope refactor, Hypothesis property süiti, Bulut UI SaaS köprüsü,
+> DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü], Sinyal Keşif & Kanıt Motoru)
+> ardından **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
 
 ---
 
@@ -51,10 +52,13 @@ ISO-TP N_As, UDS raw NRC, ALFI, T4/T2/T3), Dalga 1-5, K1-K4 doküman kararları,
 "Küçükler" (B9-E15 serisi), D8 kanonik TX + privileged_send, gateway lock-scope
 refactor (H2), Hypothesis property süiti (40 test, mutasyon-doğrulanmış), RP1210
 entegrasyonu (K4-a), CSV replay (K3-a), BLF replay (K3-b), Bulut/Lisans UI SaaS
-köprüsü (K1-a), DBC decoder cache key frame_id geçişi, doküman hijyeni (82→13 md).
+köprüsü (K1-a), DBC decoder cache key frame_id geçişi, DBC Knowledge Pack
+(133 DBC, 12518 mesaj, 57862 sinyal), Golden-Traces 14 benchmark vektörü ve
+entegrasyon süiti, Sinyal Keşif ve Kanıt Motoru (Signal Discovery & Evidence Engine
+ve 9 birim/entegrasyon testi), doküman hijyeni (82→13 md).
 Detaylar: git geçmişi (Türkçe commit mesajları) ve `docs/testing/traceability.md`.
 
 ## 5. Uzak Depo
 
-- [ ] Tüm commit'ler yalnızca yerelde (`main` dalı, 22 commit) — push kullanıcı
+- [ ] Tüm commit'ler yalnızca yerelde (`main` dalı, 26 commit) — push kullanıcı
   kararı/talimatıyla.
