@@ -36,7 +36,7 @@ class BusMetrics:
     bus_load_percent: float = 0.0
     bitrate: int = 250000
     data_bitrate: int | None = None
-    state: BusState | str = BusState.ACTIVE
+    state: BusState = BusState.ACTIVE
 
 
 class AbstractBus(ABC):
@@ -59,21 +59,37 @@ class AbstractBus(ABC):
         """Close connection and release hardware resources."""
         ...
 
+    @abstractmethod
     def send(self, frame: CanFrame) -> None:
-        """Public transmission method for backward compatibility; delegates to _send_raw."""
-        self._send_raw(frame)
+        """Canonical hardware transmission routine.
+
+        Concrete drivers implement THIS method — there is no second TX entry
+        point. Upper application and protocol layers MUST NOT call it
+        directly; transmissions must be routed through TxPort /
+        TxSafetyGateway (D8: the old send/_send_raw mutual delegation could
+        recurse infinitely for drivers that only overrode send()).
+        """
+        ...
+
+    def privileged_send(self, frame: CanFrame) -> None:
+        """Explicit privileged TX entry point for the safety gateway.
+
+        The gateway validates a frame through its full 6-stage policy and then
+        dispatches via THIS method — an auditable, public port instead of the
+        former duck-typed reach into the driver's private `_send_raw`.
+        Default behaviour is the canonical `send`; drivers needing
+        gateway-exempt low-level access override this deliberately.
+        """
+        self.send(frame)
 
     def _send_raw(self, frame: CanFrame) -> None:
-        """Protected hardware transmission routine implemented by concrete drivers.
+        """Legacy shim for drivers that historically implemented only `_send_raw`.
 
-        Upper application and protocol layers MUST NOT call this directly;
-        transmissions must be routed through TxPort / TxSafetyGateway.
+        Bridges to the canonical `send()`. Recursion-safe by construction:
+        `send` is abstract and must be implemented by every concrete driver,
+        so this shim can never dispatch back into itself.
         """
-        # If concrete subclass implemented send() without overriding _send_raw(), route to send()
-        if type(self).send is not AbstractBus.send:
-            type(self).send(self, frame)
-        else:
-            raise NotImplementedError(f"{self.__class__.__name__} must implement _send_raw()")
+        self.send(frame)
 
     @abstractmethod
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:

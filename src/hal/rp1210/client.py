@@ -32,9 +32,11 @@ class RP1210Client:
 
     def _load_dll(self) -> None:
         """Dynamically load RP1210 64-bit or 32-bit DLL with safe error wrapping."""
-        # Find DLL in System32 / SysWOW64 or local paths
+        # D7: absolute system paths come FIRST and the bare DLL name is never
+        # loaded — ctypes' default search order includes the process working
+        # directory, so a planted DLL there could shadow the real vendor
+        # driver in System32. Only trusted system directories are probed.
         dll_candidates = [
-            self.dll_name,
             os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "System32", self.dll_name),
             os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "SysWOW64", self.dll_name),
         ]
@@ -183,7 +185,9 @@ class RP1210Client:
             1 if block else 0,
         )
 
-        if ret > 0:
+        # RP1210 error codes start at 128, so only 1..127 can be a genuine
+        # byte count; ret >= 128 is an error code, not data length.
+        if 0 < ret < 128:
             return bytes(rx_buffer.raw[:ret])
         if ret == 0:
             return None  # Queue empty

@@ -18,8 +18,18 @@ from cantools.database.errors import Error as CantoolsError
 from src.core.errors import ProtocolError
 from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame
+from src.protocols.j1939.sentinel import J1939SentinelFilter, SignalQuality
 
 logger = get_logger("engine.decoder")
+
+# E4: J1939-71 MSB sentinel evaluation per unsigned signal width. 24-bit is
+# included alongside 8/16/32 per SAE J1939-71 parameter group encoding.
+_SENTINEL_CHECKS: dict[int, Any] = {
+    8: J1939SentinelFilter.check_uint8,
+    16: J1939SentinelFilter.check_uint16,
+    24: J1939SentinelFilter.check_uint24,
+    32: J1939SentinelFilter.check_uint32,
+}
 
 
 class SignalStatus(str, Enum):
@@ -95,6 +105,50 @@ class DbcSignalDecoder:
                 cause=exc,
             ) from exc
 
+    def add_dbc_file(self, dbc_path: str | Path) -> None:
+        """Load and merge an additional DBC file into this decoder instance."""
+        path = Path(dbc_path)
+        if not path.exists():
+            raise FileNotFoundError(f"DBC file not found: {path}")
+        try:
+            self.db.add_dbc_file(path)
+            self._message_cache.clear()
+            logger.info("Added DBC file to decoder", extra={"path": str(path), "total_messages": len(self.db.messages)})
+        except Exception as exc:
+            raise ProtocolError(
+                f"Failed to parse and merge DBC file '{path.name}': {exc}",
+                code="DBC_PARSE_ERROR",
+                details={"file": str(path)},
+                cause=exc,
+            ) from exc
+
+    @classmethod
+    def from_dbc_files(cls, dbc_paths: list[str | Path], max_cache_size: int = 2048) -> DbcSignalDecoder:
+        """Instantiate decoder by merging multiple DBC files."""
+        if not dbc_paths:
+            return cls(cantools.database.can.Database(), max_cache_size=max_cache_size)
+
+        first = dbc_paths[0]
+        decoder = cls.from_dbc_file(first, max_cache_size=max_cache_size)
+        for extra in dbc_paths[1:]:
+            decoder.add_dbc_file(extra)
+        return decoder
+
+    @classmethod
+    def from_directory(cls, dir_path: str | Path, recursive: bool = True, max_cache_size: int = 2048) -> DbcSignalDecoder:
+        """Instantiate decoder from all .dbc files inside a directory."""
+        path = Path(dir_path)
+        if not path.exists() or not path.is_dir():
+            raise FileNotFoundError(f"Directory not found: {path}")
+
+        pattern = "**/*.dbc" if recursive else "*.dbc"
+        dbc_files = sorted(path.glob(pattern))
+        if not dbc_files:
+            logger.warning("No DBC files found in directory", extra={"path": str(path)})
+            return cls(cantools.database.can.Database(), max_cache_size=max_cache_size)
+
+        return cls.from_dbc_files(dbc_files, max_cache_size=max_cache_size)
+
     @classmethod
     def from_dbc_string(cls, dbc_text: str, max_cache_size: int = 2048) -> DbcSignalDecoder:
         """Instantiate decoder from in-memory DBC string."""
@@ -121,24 +175,31 @@ class DbcSignalDecoder:
 
             payload = frame.data[: msg_def.length] if frame_len > msg_def.length else frame.data
 
-            # Decode scaled physical values and raw integer values
+            # Single decode pass: scaled physical values only; raw values are
+            # recovered arithmetically per signal (raw = (physical - offset) /
+            # scale), which halves the per-frame cost of this hot path.
             scaled_signals = msg_def.decode(
                 payload,
                 decode_choices=False,
                 scaling=True,
-            )
-            raw_signals = msg_def.decode(
-                payload,
-                decode_choices=False,
-                scaling=False,
             )
 
             units_map, sig_defs_map = self._get_signal_metadata(msg_def)
             decoded_signals: dict[str, DecodedSignal] = {}
 
             for sig_name, sig_val in scaled_signals.items():
-                raw_val = raw_signals.get(sig_name)
                 sig_def = sig_defs_map.get(sig_name)
+
+                raw_val: int | float | None
+                if sig_def is not None and isinstance(sig_val, (int, float)):
+                    if sig_def.scale == 0:
+                        raw_val = sig_def.scale  # degenerate definition; keep type
+                    else:
+                        raw_val = (sig_val - sig_def.offset) / sig_def.scale
+                    if isinstance(raw_val, float) and raw_val.is_integer():
+                        raw_val = int(raw_val)
+                else:
+                    raw_val = sig_val
 
                 # Check for J1939 / standard Not Available and Parameter Error discrete values
                 is_valid = True
@@ -146,15 +207,24 @@ class DbcSignalDecoder:
 
                 if sig_def is not None and isinstance(raw_val, (int, float)):
                     sig_len = sig_def.length
-                    # Standard SAE J1939 indicator masks for unsigned fields
-                    if not sig_def.is_signed and sig_len in {2, 4, 8, 16, 32}:
+                    if not sig_def.is_signed and sig_len in {2, 4}:
+                        # Discrete 2/4-bit indicators: max-1 = Error, max = Not Available
                         max_val = (1 << sig_len) - 1
-                        error_val = max_val - 1
-
                         if raw_val == max_val:
                             is_valid = False
                             status = SignalStatus.NOT_AVAILABLE
-                        elif raw_val == error_val:
+                        elif raw_val == max_val - 1:
+                            is_valid = False
+                            status = SignalStatus.ERROR
+                    elif not sig_def.is_signed and sig_len in _SENTINEL_CHECKS and isinstance(raw_val, int):
+                        # E4: full SAE J1939-71 MSB sentinel ranges (e.g. any
+                        # 16-bit 0xFE** is Error, any 0xFF** is Not Available),
+                        # not just the two exact endpoint values.
+                        quality = _SENTINEL_CHECKS[sig_len](raw_val)
+                        if quality == SignalQuality.NOT_AVAILABLE:
+                            is_valid = False
+                            status = SignalStatus.NOT_AVAILABLE
+                        elif quality in (SignalQuality.ERROR, SignalQuality.RESERVED):
                             is_valid = False
                             status = SignalStatus.ERROR
 

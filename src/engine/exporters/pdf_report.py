@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html as html_mod
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,7 +41,7 @@ class DiagnosticReportGenerator:
 
         now_str = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
 
-        # Collect DTC rows
+        # Collect DTC rows (all user/signal-derived strings HTML-escaped — F-02, CWE-79)
         dtc_rows = []
         for dm in dm_messages:
             for dtc in dm.dtcs:
@@ -49,13 +50,15 @@ class DiagnosticReportGenerator:
                     if dtc.is_critical
                     else '<span style="color:orange;">UYARI</span>'
                 )
+                fmi_tr = html_mod.escape(dtc.fmi_description_tr)
+                fmi_en = html_mod.escape(dtc.fmi_description_en)
                 dtc_rows.append(
                     f"<tr>"
                     f"<td>0x{dm.source_address:02X}</td>"
                     f"<td>SPN {dtc.spn}</td>"
                     f"<td>FMI {dtc.fmi}</td>"
                     f"<td>{dtc.occurrence_count}</td>"
-                    f"<td>{dtc.fmi_description_tr} ({dtc.fmi_description_en})</td>"
+                    f"<td>{fmi_tr} ({fmi_en})</td>"
                     f"<td>{criticality_badge}</td>"
                     f"</tr>"
                 )
@@ -88,10 +91,10 @@ class DiagnosticReportGenerator:
   <h1>🛠 Universal CAN-Bus Servis Teşhis & Telemetri Raporu</h1>
 
   <div class="meta-box">
-    <p><strong>Araç / Tekne Kimliği (VIN / HIN):</strong> {metadata.vin_or_hin}</p>
-    <p><strong>Servis / Atölye:</strong> {metadata.workshop_name} | <strong>Teknisyen:</strong> {metadata.technician_name}</p>
+    <p><strong>Araç / Tekne Kimliği (VIN / HIN):</strong> {html_mod.escape(metadata.vin_or_hin)}</p>
+    <p><strong>Servis / Atölye:</strong> {html_mod.escape(metadata.workshop_name)} | <strong>Teknisyen:</strong> {html_mod.escape(metadata.technician_name)}</p>
     <p><strong>Rapor Tarihi:</strong> {now_str}</p>
-    <p><strong>Notlar:</strong> {metadata.notes or "Rutin periyodik kontrol ve telemetri doğrulaması."}</p>
+    <p><strong>Notlar:</strong> {html_mod.escape(metadata.notes or "Rutin periyodik kontrol ve telemetri doğrulaması.")}</p>
   </div>
 
   <h2>📋 Diyagnostik Arıza Kodları (DTCs)</h2>

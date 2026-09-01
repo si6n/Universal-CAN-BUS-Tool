@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 from src.core.logging import get_logger
 
@@ -35,12 +36,15 @@ class KmlExporter:
         path = Path(output_file)
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        # XML-escape user-supplied track name (F-02, CWE-91)
+        safe_track_name = xml_escape(track_name)
+
         coords_str = " ".join(f"{p.longitude},{p.latitude},{p.altitude_m}" for p in points)
 
         kml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>{track_name}</name>
+    <name>{safe_track_name}</name>
     <Style id="trackLine">
       <LineStyle>
         <color>ff0000ff</color>
@@ -48,7 +52,7 @@ class KmlExporter:
       </LineStyle>
     </Style>
     <Placemark>
-      <name>{track_name} Path</name>
+      <name>{safe_track_name} Path</name>
       <styleUrl>#trackLine</styleUrl>
       <LineString>
         <extrude>1</extrude>

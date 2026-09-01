@@ -34,8 +34,8 @@ class VirtualBus(AbstractBus):
         self.is_connected = False
         self.metrics.state = BusState.DISCONNECTED
 
-    def _send_raw(self, frame: CanFrame) -> None:
-        """Transmit frame onto the virtual bus."""
+    def send(self, frame: CanFrame) -> None:
+        """Transmit frame onto the virtual bus (canonical TX entry point, D8)."""
         if not self.is_connected:
             raise HardwareError("Cannot send: Virtual CAN bus is not connected")
         self.sent_frames.append(frame)

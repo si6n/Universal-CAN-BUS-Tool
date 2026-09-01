@@ -1,4 +1,8 @@
-"""Vector ASCII (.asc) and Binary Log (.blf) Trace Parsers."""
+"""Vector ASCII (.asc) Trace Parser.
+
+Note: only the text-based .asc format is implemented. Binary .blf files are
+NOT supported — pass a .blf here and it will yield zero frames.
+"""
 
 from __future__ import annotations
 

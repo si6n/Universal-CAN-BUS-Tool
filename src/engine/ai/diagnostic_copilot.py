@@ -16,8 +16,17 @@ from enum import Enum
 from typing import Any
 
 from src.core.logging import get_logger
+from src.safety.secret_provider import SecretProvider
 
 logger = get_logger("engine.ai_copilot")
+
+# Single endpoint constant — the API key travels in the x-goog-api-key
+# header, never in the URL (CWE-598). Keep the model name in sync with
+# README (F-42 / E-9).
+GEMINI_ENDPOINT = (
+    "https://generativelanguage.googleapis.com/v1beta/models/"
+    "gemini-2.0-flash:generateContent"
+)
 
 
 class FaultSeverity(Enum):
@@ -1018,10 +1027,31 @@ class AiDiagnosticCopilot:
         gemini_api_key: str | None = None,
         openai_api_key: str | None = None,
         provider: str = "auto",
+        secret_provider: SecretProvider | None = None,
     ) -> None:
-        self.gemini_api_key = gemini_api_key
+        self._gemini_api_key = gemini_api_key
         self.openai_api_key = openai_api_key
         self.provider = provider
+        self._key_provider: SecretProvider | None = secret_provider
+
+    def set_key_provider(self, secret_provider: SecretProvider) -> None:
+        """Route all API key lookups through the secret vault (F-08).
+
+        The key is never stored as a plain attribute and never logged.
+        """
+        self._key_provider = secret_provider
+        # Drop any previously held plain-text key
+        self._gemini_api_key = None
+
+    @property
+    def gemini_api_key(self) -> str | None:
+        """Resolve the Gemini key from the vault; plain ctor key only as legacy fallback."""
+        if self._key_provider is not None:
+            try:
+                return self._key_provider.get_secret("GEMINI_API_KEY").decode("utf-8")
+            except KeyError:
+                return None
+        return self._gemini_api_key
 
     @staticmethod
     def _clean_and_parse_json(raw_text: str) -> dict[str, Any]:
@@ -1265,7 +1295,6 @@ class AiDiagnosticCopilot:
         # 1. Live Gemini API call if configured
         if self.gemini_api_key and len(self.gemini_api_key.strip()) > 10:
             try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.gemini_api_key.strip()}"
                 prompt_text = (
                     "Sen 'Universal CAN-Bus Diagnostic & Telemetry Tool' profesyonel araç teşhis yazılımının içerisindeki yerleşik AI Teşhis Başmühendisisin.\n"
                     "Kullanıcı zaten CAN veri yoluna doğrudan bağlı ve canlı paketleri bu cihaz ile okuyor!\n\n"
@@ -1280,8 +1309,11 @@ class AiDiagnosticCopilot:
                     "generationConfig": {"temperature": 0.3, "maxOutputTokens": 2048},
                 }
                 data = json.dumps(payload).encode("utf-8")
-                headers = {"Content-Type": "application/json"}
-                req = urllib.request.Request(url, data=data, headers=headers)
+                headers = {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.gemini_api_key.strip(),
+                }
+                req = urllib.request.Request(GEMINI_ENDPOINT, data=data, headers=headers)
                 with urllib.request.urlopen(req, timeout=8.0) as resp:
                     resp_json = json.loads(resp.read().decode("utf-8"))
                     parts = resp_json.get("candidates", [{}])[0].get("content", {}).get("parts", [])
@@ -1305,7 +1337,6 @@ class AiDiagnosticCopilot:
         """Call Google Gemini 2.0 Flash REST API with structured JSON output."""
         if not self.gemini_api_key:
             raise ValueError("Gemini API key is required")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.gemini_api_key.strip()}"
         prompt = (
             "Sen 'Universal CAN-Bus Diagnostic & Telemetry Tool' profesyonel araç teşhis yazılımının yerleşik AI Başmühendisisin.\n"
             f"Aktif DTC Listesi: {json.dumps(active_dtcs, ensure_ascii=False)}\n"
@@ -1329,8 +1360,11 @@ class AiDiagnosticCopilot:
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
         }
         data = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        req = urllib.request.Request(url, data=data, headers=headers)
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.gemini_api_key.strip(),
+        }
+        req = urllib.request.Request(GEMINI_ENDPOINT, data=data, headers=headers)
         with urllib.request.urlopen(req, timeout=10.0) as resp:
             resp_data = json.loads(resp.read().decode("utf-8"))
             candidate = resp_data["candidates"][0]["content"]["parts"][0]["text"]

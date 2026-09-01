@@ -10,12 +10,11 @@ from collections.abc import Sequence
 from typing import Any
 
 import can
-from can import BusState
 
 from src.core.errors import HardwareError, TransportError
 from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame, length_to_dlc
-from src.hal.base import AbstractBus
+from src.hal.base import AbstractBus, BusState
 
 logger = get_logger("hal.drivers")
 
@@ -56,18 +55,21 @@ class PythonCanBus(AbstractBus):
                 bus_kwargs["data_bitrate"] = self.data_bitrate
 
             if self.listen_only:
-                bus_kwargs["state"] = BusState.PASSIVE
+                # python-can expects the BusState enum member; BusState is a
+                # plain Enum (not a str-Enum), so the string "PASSIVE" fails
+                # the driver's membership check and raises ValueError.
+                bus_kwargs["state"] = can.BusState.PASSIVE
 
             self._bus = can.Bus(**bus_kwargs)
             self.is_connected = True
-            self.metrics.state = "passive" if self.listen_only else "active"
+            self.metrics.state = BusState.PASSIVE if self.listen_only else BusState.ACTIVE
             logger.info(
                 "Connected CAN hardware interface",
                 extra={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
             )
         except (can.CanError, OSError, ValueError) as exc:
             self.is_connected = False
-            self.metrics.state = "disconnected"
+            self.metrics.state = BusState.DISCONNECTED
             raise HardwareError(
                 f"Failed to connect to CAN interface '{self.interface}:{self.channel}': {exc}",
                 code="HARDWARE_CONNECT_FAILED",
@@ -85,7 +87,7 @@ class PythonCanBus(AbstractBus):
             finally:
                 self._bus = None
                 self.is_connected = False
-                self.metrics.state = "disconnected"
+                self.metrics.state = BusState.DISCONNECTED
 
     def send(self, frame: CanFrame) -> None:
         """Transmit CanFrame on physical bus."""
@@ -164,15 +166,24 @@ class PythonCanBus(AbstractBus):
     ) -> int | None:
         """Scan CAN line in Listen-Only mode to auto-detect valid bitrate without ACK disturbance."""
         for rate in candidates:
+            bus = None
             try:
                 bus = cls(interface=interface, channel=channel, bitrate=rate, listen_only=True)
                 bus.connect()
                 frame = bus.recv(timeout_s=listen_timeout_s)
-                bus.disconnect()
                 if frame is not None:
                     logger.info("Auto-detected active bitrate", extra={"bitrate": rate})
                     return rate
             except (can.CanError, OSError, HardwareError) as exc:
                 logger.debug("Bitrate candidate failed", extra={"bitrate": rate, "error": str(exc)})
-                continue
+            finally:
+                # F-22: always release the bus, including on exception paths
+                if bus is not None:
+                    try:
+                        bus.disconnect()
+                    except (can.CanError, OSError) as exc:
+                        logger.debug(
+                            "Disconnect after bitrate probe failed",
+                            extra={"bitrate": rate, "error": str(exc)},
+                        )
         return None

@@ -17,13 +17,27 @@ logger = get_logger("hal.replay.safety_filter")
 class ReplaySafetyFilter:
     """Filters unsafe commands (Address Claim, ECU Reset, Diagnostics) from replay streams."""
 
-    # Critical J1939 / NMEA2000 PGNs to block in replay
+    # Critical J1939 / NMEA2000 PGNs to block in replay.
+    # D4: values follow SAE J1939-73 DM assignments — the previous table
+    # mislabeled 65235/65234 as DM4/DM5 (those are DM3/DM2 offsets) and so
+    # never actually blocked the freeze-frame/readiness clear paths.
     BLOCKED_PGNS: ClassVar[set[int]] = {
-        0x0EE00,  # 60928: Address Claimed / Cannot Claim
+        0x0EE00,  # 60928: Address Claimed / Cannot Claim (J1939-81)
         0x0FED8,  # 65240: Commanded Address
-        0x0EA00,  # 59904: Request PGN
-        0x0FED3,  # 65235: Diagnostic Message 4 (DM4 - Freeze Frame Clear)
-        0x0FED2,  # 65234: Diagnostic Message 5 (DM5 - Diagnostic Readiness)
+        0x0EA00,  # 59904: Request PGN (arbitrary PGN trigger)
+        0x0FED5,  # 65229: DM4 — Freeze Frame Clear (write path)
+        0x0FED6,  # 65230: DM5 — Diagnostic Readiness / DM5 Clear (write path)
+        0x0FEDA,  # 65242: DM11 — Diagnostic Data Clear (write path)
+        0x0FEEE,  # 65262: DM2 — Active DTCs (diagnostic state churn)
+    }
+
+    # D5: J1939-21 transport PGNs. TP.CM carries control bytes that command
+    # peer-side session behaviour (RTS/CTS/Abort) and TP.DT can tunnel any
+    # blocked payload in 7-byte slices — replaying either onto a live bus
+    # re-implements the exact session hijack the filter exists to stop.
+    TRANSPORT_TUNNEL_PGNS: ClassVar[set[int]] = {
+        0x0EC00,  # 60416: TP.CM (Connection Management)
+        0x0EB00,  # 60160: TP.DT (Data Transfer)
     }
 
     # Standard Diagnostic Request Arbitration IDs (11-bit)
@@ -59,11 +73,13 @@ class ReplaySafetyFilter:
         block_address_claim: bool = True,
         block_diagnostic_write: bool = True,
         block_actuator_routines: bool = True,
+        block_transport_tunneling: bool = True,
         custom_blocked_ids: set[int] | None = None,
     ) -> None:
         self.block_address_claim = block_address_claim
         self.block_diagnostic_write = block_diagnostic_write
         self.block_actuator_routines = block_actuator_routines
+        self.block_transport_tunneling = block_transport_tunneling
         self.custom_blocked_ids = custom_blocked_ids or set()
 
         self.total_evaluated: int = 0
@@ -87,6 +103,14 @@ class ReplaySafetyFilter:
 
             if self.block_address_claim and (pgn in self.BLOCKED_PGNS or masked_pgn in self.BLOCKED_PGNS):
                 return False, f"BLOCKED_J1939_PGN: {pgn} (0x{pgn:05X})"
+
+            # D5: TP.CM/TP.DT frames can tunnel arbitrary payloads (including
+            # every blocked diagnostic command) in 7-byte slices and can
+            # command peer-side session behaviour — block by default.
+            if self.block_transport_tunneling and (
+                pgn in self.TRANSPORT_TUNNEL_PGNS or masked_pgn in self.TRANSPORT_TUNNEL_PGNS
+            ):
+                return False, f"BLOCKED_TP_TUNNEL: {pgn} (0x{pgn:05X})"
 
             # ISO-TP / UDS over 29-bit (e.g. 0x18DAxxF1)
             if pdu_format in {0xDA, 0xDB} and len(frame.data) >= 2:
