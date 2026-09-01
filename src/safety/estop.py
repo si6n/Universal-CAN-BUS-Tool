@@ -6,6 +6,7 @@ with anti-replay, epoch-tracked, and timing-safe challenge-response cryptographi
 
 from __future__ import annotations
 
+import collections
 import hashlib
 import hmac
 import os
@@ -14,7 +15,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from src.core.errors import SafetyError
 from src.core.logging import get_logger
@@ -108,10 +109,15 @@ class EmergencyStopToken:
 class EmergencyStopSystem:
     """Master Emergency Stop controller ensuring immediate hardware/software TX cutoff.
 
-    Integrates with SecretProvider for dynamic key retrieval (zero hardcoded secrets),
+    Integrates SecretProvider for dynamic key retrieval (zero hardcoded secrets),
     maintains an anti-replay store of consumed nonces, enforces monotonic TTL windows,
     and performs constant-time HMAC-SHA256 authorization verification.
     """
+
+    # B9: replay window is bounded — nonces are 32 random bytes and a challenge
+    # older than max_token_age_s can never verify again, so retaining far more
+    # than a full window of recent nonces adds no protection, only memory.
+    MAX_CONSUMED_NONCES: ClassVar[int] = 1024
 
     def __init__(
         self,
@@ -145,7 +151,9 @@ class EmergencyStopSystem:
         self._last_event: EStopEvent | None = None
         self._callbacks: list[Callable[[EStopEvent], None]] = []
         self._active_challenge: EStopChallenge | None = None
-        self._consumed_nonces: set[bytes] = set()
+        # B9: ordered dict preserves insertion (consumption) order so the
+        # oldest nonce can be evicted when the window is full.
+        self._consumed_nonces: "collections.OrderedDict[bytes, bool]" = collections.OrderedDict()
         self._epoch: int = 0
         self._lock = threading.RLock()
 
@@ -245,10 +253,13 @@ class EmergencyStopSystem:
         with self._lock:
             secret = self._get_secret()
 
+            # B11: when a live challenge exists, create_reset_token() already
+            # answers the "engaged + challenge present" precondition — a
+            # None re-check here was dead code (the outer challenge guard
+            # guarantees the precondition).
             if self._active_challenge is not None:
                 token_obj = self.create_reset_token()
-                if token_obj is not None:
-                    return token_obj.to_token_string()
+                return token_obj.to_token_string() if token_obj is not None else ""
 
             if nonce is None:
                 return ""
@@ -421,12 +432,26 @@ class EmergencyStopSystem:
                 raise SafetyError("Invalid E-Stop reset token", code="ESTOP_RESET_DENIED")
 
             # 8. Success: Consume nonce, advance epoch, disengage E-Stop
-            self._consumed_nonces.add(challenge.nonce)
+            # B9: bounded replay window — see _record_consumed_nonce for why
+            # eviction is safe against replay.
+            self._record_consumed_nonce(challenge.nonce)
             self._is_engaged = False
-            self._last_event = None
+            # B10: keep the engagement audit record — only the challenge state
+            # is cleared; last_event remains the "why did we stop" evidence.
             self._active_challenge = None
             self._epoch += 1
             logger.warning(
                 "Emergency Stop successfully reset by authorized operator",
                 extra={"epoch": self._epoch},
             )
+
+    def _record_consumed_nonce(self, nonce: bytes) -> None:
+        """Add a nonce to the replay store, evicting oldest beyond the cap.
+
+        B9: challenges older than max_token_age_ns are already TTL-rejected,
+        so a nonce that fell off the window can never verify again — the
+        eviction never re-opens a live replay window.
+        """
+        self._consumed_nonces[nonce] = True
+        while len(self._consumed_nonces) > self.MAX_CONSUMED_NONCES:
+            self._consumed_nonces.popitem(last=False)  # evict oldest

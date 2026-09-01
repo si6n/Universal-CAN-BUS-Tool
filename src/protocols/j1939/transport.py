@@ -152,12 +152,20 @@ class J1939TransportProtocol:
         return time.monotonic()
 
     def _reap_stale_sessions(self, now: float | None = None) -> None:
-        """Reap inactive reassembly sessions exceeding T1 timeout."""
+        """Reap inactive reassembly sessions.
+
+        P-c: per SAE J1939-21 the receiver holds a CMDT (point-to-point)
+        session open for T4 (1050 ms) after CTS while awaiting the next DT,
+        and a BAM broadcast for T1 (750 ms). The previous blanket T1 reaped
+        CMDT transfers up to 300 ms too early.
+        """
         curr_time = now if now is not None else self._get_now()
         expired = [
             key
             for key, sess in self._rx_sessions.items()
-            if (curr_time - sess.last_activity_time) > self.T1_TIMEOUT_SEC
+            if (curr_time - sess.last_activity_time) > (
+                self.T4_TIMEOUT_SEC if not sess.is_bam else self.T1_TIMEOUT_SEC
+            )
         ]
         for key in expired:
             self._release_session_slot(key, self._rx_sessions.get(key))
@@ -406,11 +414,19 @@ class J1939TransportProtocol:
 
         now = self._get_now()
 
-        # Check T1 timeout (750 ms)
-        if (now - session.last_activity_time) > self.T1_TIMEOUT_SEC:
+        # Session hold: T4 (1050 ms) for CMDT peer-to-peer sessions, T1
+        # (750 ms) for BAM broadcasts (P-c — aligned with _reap_stale_sessions)
+        hold_timeout = self.T4_TIMEOUT_SEC if not session.is_bam else self.T1_TIMEOUT_SEC
+        if (now - session.last_activity_time) > hold_timeout:
             logger.warning(
-                "J1939 TP.DT session timeout (T1 exceeded)",
-                extra={"sa": sa, "da": da, "target_pgn": hex(session.target_pgn)},
+                "J1939 TP.DT session timeout (hold window exceeded)",
+                extra={
+                    "sa": sa,
+                    "da": da,
+                    "target_pgn": hex(session.target_pgn),
+                    "timeout_s": hold_timeout,
+                    "is_bam": session.is_bam,
+                },
             )
             self._release_session_slot(session_key, session)
             abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_TIMEOUT)

@@ -291,7 +291,8 @@ def test_tier1_estop_valid_token_reset() -> None:
 
     estop.reset(token)
     assert not estop.is_engaged
-    assert estop.last_event is None
+    # B10: engagement audit record survives the reset
+    assert estop.last_event is not None
     assert estop.get_reset_nonce() == b""
 
 

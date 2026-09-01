@@ -87,6 +87,15 @@ class E2EProfileConfig:
             raise ValueError(f"crc_byte_offset must be non-negative, got {self.crc_byte_offset}")
         if self.counter_byte_offset < 0:
             raise ValueError(f"counter_byte_offset must be non-negative, got {self.counter_byte_offset}")
+        # B14: the packager writes the counter first and the CRC second —
+        # with both offsets equal the CRC silently overwrites the counter and
+        # every receiver flags the stream as a sequence jump.
+        if self.crc_byte_offset == self.counter_byte_offset:
+            raise ValueError(
+                f"crc_byte_offset ({self.crc_byte_offset}) must differ from "
+                f"counter_byte_offset ({self.counter_byte_offset}) — equal offsets "
+                f"would have the CRC overwrite the rolling counter"
+            )
 
     @classmethod
     def create_autosar_profile_1(

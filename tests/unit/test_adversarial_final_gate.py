@@ -139,7 +139,9 @@ def test_all_10_estop_trigger_sources_record_and_dispatch() -> None:
         token = estop.compute_reset_token(nonce)
         estop.reset(token)
         assert estop.is_engaged is False
-        assert estop.last_event is None
+        # B10: the audit record of the engagement survives the reset
+        assert estop.last_event is not None
+        assert estop.last_event.trigger == trigger
 
 
 def test_estop_callback_exception_safety() -> None:

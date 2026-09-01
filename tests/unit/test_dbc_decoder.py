@@ -179,3 +179,33 @@ def test_sentinel_msb_ranges_flagged_for_16bit_signals() -> None:
     sig_ok = decode_engine_speed(0x1F40)  # 8000 -> 1000 rpm
     assert sig_ok.is_valid is True
     assert sig_ok.status == SignalStatus.VALID
+
+
+def test_add_dbc_file_clears_signal_metadata_caches() -> None:
+    """E8: reload must drop the id()-keyed signal metadata caches too —
+    a merged/redefined message would otherwise keep serving stale units
+    and signal definitions forever."""
+    import tempfile
+    from pathlib import Path as P
+
+    decoder = DbcSignalDecoder.from_dbc_string(SAMPLE_DBC)
+    frame = CanFrame.create(channel_id="ch", arbitration_id=256, data=b"\x00" * 8, is_extended=False)
+    decoder.decode_frame(frame)
+    assert decoder._signal_units_cache, "signal metadata should be cached after a decode"
+    assert decoder._signal_defs_cache
+
+    with tempfile.NamedTemporaryFile("w", suffix=".dbc", delete=False, encoding="utf-8") as f:
+        f.write(SAMPLE_DBC)
+        tmp = P(f.name)
+
+    class _StubDb:
+        messages = []
+        def add_dbc_file(self, path):
+            pass  # accept the file; we assert the cache-clearing side effect
+
+    decoder.db = _StubDb()
+    decoder.add_dbc_file(tmp)
+    assert not decoder._signal_units_cache
+    assert not decoder._signal_defs_cache
+    assert not decoder._message_cache
+    tmp.unlink(missing_ok=True)

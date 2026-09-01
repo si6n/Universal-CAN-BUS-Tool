@@ -105,7 +105,9 @@ def test_estop_structured_token_reset_success() -> None:
     # Reset using token object
     estop.reset(token_obj)
     assert not estop.is_engaged
-    assert estop.last_event is None
+    # B10: audit record of the engagement survives the reset
+    assert estop.last_event is not None
+    assert estop.last_event.trigger == EStopTriggerSource.USER_UI_BUTTON
     assert estop.get_reset_nonce() == b""
     assert estop.epoch == 1
 
@@ -381,3 +383,21 @@ def test_estop_concurrent_trigger_and_reset_toctou_safety() -> None:
     t2.join()
 
     assert not errors
+
+
+def test_estop_consumed_nonce_window_is_bounded() -> None:
+    """B9: the replay store must not grow without bound.
+
+    Consumed nonces evict oldest-first beyond MAX_CONSUMED_NONCES. Eviction
+    is safe: challenges older than max_token_age_s are TTL-rejected anyway,
+    so a replayed nonce that fell off the window can no longer verify.
+    """
+    estop = EmergencyStopSystem()
+    # Fill the window beyond capacity through the REAL production insertion
+    # path (_record_consumed_nonce is what reset() calls on success)
+    for i in range(estop.MAX_CONSUMED_NONCES + 50):
+        estop._record_consumed_nonce(i.to_bytes(16, "big"))
+
+    assert len(estop._consumed_nonces) <= estop.MAX_CONSUMED_NONCES
+    # Insertion-ordered eviction: the OLDEST entries are the ones gone
+    assert (0).to_bytes(16, "big") not in estop._consumed_nonces

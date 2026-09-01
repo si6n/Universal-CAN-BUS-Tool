@@ -200,3 +200,17 @@ class TestFieldExtractAndInjectHelpers:
             extract_crc(short_buf, cfg)
         with pytest.raises(ValueError, match="too short for CRC offset"):
             inject_crc(short_buf, 0x10, cfg)
+
+
+def test_profile_rejects_crc_counter_offset_collision() -> None:
+    """B14: crc_byte_offset == counter_byte_offset must be rejected at
+    construction — the packager writes counter first, CRC second, so equal
+    offsets silently destroy the rolling counter."""
+    import pytest
+
+    with pytest.raises(ValueError, match="crc_byte_offset"):
+        E2EProfileConfig(
+            profile_type=E2EProfileType.AUTOSAR_PROFILE_1C,
+            crc_byte_offset=0,
+            counter_byte_offset=0,
+        )

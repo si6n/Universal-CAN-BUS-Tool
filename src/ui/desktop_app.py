@@ -141,11 +141,25 @@ class UniversalCanDesktopApp:
         self._window: webview.Window | None = None
         self._thread: threading.Thread | None = None
         self._running = True
+        # E14/E15: bridge thread (JS calls) and telemetry thread mutate the
+        # same flags and counters — plain `+=` across threads loses updates.
+        # One small lock guards writes; reads of single attributes remain
+        # lock-free (atomic in CPython).
+        self._ui_state_lock = threading.Lock()
+
+    def _bump_stat(self, attr: str, delta: int) -> None:
+        """Thread-safe stat increment (E15)."""
+        with self._ui_state_lock:
+            setattr(self, attr, getattr(self, attr) + delta)
+
+    def _set_ui_state(self, **kwargs) -> None:  # noqa: ANN001 — narrow helper
+        """Thread-safe UI state flag writes (E14)."""
+        with self._ui_state_lock:
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
     def trigger_estop(self) -> None:
-        self._is_estop = True
-        self._is_simulating = False
-        self._bus_load = 0
+        self._set_ui_state(_is_estop=True, _is_simulating=False, _bus_load=0)
         self.estop.trigger(EStopTriggerSource.USER_UI_BUTTON, "Operator Pressed E-STOP")
         self.supervisor.trigger_fault("Operator Pressed E-STOP button in desktop interface")
 
@@ -162,18 +176,18 @@ class UniversalCanDesktopApp:
                 logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
                 return self._is_simulating
             self.estop.reset(token)
-            self._is_estop = False
+            self._set_ui_state(_is_estop=False)
             if self.supervisor.is_fault:
                 self.supervisor.transition_to(
                     SafetyState.PASSIVE, reason="E-Stop cryptographically reset — PASSIVE"
                 )
 
-        self._is_simulating = not self._is_simulating
-        if not self._is_simulating:
-            self._bus_load = 0
-        else:
-            self._bus_load = 40
-        return self._is_simulating
+        # E14: toggle under one lock so two rapid JS clicks cannot read the
+        # same stale value and both flip it the same way.
+        with self._ui_state_lock:
+            self._is_simulating = not self._is_simulating
+            self._bus_load = 0 if not self._is_simulating else 40
+            return self._is_simulating
 
     def set_scenario(self, scenario: str) -> None:
         self._active_scenario = scenario
@@ -184,17 +198,17 @@ class UniversalCanDesktopApp:
                 logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
                 return
             self.estop.reset(token)
-        self._is_estop = False
+        self._set_ui_state(_is_estop=False)
 
     def set_simulation_speed(self, speed: float) -> None:
-        self._speed_mult = max(0.25, min(10.0, float(speed)))
+        self._set_ui_state(_speed_mult=max(0.25, min(10.0, float(speed))))
 
     def inject_fault(self, fault_type: str) -> None:
         if fault_type == "error_frame":
-            self._error_count += 5
+            self._bump_stat("_error_count", 5)
         elif fault_type == "wiring_dropout":
-            self._error_count += 12
-            self._bus_load = 88
+            self._bump_stat("_error_count", 12)
+            self._set_ui_state(_bus_load=88)
 
     def query_copilot(self, query: str) -> str:
         dtc_list: list[str] = []
@@ -361,32 +375,46 @@ class UniversalCanDesktopApp:
             elif n2k_msg.pgn == 128267 and len(n2k_msg.data) >= 5:
                 self._depth_meters = int.from_bytes(n2k_msg.data[1:5], "little") * 0.01
 
-        self._total_packets += 1
+        self._bump_stat("_total_packets", 1)
 
-    def _push_frame_to_ui(self, frame: object) -> None:
-        """Stream the live frame to the frontend sniffer view (F-28)."""
-        if self._window is None:
+    def _push_frames_to_ui_batch(self, frames: list[object]) -> None:
+        """Stream a tick's frames to the frontend in ONE evaluate_js call (E13).
+
+        Per-frame JS evaluation (up to 200 frames / 50 ms tick) flooded the
+        WebView2 bridge; batching mirrors the frontend's own F-35 pattern
+        (single state update per batch). Falls back to nothing on a closed
+        window; each frame's payload is json.dumps-escaped (E2).
+        """
+        if self._window is None or not frames:
             return
+        payloads: list[str] = []
+        for frame in frames:
+            try:
+                data_hex = bytes(frame.data).hex()  # type: ignore[attr-defined]
+                payloads.append(
+                    json.dumps(
+                        {
+                            "id": f"0x{frame.arbitration_id:03X}",  # type: ignore[attr-defined]
+                            "timestamp": round((frame.timestamp_ns or 0) / 1e9,  # type: ignore[attr-defined]
+                                                3),
+                            "channel": frame.channel_id,  # type: ignore[attr-defined]
+                            "dlc": frame.dlc,  # type: ignore[attr-defined]
+                            "data": data_hex,
+                            "isExtended": frame.is_extended,  # type: ignore[attr-defined]
+                            "isFd": frame.is_fd,  # type: ignore[attr-defined]
+                            "source": getattr(frame, "source", "physical"),
+                        }
+                    )
+                )
+            except (AttributeError, OSError, RuntimeError) as exc:
+                logger.debug("Frame serialization for UI batch failed", extra={"error": str(exc)})
+        if not payloads:
+            return
+        batch_js = "[" + ",".join(payloads) + "]"
         try:
-            data_hex = bytes(frame.data).hex()  # type: ignore[attr-defined]
-            # Serialize via json.dumps so externally sourced strings (channel
-            # names from traces/interfaces) are escaped and cannot inject
-            # script into the WebView2 context.
-            payload = json.dumps(
-                {
-                    "id": f"0x{frame.arbitration_id:03X}",  # type: ignore[attr-defined]
-                    "timestamp": round((frame.timestamp_ns or 0) / 1e9, 3),  # type: ignore[attr-defined]
-                    "channel": frame.channel_id,  # type: ignore[attr-defined]
-                    "dlc": frame.dlc,  # type: ignore[attr-defined]
-                    "data": data_hex,
-                    "isExtended": frame.is_extended,  # type: ignore[attr-defined]
-                    "isFd": frame.is_fd,  # type: ignore[attr-defined]
-                    "source": getattr(frame, "source", "physical"),
-                }
-            )
-            self._window.evaluate_js(f"if (window.onNewCanFrame) window.onNewCanFrame({payload});")
+            self._window.evaluate_js(f"if (window.onNewCanFrames) window.onNewCanFrames({batch_js});")
         except (AttributeError, OSError, RuntimeError) as exc:
-            logger.debug("Live frame UI push failed", extra={"error": str(exc)})
+            logger.debug("Batched frame UI push failed", extra={"error": str(exc)})
 
     def _telemetry_loop(self) -> None:
         """Background loop: live CAN ingestion when connected, synthetic values in DEMO mode.
@@ -404,15 +432,18 @@ class UniversalCanDesktopApp:
             # ── LIVE path: real frames off the bus (F-28) ──────────────
             if not self._is_simulating:
                 drained = 0
+                tick_frames: list[object] = []
                 while drained < 200:
                     frame = self.bus.recv(timeout_s=0.01)
                     if frame is None:
                         break
                     self._ingest_live_frame(frame)
-                    self._push_frame_to_ui(frame)
+                    tick_frames.append(frame)
                     drained += 1
                 if drained == 0:
                     continue
+                # E13: one JS evaluation per tick for the whole batch
+                self._push_frames_to_ui_batch(tick_frames)
                 # Live bus load estimate from routed frame rate
                 self._bus_load = min(100, int(drained / 2))
                 self._push_telemetry_tick()
@@ -421,7 +452,7 @@ class UniversalCanDesktopApp:
             # ── DEMO path: synthetic scenario values (F-29: single module) ──
             self._sim_time += 0.05 * self._speed_mult
             t = self._sim_time
-            self._total_packets += 1
+            self._bump_stat("_total_packets", 1)
 
             rpm = 2381.0 + 80.0 * math.sin(t * 0.8) + 30.0 * math.cos(t * 1.5)
             boost = 1.66 + 0.12 * math.sin(t * 0.5) + 0.05 * math.cos(t * 1.1)
@@ -460,7 +491,7 @@ class UniversalCanDesktopApp:
             elif self._active_scenario == "intermittent_wiring_fault":
                 self._bus_load = 78
                 if math.sin(t * 2.0) > 0.6:
-                    self._error_count += 1
+                    self._bump_stat("_error_count", 1)
             else:
                 self._bus_load = 40 + int(3 * math.sin(t))
 
@@ -542,5 +573,5 @@ class UniversalCanDesktopApp:
         try:
             webview.start(debug=False)
         finally:
-            self._running = False
+            self._set_ui_state(_running=False)
             self.watchdog.stop()

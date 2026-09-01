@@ -145,6 +145,13 @@ export const App: React.FC = () => {
       setFrames((prev) => [...prev.slice(-199), f]);
     };
 
+    // E13: batched live frames — ONE call per 50ms tick from Python (mirrors
+    // the F-35 single-state-update pattern used by the simulator).
+    window.onNewCanFrames = (batch) => {
+      if (!Array.isArray(batch) || batch.length === 0) return;
+      setFrames((prev) => [...prev.slice(-(200 - batch.length)), ...batch].slice(-200));
+    };
+
     window.onTelemetryTick = (p) => {
       setCurrentTelemetry(p);
       setTelemetryHistory((prev) => [...prev.slice(-149), p]);

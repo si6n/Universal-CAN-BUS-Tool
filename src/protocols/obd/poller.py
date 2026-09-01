@@ -70,11 +70,8 @@ class PollerJob:
         """Sampling interval in fractional seconds."""
         return 1.0 / self.rate_hz if self.rate_hz > 0 else 1.0
 
-    def __lt__(self, other: PollerJob) -> bool:
-        """Comparison for priority heap: highest priority first, then earliest next_run_s."""
-        if self.priority != other.priority:
-            return self.priority > other.priority
-        return self.next_run_s < other.next_run_s
+    # P-e: the priority-heap __lt__ was removed — scheduling uses an explicit
+    # sort key (priority, next_run_s) in step(), no heap ordering remains.
 
 
 class ActiveDiagnosticPoller:

@@ -441,7 +441,12 @@ def test_j1939_session_keying_strict_node_isolation() -> None:
 
 
 def test_j1939_timeout_t1_eviction_and_abort() -> None:
-    """Verify session activity timeout (T1 > 750ms) evicts session and emits abort reason 3 for CMDT."""
+    """Verify session hold timeout evicts the session and emits abort reason 3.
+
+    P-c: a CMDT (RTS-established) session is held for T4 (1050 ms) per
+    SAE J1939-21 — the receiver waits longer for the next DT after CTS
+    than a BAM broadcast does (T1, 750 ms).
+    """
     clock = MockClockProvider(start_time=100.0)
     tp = J1939TransportProtocol(my_address=0xF9, clock=clock)
 
@@ -456,18 +461,24 @@ def test_j1939_timeout_t1_eviction_and_abort() -> None:
     rts_frame = CanFrame.create(channel_id="ch0", arbitration_id=0x18ECF900, data=bytes(rts_data), is_extended=True)
     tp.handle_rx_frame(rts_frame)
 
-    # Advance time by 800ms (> T1_TIMEOUT_SEC 750ms)
+    # 800 ms: past T1 (750) but still inside the T4 CMDT hold — session must
+    # survive and the early DT must be accepted, not aborted.
     clock.advance(0.800)
+    dt_early = CanFrame.create(channel_id="ch0", arbitration_id=0x18EBF900, data=b"\x01" + b"1234567", is_extended=True)
+    msg, abort_frame = tp.handle_rx_frame(dt_early)
+    assert abort_frame is None  # not timed out under T4 yet
+    assert (0, 0xF9, "ch0") in tp._rx_sessions  # session still open
 
-    # Arriving DT packet after timeout
-    dt1 = CanFrame.create(channel_id="ch0", arbitration_id=0x18EBF900, data=b"\x01" + b"1234567", is_extended=True)
-    msg, abort_frame = tp.handle_rx_frame(dt1)
+    # Advance past the full T4 hold; the next DT trips the timeout
+    clock.advance(1.100)
+    dt_late = CanFrame.create(channel_id="ch0", arbitration_id=0x18EBF900, data=b"\x02" + b"1234567", is_extended=True)
+    msg, abort_frame = tp.handle_rx_frame(dt_late)
 
     assert msg is None
     assert abort_frame is not None
     assert abort_frame.data[0] == TP_CTRL_ABORT
     assert abort_frame.data[1] == ABORT_REASON_TIMEOUT  # 0x03
-    assert (0, 0xF9) not in tp._rx_sessions
+    assert (0, 0xF9, "ch0") not in tp._rx_sessions
 
 
 def test_j1939_start_tp_bam_and_start_tp_cm_dt_segmentation() -> None:

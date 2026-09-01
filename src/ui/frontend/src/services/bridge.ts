@@ -17,6 +17,7 @@ declare global {
       };
     };
     onNewCanFrame?: (frame: CANFrame) => void;
+    onNewCanFrames?: (batch: CANFrame[]) => void;
     onTelemetryTick?: (point: TelemetryPoint) => void;
     onStatsTick?: (stats: { totalPackets: number; busLoad: number; errorCount: number; frameRate: number }) => void;
   }

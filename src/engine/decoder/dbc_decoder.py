@@ -112,7 +112,11 @@ class DbcSignalDecoder:
             raise FileNotFoundError(f"DBC file not found: {path}")
         try:
             self.db.add_dbc_file(path)
+            # E8: reload can redefine/merge messages — the id()-keyed signal
+            # metadata caches would serve stale definitions, clear all three.
             self._message_cache.clear()
+            self._signal_units_cache.clear()
+            self._signal_defs_cache.clear()
             logger.info("Added DBC file to decoder", extra={"path": str(path), "total_messages": len(self.db.messages)})
         except Exception as exc:
             raise ProtocolError(

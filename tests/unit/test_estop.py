@@ -65,7 +65,10 @@ def test_estop_hmac_reset_success() -> None:
 
     # Verify disengaged
     assert not estop.is_engaged
-    assert estop.last_event is None
+    # B10: the engagement audit record survives the reset — only the
+    # challenge state is cleared, the "why did we stop" evidence remains.
+    assert estop.last_event is not None
+    assert estop.last_event.trigger == EStopTriggerSource.USER_UI_BUTTON
     assert estop.get_reset_nonce() == b""
 
 

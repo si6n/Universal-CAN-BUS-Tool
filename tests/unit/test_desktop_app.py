@@ -137,14 +137,18 @@ def test_push_frame_to_ui_escapes_hostile_channel_id() -> None:
         data=b"\x01\x02",
     )
 
-    app._push_frame_to_ui(frame)
+    app._push_frames_to_ui_batch([frame])
 
     assert len(captured) == 1
     js_code = captured[0]
-    payload_text = js_code[js_code.index("onNewCanFrame(") + len("onNewCanFrame(") : js_code.rindex(")")]
+    # E13: batched call — payload is a JSON ARRAY of frame objects
+    assert "onNewCanFrames(" in js_code
+    payload_text = js_code[js_code.index("onNewCanFrames(") + len("onNewCanFrames(") : js_code.rindex(")")]
+    parsed_batch = json.loads(payload_text)
+    assert isinstance(parsed_batch, list) and len(parsed_batch) == 1
     # The payload must be a valid JSON object literal; the hostile channel
     # survives only as a quoted string value, never as executable breakout.
-    parsed = json.loads(payload_text)
+    parsed = parsed_batch[0]
     assert parsed["channel"] == hostile_channel
     assert parsed["data"] == "0102"
 

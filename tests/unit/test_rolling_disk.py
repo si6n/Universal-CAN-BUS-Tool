@@ -214,3 +214,43 @@ def test_decompression_output_limit_is_enforced(tmp_path: Path) -> None:
 
     with pytest.raises(SecurityError, match="decompression limit"):
         disk_buf.read_all_stored_frames()
+
+
+def test_malformed_frame_does_not_kill_recorder(tmp_path) -> None:
+    """E10: an oversized/invalid frame must be rejected at append time without
+    raising — one bad frame must never stop the blackbox ingestion loop."""
+    rdb = RollingDiskBuffer(storage_dir=tmp_path / "rd", chunk_frame_threshold=3)
+
+    good = CanFrame.create(
+        channel_id="ch", arbitration_id=0x123, data=b"\x01\x02", is_extended=False
+    )
+    # Oversized channel_id (CHANNEL_ID_SIZE=32 limit) -> serialize would raise
+    bad = CanFrame.create(
+        channel_id="c" * 33, arbitration_id=0x123, data=b"\x01", is_extended=False
+    )
+
+    rdb.append(good)
+    rdb.append(bad)   # must not raise, must not enter the chunk
+    rdb.append(good)
+    rdb.append(good)  # 3 GOOD frames reach threshold -> flush
+
+    assert rdb._rejected_frames == 1
+    assert len(rdb._current_chunk_frames) == 0  # flushed with good frames only
+    # The good chunk was persisted and round-trips
+    assert len(rdb.read_all_stored_frames()) == 3
+
+
+def test_flush_survives_post_admission_mutation(tmp_path) -> None:
+    """E10 defense-in-depth: a frame mutated AFTER admission is dropped at
+    flush (whole pending chunk) instead of raising out of the ingest thread."""
+    rdb = RollingDiskBuffer(storage_dir=tmp_path / "rd", chunk_frame_threshold=2)
+    good = CanFrame.create(
+        channel_id="ch", arbitration_id=0x1, data=b"\x01", is_extended=False
+    )
+    rdb.append(good)
+    # Post-admission corruption: sequence beyond the signed-64 serialize range
+    object.__setattr__(good, "sequence", 1 << 70)
+    # append of second frame triggers flush of the mutated pending one
+    rdb.append(CanFrame.create(channel_id="ch", arbitration_id=0x2, data=b"\x02", is_extended=False))
+    # No exception; the recorder is alive and the bad chunk was dropped
+    assert rdb._rejected_frames >= 1

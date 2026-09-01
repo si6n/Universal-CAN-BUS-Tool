@@ -158,14 +158,13 @@ def test_powershell_guard_allows_legit_wmi_blocks_injection() -> None:
     -Filter 'IPEnabled=True' (single quotes + equals), which a naive
     character deny-list would reject and silently fall back to uuid.getnode().
     """
-    from src.security.hwid.collector import _run_powershell
+    from src.security.hwid.collector import re as _re
 
     # The exact production MAC query conforms
     legit = (
         "(Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration "
         "-Filter 'IPEnabled=True' | Select-Object -First 1).MACAddress"
     )
-    from src.security.hwid.collector import re as _re
     assert _re.fullmatch(r"[A-Za-z0-9_().|,'= \-]+", legit)
 
     # Injection vectors must be rejected by the guard pattern

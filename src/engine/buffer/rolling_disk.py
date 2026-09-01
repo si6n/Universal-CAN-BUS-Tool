@@ -264,6 +264,8 @@ class RollingDiskBuffer:
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self._current_chunk_frames: list[CanFrame] = []
+        # E10: count of frames rejected at append-time for malformed content
+        self._rejected_frames: int = 0
         self._cctx = zstd.ZstdCompressor(level=3)
         self._dctx = zstd.ZstdDecompressor()
         max_read_frames = max(chunk_frame_threshold, self.CHUNK_THRESHOLD_FRAMES)
@@ -317,7 +319,22 @@ class RollingDiskBuffer:
             )
 
     def append(self, frame: CanFrame) -> None:
-        """Add a frame and flush when the configured chunk threshold is reached."""
+        """Add a frame and flush when the configured chunk threshold is reached.
+
+        E10: a malformed frame (oversized channel/payload, out-of-range field)
+        would raise ValueError from serialization at flush time and kill the
+        ingestion loop. Reject it here, before it enters the chunk, and keep
+        the blackbox recording — one bad frame must not stop the recorder.
+        """
+        try:
+            _serialize_frame(frame)
+        except ValueError as exc:
+            self._rejected_frames += 1
+            logger.warning(
+                "Rolling disk rejected malformed frame",
+                extra={"error": str(exc), "total_rejected": self._rejected_frames},
+            )
+            return
         self._current_chunk_frames.append(frame)
         if len(self._current_chunk_frames) >= self.chunk_frame_threshold:
             self.flush()
@@ -333,7 +350,21 @@ class RollingDiskBuffer:
             return None
 
         key = _get_hmac_key(self._secret_provider)
-        raw_bytes = _serialize_chunk(self._current_chunk_frames, key)
+        try:
+            raw_bytes = _serialize_chunk(self._current_chunk_frames, key)
+        except ValueError as exc:
+            # E10 defense-in-depth: append() already validates frames, but a
+            # frame mutated after admission must not kill the ingestion loop —
+            # drop the whole pending chunk (it cannot be partially trusted)
+            # and keep recording the next one.
+            self._rejected_frames += len(self._current_chunk_frames)
+            logger.error(
+                "Rolling disk dropped unserializable pending chunk",
+                extra={"error": str(exc), "frames": len(self._current_chunk_frames)},
+            )
+            self._current_chunk_frames = []
+            self._chunk_index += 1
+            return None
         timestamp_ns = self._current_chunk_frames[0].timestamp_ns
         chunk_file = self.storage_dir / (
             f"chunk_{self._chunk_index:08d}_{timestamp_ns:020d}.bin.zst"

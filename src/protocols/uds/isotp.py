@@ -904,7 +904,10 @@ class IsoTpReceiver:
                             limit_ms=self.n_cr_timeout_s * 1000.0,
                         )
 
-                    if cf_frame.arbitration_id != self.rx_id or len(cf_frame.data) < 1:
+                    # P-b: < 2 (not < 1) — a CF needs the PCI byte AND at least
+                    # one payload byte; a lone 1-byte frame matches SF/FF paths'
+                    # rejection and cannot contribute session data.
+                    if cf_frame.arbitration_id != self.rx_id or len(cf_frame.data) < 2:
                         continue
 
                     cf_pci = cf_frame.data[0] >> 4
