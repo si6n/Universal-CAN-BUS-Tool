@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -13,8 +14,6 @@ from cantools.database.conversion import BaseConversion
 
 from src.engine.discovery.hypotheses import IdReport
 
-
-import re
 
 def _sanitize_c_identifier(name: str) -> str:
     """Sanitize arbitrary string into valid DBC C identifier."""

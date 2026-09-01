@@ -11,7 +11,6 @@ import sys
 import time
 from typing import Any
 
-
 _RESERVED_LOG_ATTRS: frozenset[str] = frozenset({
     "name",
     "msg",
