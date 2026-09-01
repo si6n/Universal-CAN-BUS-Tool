@@ -1,0 +1,29 @@
+trace: "uds_routine_compression.asc"
+source: "converted/j1939/vspy_Bus Traffic DD15 DDEC Reports from Tennessee 2014 5-28-2014 11-57-21 am.asc"
+filter: routine_control
+description: "UDS RoutineControl (0x31) compression akışı. Cummins DD15 DDEC teşhis oturumunda RoutineControl start (0x31 01) routine 0x0304 + pozitif yanıt (0x71)."
+generated: 2026-09-01
+note: "Kaynak: vspy DDEC Reports. UDS SID 0x31 request 05 31 01 03 04 01, yanıt 04 71 01 03 04 01 (SecurityAccess 0x27 sonrası oturum)."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 2
+duration_s: 0.018
+dlc_distribution: {8: 2}
+unique_ids: 2
+all_extended: true
+hash_sha256_prefix: c160c4f5fb28ff3b
+
+pg_rates:
+  - {pgn: 55808, frames: 2, rate_hz: ~111.2}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 2 kare, 0.018s, 111.2 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (routine_control) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

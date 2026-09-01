@@ -1,0 +1,29 @@
+trace: "uds_iso15765_flow_control.asc"
+source: "converted/j1939/vspy_Bus Traffic DD15 DDEC Reports from Tennessee 2014 5-28-2014 11-57-21 am.asc"
+filter: uds_isotp
+description: "UDS/ISO-TP (ISO 15765-2) flow control akışı. Cummins DD15 DDEC teşhis verisinden PGN 55808 (ISO-TP) mesajları."
+generated: 2026-09-01
+note: "Kaynak: vspy DDEC Reports. PGN 55808 2,031 kare. Cummins DD15 DDEC ile teşhis cihazı arası ISO-TP."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 2031
+duration_s: 28.896
+dlc_distribution: {8: 2031}
+unique_ids: 2
+all_extended: true
+hash_sha256_prefix: ab32b2c1af9e0f88
+
+pg_rates:
+  - {pgn: 55808, frames: 2031, rate_hz: ~70.3}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 2031 kare, 28.896s, 70.3 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (uds_isotp) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

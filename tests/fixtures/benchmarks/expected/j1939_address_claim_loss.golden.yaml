@@ -1,0 +1,29 @@
+trace: "j1939_address_claim_loss.asc"
+source: "converted/j1939/2014_KW_T270_cross_country_can_log.asc"
+filter: addr_claim_loss
+description: "J1939 Address Claim çakışması/kaybı. Kenworth T270 çapraz ülke kaydında SA=0x00 ve SA=0x29 aynı adresi (0xF4) talep ediyor — NAME farkı (0x00 vs 0x0C)."
+generated: 2026-09-01
+note: "Kaynak: T270 cross-country. 38 adres bildirimi içinden 14 çakışma karesi (SA 0x00/0x29, claim_addr 0xF4, NAME byte 5 farklı)."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 14
+duration_s: 67207.381
+dlc_distribution: {8: 14}
+unique_ids: 2
+all_extended: true
+hash_sha256_prefix: f786174d68a204f6
+
+pg_rates:
+  - {pgn: 60928, frames: 14, rate_hz: ~0.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 14 kare, 67207.381s, 0.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (addr_claim_loss) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

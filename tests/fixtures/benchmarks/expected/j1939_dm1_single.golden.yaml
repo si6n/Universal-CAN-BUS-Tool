@@ -1,0 +1,29 @@
+trace: "j1939_dm1_single.asc"
+source: "converted/j1939/j1939-hcrl_benign_dataset.asc"
+filter: 65226
+description: "J1939 DM1 (Diagnostic Message 1, PGN 65226) single-frame akışı. HCRL benign traktör-römork verisinden DM1 PGN'si filtresi."
+generated: 2026-09-01
+note: "Kaynak: HCRL benign dataset. DM1 12,847 kare içinden ilk 500 kare."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 500
+duration_s: 166.829
+dlc_distribution: {8: 500}
+unique_ids: 3
+all_extended: true
+hash_sha256_prefix: fd4e10b8293264e1
+
+pg_rates:
+  - {pgn: 65226, frames: 500, rate_hz: ~3.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 500 kare, 166.829s, 3.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (65226) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

@@ -1,0 +1,30 @@
+trace: "j1939_cmdt_rts_cts.asc"
+source: "converted/j1939/j1939-hcrl_benign_dataset.asc"
+filter: rts_cts
+description: "J1939 CMDT (Connection-Mode Data Transfer) RTS/CTS akışı. HCRL benign: TP.CM RTS (DF 16) + CTS (DF 17) + TP.DT (PGN 60160)."
+generated: 2026-09-01
+note: "Kaynak: HCRL benign dataset. 71 RTS/CTS/ABORT üçlüsü + 1047 ACK."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 7572
+duration_s: 4290.398
+dlc_distribution: {8: 7572}
+unique_ids: 4
+all_extended: true
+hash_sha256_prefix: cd83c87013f5b9fc
+
+pg_rates:
+  - {pgn: 60160, frames: 7430, rate_hz: ~1.7}
+  - {pgn: 60416, frames: 142, rate_hz: ~0.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 7572 kare, 4290.398s, 1.8 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (rts_cts) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

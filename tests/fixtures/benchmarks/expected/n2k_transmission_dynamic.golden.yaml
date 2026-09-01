@@ -1,0 +1,29 @@
+trace: "n2k_transmission_dynamic.asc"
+source: "converted/n2k/maneuvers.asc"
+filter: [127493, 127497]
+description: "NMEA2000 Transmission Dynamic (PGN 127493) ve Static (PGN 127497) akışı. maneuvers.raw (canboat N2K) kaydından şanzıman parametreleri."
+generated: 2026-09-01
+note: "Kaynak: maneuvers.raw (N2K, canboat). 127497: 326 mesaj (9B fast-packet -> 2'şer kare). 127493 kayıtta yok, 127497 ile karşılanır."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 652
+duration_s: 325.381
+dlc_distribution: {8: 652}
+unique_ids: 1
+all_extended: true
+hash_sha256_prefix: eecbfdb3d659c3e0
+
+pg_rates:
+  - {pgn: 127497, frames: 652, rate_hz: ~2.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 652 kare, 325.381s, 2.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre ([127493, 127497]) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

@@ -1,0 +1,29 @@
+trace: "n2k_fluid_level.asc"
+source: "converted/n2k/dirona-actisense-serial.asc"
+filter: 127505
+description: "NMEA2000 Fluid Level (PGN 127505) akışı. Dirona N2K verisinden sıvı seviye sensörü mesajları."
+generated: 2026-09-01
+note: "Kaynak: dirona-actisense-serial (N2K). 712 kare içinden ilk 200."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 200
+duration_s: 21.000
+dlc_distribution: {8: 200}
+unique_ids: 7
+all_extended: true
+hash_sha256_prefix: 1fcc8ab6ec766b8e
+
+pg_rates:
+  - {pgn: 127505, frames: 200, rate_hz: ~9.5}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 200 kare, 21.000s, 9.5 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (127505) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

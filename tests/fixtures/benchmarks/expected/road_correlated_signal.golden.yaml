@@ -1,0 +1,32 @@
+trace: "road_correlated_signal.asc"
+source: "converted/road/correlated_signal_attack_1.asc"
+filter: aid=0x6E0
+description: "ROAD correlated signal attack akışı (deterministik tek ID 0x6E0). ORNL veri setinden hedefli sinyal bozma ve enjeksiyon izi."
+generated: 2026-09-01
+note: "Kaynak: ROAD correlated_signal_attack_1. 5,397 kare (ID 0x6E0, 2,087 enjekte kare [9.191851, 30.050109]s penceresinde payload 595945450000FFFF, 3,310 ambient kare)."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 5397
+duration_s: 33.083
+dlc_distribution: {8: 5397}
+unique_ids: 1
+all_extended: false
+hash_sha256_prefix: dc3694168c31fb07
+
+id_rates:
+  - {id: '0x6E0', frames: 5397, rate_hz: ~163.1}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 5397 kare, 33.083s, 163.1 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (aid=0x6E0) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"
+  - title: "Hedefli enjeksiyon payload mutabakati"
+    expectation: "DOGRULANDI: 2087 enjekte kare 595945450000FFFF payload tasiyor (resmi capture_metadata.json kaniti)."
+    status: "confirmed"

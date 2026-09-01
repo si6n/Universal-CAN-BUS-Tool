@@ -1,0 +1,29 @@
+trace: "j1939_dm11_clear_ack.asc"
+source: "converted/j1939/j1939-hcrl_benign_dataset.asc"
+filter: 65247
+description: "J1939 DM11 (Diagnostic Message 11, PGN 65247) akışı. HCRL benign: DM11 (Clear/Reset Diagnostic Information)."
+generated: 2026-09-01
+note: "Kaynak: HCRL benign dataset. DM11 17,188 kare içinden ilk 300."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 300
+duration_s: 74.672
+dlc_distribution: {8: 300}
+unique_ids: 1
+all_extended: true
+hash_sha256_prefix: 1bca5a0ca8216757
+
+pg_rates:
+  - {pgn: 65247, frames: 300, rate_hz: ~4.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 300 kare, 74.672s, 4.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (65247) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

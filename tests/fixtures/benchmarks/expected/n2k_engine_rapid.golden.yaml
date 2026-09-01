@@ -1,0 +1,30 @@
+trace: "n2k_engine_rapid.asc"
+source: "converted/n2k/maneuvers.asc"
+filter: [127488, 127489]
+description: "NMEA2000 Engine Rapid (PGN 127488) ve Engine Dynamic (PGN 127489) akışı. maneuvers.raw (canboat N2K) kaydından motor parametreleri."
+generated: 2026-09-01
+note: "Kaynak: maneuvers.raw (N2K, canboat). 127488: 2,934 kare (8B), 127489: 651 mesaj (26B fast-packet -> 4'er kare)."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 500
+duration_s: 29.407
+dlc_distribution: {8: 500}
+unique_ids: 2
+all_extended: true
+hash_sha256_prefix: d2c2820f448d8e0f
+
+pg_rates:
+  - {pgn: 127488, frames: 266, rate_hz: ~9.0}
+  - {pgn: 127489, frames: 234, rate_hz: ~8.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 500 kare, 29.407s, 17.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre ([127488, 127489]) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

@@ -1,0 +1,29 @@
+trace: "j1939_address_claim_win.asc"
+source: "converted/n2k/kees.asc"
+filter: 60928
+description: "J1939 Address Claimed (PGN 60928, 0x18EEFFxx) akışı. Kees N2K verisinden 200 adres bildirimi."
+generated: 2026-09-01
+note: "Kaynak: kees (N2K canboat). 1,011 kare içinden ilk 200."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 200
+duration_s: 721.750
+dlc_distribution: {8: 200}
+unique_ids: 8
+all_extended: true
+hash_sha256_prefix: 9552f2eba06f8271
+
+pg_rates:
+  - {pgn: 60928, frames: 200, rate_hz: ~0.3}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 200 kare, 721.750s, 0.3 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (60928) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"
