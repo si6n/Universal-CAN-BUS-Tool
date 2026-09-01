@@ -119,7 +119,16 @@ class J1939DiagnosticService:
     def parse_dm1_or_dm2(cls, data: bytes, pgn: int, source_address: int = 0, timestamp_ns: int = 0) -> DMMessage:
         """Parse raw payload from DM1 (PGN 65226) or DM2 (PGN 65227)."""
         if len(data) < 2:
-            raise ValueError(f"DM payload too short: {len(data)} bytes")
+            return DMMessage(
+                pgn=pgn,
+                source_address=source_address,
+                malfunction_indicator_lamp=LampStatus.OTHER,
+                red_stop_lamp=LampStatus.OFF,
+                amber_warning_lamp=LampStatus.OFF,
+                protect_lamp=LampStatus.OFF,
+                dtcs=[],
+                timestamp_ns=timestamp_ns,
+            )
 
         # Byte 0: Lamp States (2 bits each)
         b0 = data[0]

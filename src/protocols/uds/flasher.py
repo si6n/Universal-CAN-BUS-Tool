@@ -57,6 +57,12 @@ class FlashingConfig:
     reset_type: int = 0x01  # Hard Reset
     user_confirmed: bool = False
 
+    def __post_init__(self) -> None:
+        if self.block_size <= 0:
+            raise ValueError(f"Invalid block_size {self.block_size}. Must be greater than 0.")
+        if not self.data:
+            raise ValueError("Flashing payload data cannot be empty.")
+
 
 @dataclass(slots=True)
 class FlashingProgress:
@@ -258,8 +264,19 @@ class EcuFlashingEngine:
                     user_confirmed=config.user_confirmed,
                 )
                 if not resp.is_positive:
-                    raise ProtocolError(f"Sağlama toplamı doğrulama başarısız: {resp.nrc_description_tr}")
-                self._log("✅ Sağlama toplamı (CRC32) başarıyla doğrulandı.", "info")
+                    raise ProtocolError(f"Sağlama toplamı doğrulama başlatılamadı: {resp.nrc_description_tr}")
+
+                # P2: Request Routine Results (0x31 0x03) to ensure ECU validates CRC
+                result_resp = self.uds_client.request_routine_results(routine_id=config.checksum_routine_id)
+                if not result_resp.is_positive:
+                    raise ProtocolError(f"Sağlama toplamı sonuç sorgusu reddedildi: {result_resp.nrc_description_tr}")
+
+                if result_resp.data and len(result_resp.data) >= 1:
+                    status_code = result_resp.data[0]
+                    if status_code not in (0x00, 0x01):
+                        raise ProtocolError(f"ECU sağlama toplamı (CRC32) uyumsuzluğu tespit etti (Durum: 0x{status_code:02X})")
+
+                self._log("✅ Sağlama toplamı (CRC32) ECU tarafından başarıyla doğrulandı.", "info")
             else:
                 self._log("Adım 8/10: Sağlama toplamı doğrulama adımı atlandı.", "info")
 

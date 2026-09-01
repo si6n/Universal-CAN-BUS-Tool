@@ -266,7 +266,15 @@ class OemJ1939Registry:
         if manufacturer_hint:
             decoder = self.get_decoder(manufacturer_hint)
             if decoder and decoder.supports_pgn(pgn):
-                return decoder.decode(frame, pgn, sa, da)
+                try:
+                    decoded = decoder.decode(frame, pgn, sa, da)
+                    if decoded is not None:
+                        return decoded
+                except Exception as exc:
+                    logger.debug(
+                        "Hinted decoder failed for frame",
+                        extra={"decoder": decoder.name, "pgn": hex(pgn), "error": str(exc)},
+                    )
 
         # Match decoders registered for this PGN
         candidate_decoders = self._pgn_to_decoders.get(pgn, [])

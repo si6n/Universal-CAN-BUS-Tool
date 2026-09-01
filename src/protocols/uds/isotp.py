@@ -141,17 +141,15 @@ class IsoTpTransport:
         pad_byte: int | None = 0xCC,
         rx_block_size: int = 0,
         rx_st_min: int = 0,
+        max_buffer_size: int = 1_048_576,
     ) -> None:
         self.tx_id = tx_id
         self.rx_id = rx_id
         self.channel_id = channel_id
         self.pad_byte = pad_byte
-        # Flow Control advertisement to senders: block size 0 = unlimited
-        # (legacy behaviour), non-zero bounds each CTS window and makes the
-        # receiver emit a fresh FC after every block. STmin is the raw
-        # ISO 15765-2 byte (0..0x7F ms, 0xF1..0xF9 = 100 µs units).
         self.rx_block_size = rx_block_size
         self.rx_st_min = rx_st_min
+        self.max_buffer_size = max_buffer_size
         self._rx_session: IsoTpRxSession | None = None
 
     def segment_message(self, data: bytes, is_fd: bool = False) -> list[CanFrame]:
@@ -381,6 +379,28 @@ class IsoTpTransport:
                 # Standard 12-bit First Frame
                 total_len = ((frame.data[0] & 0x0F) << 8) | frame.data[1]
                 header_len = 2
+
+            # P1: Check buffer size cap (ISO 15765-2 FS_OVERFLOW)
+            if total_len > self.max_buffer_size:
+                logger.warning(
+                    "ISO-TP First Frame length exceeds max buffer size. Emitting FlowControl OVERFLOW.",
+                    extra={"total_len": total_len, "max_buffer_size": self.max_buffer_size},
+                )
+                self._rx_session = None
+                fc_data = bytearray(8)
+                fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_OVERFLOW
+                for i in range(1, 8):
+                    fc_data[i] = 0xCC
+
+                fc_frame = CanFrame.create(
+                    channel_id=frame.channel_id,
+                    arbitration_id=self.tx_id,
+                    data=bytes(fc_data),
+                    is_extended=frame.is_extended,
+                    is_fd=frame.is_fd,
+                    direction="tx",
+                )
+                return None, fc_frame
 
             first_chunk = frame.data[header_len:]
             if len(first_chunk) > total_len:

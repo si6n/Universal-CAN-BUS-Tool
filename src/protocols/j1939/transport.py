@@ -790,8 +790,13 @@ class J1939TransportProtocol:
             if ctrl_byte == TP_CTRL_CTS:
                 packet_count = frame.data[1]
                 next_seq = frame.data[2]
-                if packet_count == 0 or next_seq == 0 or next_seq > session.total_packets:
-                    # CTS with zero packets is invalid; treat as unexpected control
+                if (
+                    packet_count == 0
+                    or next_seq == 0
+                    or next_seq > session.total_packets
+                    or next_seq < session.next_sequence
+                ):
+                    # CTS with zero packets or backwards sequence rewind is invalid
                     abort = self._create_tx_abort_frame(session, ABORT_REASON_UNEXPECTED_CONTROL)
                     self._tx_sessions.pop(key, None)
                     return [], abort

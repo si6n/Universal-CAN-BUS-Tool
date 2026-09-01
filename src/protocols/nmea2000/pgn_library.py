@@ -87,11 +87,11 @@ class Nmea2000PgnDecoder:
 
         # Engine Speed (Bytes 1..2): 0.25 rpm / bit
         raw_speed = int.from_bytes(data[1:3], byteorder="little")
-        speed_rpm = raw_speed * 0.25 if raw_speed < 0xFFFF else None
+        speed_rpm = raw_speed * 0.25 if raw_speed < 0xFFFE else None
 
         # Boost Pressure (Bytes 3..4): 100 Pa / bit -> / 1000 = 0.1 kPa
         raw_boost = int.from_bytes(data[3:5], byteorder="little")
-        boost_kpa = (raw_boost * 100) / 1000.0 if raw_boost < 0xFFFF else None
+        boost_kpa = (raw_boost * 100) / 1000.0 if raw_boost < 0xFFFE else None
 
         # Tilt / Trim (Byte 5): 1% / bit (signed int8: -100% .. +100%)
         raw_tilt = int.from_bytes(data[5:6], byteorder="little", signed=True)
@@ -114,27 +114,27 @@ class Nmea2000PgnDecoder:
 
         # Oil Pressure (Bytes 1..2): 100 Pa / bit -> kPa
         raw_oil_p = int.from_bytes(data[1:3], byteorder="little")
-        oil_p_kpa = (raw_oil_p * 100) / 1000.0 if raw_oil_p < 0xFFFF else None
+        oil_p_kpa = (raw_oil_p * 100) / 1000.0 if raw_oil_p < 0xFFFE else None
 
         # Oil Temp (Bytes 3..4): 0.1 K / bit -> °C
         raw_oil_t = int.from_bytes(data[3:5], byteorder="little")
-        oil_t_c = (raw_oil_t * 0.1) - 273.15 if raw_oil_t < 0xFFFF else None
+        oil_t_c = (raw_oil_t * 0.1) - 273.15 if raw_oil_t < 0xFFFE else None
 
         # Coolant Temp (Bytes 5..6): 0.01 K / bit -> °C
         raw_cool_t = int.from_bytes(data[5:7], byteorder="little")
-        cool_t_c = (raw_cool_t * 0.01) - 273.15 if raw_cool_t < 0xFFFF else None
+        cool_t_c = (raw_cool_t * 0.01) - 273.15 if raw_cool_t < 0xFFFE else None
 
         # Alternator Potential / Voltage (Bytes 7..8): 0.01 V / bit
         raw_volt = int.from_bytes(data[7:9], byteorder="little")
-        volt_v = raw_volt * 0.01 if raw_volt < 0xFFFF else None
+        volt_v = raw_volt * 0.01 if raw_volt < 0xFFFE else None
 
         # Fuel Rate (Bytes 9..10): 0.1 L/h / bit
         raw_fuel_r = int.from_bytes(data[9:11], byteorder="little")
-        fuel_lph = raw_fuel_r * 0.1 if raw_fuel_r < 0xFFFF else None
+        fuel_lph = raw_fuel_r * 0.1 if raw_fuel_r < 0xFFFE else None
 
         # Total Engine Hours (Bytes 11..14): 1 s / bit -> hours
         raw_hours = int.from_bytes(data[11:15], byteorder="little")
-        hours = raw_hours / 3600.0 if raw_hours < 0xFFFFFFFF else None
+        hours = raw_hours / 3600.0 if raw_hours < 0xFFFFFFFE else None
 
         # Engine Load % (Byte 21)
         raw_load = data[21]
@@ -162,10 +162,10 @@ class Nmea2000PgnDecoder:
         gear_str = GEAR_TYPES.get(gear_code, "unknown")
 
         raw_oil_p = int.from_bytes(data[2:4], byteorder="little")
-        oil_p_kpa = (raw_oil_p * 100) / 1000.0 if raw_oil_p < 0xFFFF else None
+        oil_p_kpa = (raw_oil_p * 100) / 1000.0 if raw_oil_p < 0xFFFE else None
 
         raw_oil_t = int.from_bytes(data[4:6], byteorder="little")
-        oil_t_c = (raw_oil_t * 0.1) - 273.15 if raw_oil_t < 0xFFFF else None
+        oil_t_c = (raw_oil_t * 0.1) - 273.15 if raw_oil_t < 0xFFFE else None
 
         return TransmissionParameters(
             transmission_instance=instance,
@@ -186,11 +186,11 @@ class Nmea2000PgnDecoder:
 
         # Level % (Bytes 1..2): 0.004 % / bit
         raw_level = int.from_bytes(data[1:3], byteorder="little")
-        level_pct = raw_level * 0.004 if raw_level < 0xFFFF else None
+        level_pct = raw_level * 0.004 if raw_level < 0xFFFE else None
 
         # Capacity (Bytes 3..6): 0.1 L / bit
         raw_cap = int.from_bytes(data[3:7], byteorder="little")
-        cap_l = raw_cap * 0.1 if raw_cap < 0xFFFFFFFF else None
+        cap_l = raw_cap * 0.1 if raw_cap < 0xFFFFFFFE else None
 
         return FluidLevelParameters(
             fluid_type=fluid_type_str,

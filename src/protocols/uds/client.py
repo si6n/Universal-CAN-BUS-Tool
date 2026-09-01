@@ -251,36 +251,38 @@ class UdsClient:
 
         start_time = time.monotonic()
         deadline = start_time + timeout_s
+        max_absolute_deadline = start_time + max(timeout_s, 30.0)
+        nrc_78_count = 0
 
         while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
+            now = time.monotonic()
+            remaining = deadline - now
+            if remaining <= 0 or now >= max_absolute_deadline:
                 raise ProtocolError(
                     f"UDS Request timed out waiting for response from ECU (0x{self.rx_id:03X})",
                     code="UDS_TIMEOUT",
-                    details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id)},
+                    details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id), "nrc_78_count": nrc_78_count},
                 )
 
             rx_frame = None
             if self.bus is not None:
-                rx_frame = self.bus.recv(timeout_s=min(0.1, remaining))
+                rx_frame = self.bus.recv(timeout_s=min(0.1, max(0.001, remaining)))
 
             if rx_frame is not None and rx_frame.arbitration_id == self.rx_id:
                 completed_data, resp_frame = self.transport.handle_rx_frame(rx_frame)
                 if resp_frame is not None:
-                    # Flow control frame response - routed through TxPort
-                    if hasattr(self.tx_port, "validate_and_transmit"):
-                        self.tx_port.validate_and_transmit(resp_frame, is_critical_command=False, user_confirmed=False)
-                    else:
-                        self.tx_port.send_sync(resp_frame)
+                    # Flow control frame response - cleanly routed through TxPort
+                    self.tx_port.send_sync(resp_frame)
                 if completed_data is not None:
                     resp = UdsServiceBuilder.parse_response(completed_data)
                     if (
                         not resp.is_positive
                         and resp.nrc == UdsNrc.REQUEST_CORRECTLY_RECEIVED_RESPONSE_PENDING
-                        and time.monotonic() < deadline
+                        and time.monotonic() < max_absolute_deadline
+                        and nrc_78_count < 20
                     ):
-                        # P2* extension: ECU signalled pending; keep waiting.
-                        deadline = time.monotonic() + P2_STAR_TIMEOUT_S
+                        # P2* extension: ECU signalled pending; keep waiting within bounded cap (P6)
+                        nrc_78_count += 1
+                        deadline = min(time.monotonic() + P2_STAR_TIMEOUT_S, max_absolute_deadline)
                         continue
                     return resp

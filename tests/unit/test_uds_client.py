@@ -153,7 +153,9 @@ def test_uds_client_sync_read_did() -> None:
 
 def test_uds_client_sync_routines_and_session() -> None:
     bus = MockDiagnosticBus()
-    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
+    gateway = TxSafetyGateway.for_testing(bus=bus)
+    gateway.update_vehicle_speed(0.0)
+    client = UdsClient(bus=bus, tx_port=gateway, tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Change session
     bus.inject_rx(

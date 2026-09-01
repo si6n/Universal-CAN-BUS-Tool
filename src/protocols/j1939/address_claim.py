@@ -204,6 +204,7 @@ class AddressClaimEngine:
             if my_val < other_val:
                 # We have higher priority (lower numerical NAME). Re-assert our address!
                 logger.info("Defending address claim against higher numerical NAME", extra={"sa": self.current_address})
+                self._arm_claim_confirmation_timer()
                 can_id = 0x18EEFF00 | (self.current_address & 0xFF)
                 return CanFrame.create(
                     channel_id=self.channel_id,
