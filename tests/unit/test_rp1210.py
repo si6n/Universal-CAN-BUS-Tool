@@ -1,8 +1,11 @@
-"""Unit tests for RP1210 client wrapper and error codes."""
+"""Unit tests for RP1210 client wrapper, error codes, and RP1210Bus adapter."""
 
 import pytest
 
 from src.core.errors import HardwareError
+from src.core.models.can_frame import CanFrame
+from src.hal.base import BusState
+from src.hal.rp1210.bus import RP1210Bus
 from src.hal.rp1210.client import RP1210Client
 from src.hal.rp1210.types import RP1210ErrorCode
 
@@ -72,3 +75,167 @@ def test_rp1210_read_positive_byte_count_returns_data() -> None:
     result = client.read_message()
     assert result is not None
     assert len(result) == 8
+
+
+# ============================================================================
+# RP1210Bus — AbstractBus adapter lifecycle & wire format (K4-a)
+# ============================================================================
+
+
+class _MockRP1210Client:
+    """In-memory RP1210Client double: records sent packets, serves RX queue."""
+
+    def __init__(self) -> None:
+        self.sent: list[bytes] = []
+        self.rx_queue: list[bytes] = []
+        self.connected = False
+
+    def connect(self, tx_buffer_size: int = 8000, rx_buffer_size: int = 8000) -> int:
+        self.connected = True
+        return 42
+
+    def disconnect(self) -> None:
+        self.connected = False
+
+    def send_message(self, message_bytes: bytes, block: bool = False) -> None:
+        if not self.connected:
+            raise HardwareError("RP1210 client is not connected")
+        self.sent.append(bytes(message_bytes))
+
+    def read_message(self, buffer_size: int = 2048, block: bool = False) -> bytes | None:
+        if not self.connected:
+            raise HardwareError("RP1210 client is not connected")
+        if self.rx_queue:
+            return self.rx_queue.pop(0)
+        return None
+
+
+def _make_bus(mock: _MockRP1210Client | None = None) -> RP1210Bus:
+    return RP1210Bus(device_id=1, protocol="J1939", client=mock or _MockRP1210Client())
+
+
+def test_rp1210_bus_lifecycle() -> None:
+    bus = _make_bus()
+    assert not bus.is_connected
+    assert bus.metrics.state == BusState.DISCONNECTED
+
+    bus.connect()
+    assert bus.is_connected
+    assert bus.metrics.state == BusState.ACTIVE
+
+    # Idempotent disconnect + reconnect
+    bus.disconnect()
+    assert not bus.is_connected
+    assert bus.metrics.state == BusState.DISCONNECTED
+    bus.disconnect()  # second disconnect must not raise
+    bus.connect()
+    assert bus.is_connected
+
+
+def test_rp1210_bus_send_wire_format() -> None:
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    frame = CanFrame.create(
+        channel_id=bus.channel_id, arbitration_id=0x123, data=b"\xDE\xAD\xBE\xEF", is_extended=False
+    )
+    bus.send(frame)
+
+    assert len(mock.sent) == 1
+    packet = mock.sent[0]
+    header = int.from_bytes(packet[:2], "little")
+    assert header & 0x0F == 4  # DLC nibble
+    assert (header >> 4) & 0x0FFF == 0x123  # 12-bit ID
+    assert packet[2:] == b"\xDE\xAD\xBE\xEF"
+    assert bus.metrics.tx_frames == 1
+
+
+def test_rp1210_bus_send_requires_connection_and_classic_frames() -> None:
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+
+    # Not connected -> structured error, not raw client error
+    with pytest.raises(HardwareError):
+        bus.send(CanFrame.create(channel_id="c", arbitration_id=0x1, data=b"\x01"))
+
+    bus.connect()
+    # FD frames are unsupported on classic RP1210 adapters
+    fd_frame = CanFrame.create(
+        channel_id="c", arbitration_id=0x1, data=b"\x01" * 9, is_fd=True, dlc=9
+    )
+    with pytest.raises(HardwareError, match="CAN-FD"):
+        bus.send(fd_frame)
+
+
+def test_rp1210_bus_recv_decodes_and_times_out() -> None:
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    # Queue a wire packet: header DLC=3, ID=0x1F5, payload
+    header = (0x1F5 << 4) | 3
+    mock.rx_queue.append(header.to_bytes(2, "little") + b"\xAA\xBB\xCC")
+
+    frame = bus.recv(timeout_s=0.1)
+    assert frame is not None
+    assert frame.arbitration_id == 0x1F5
+    assert frame.data == b"\xAA\xBB\xCC"
+    assert frame.dlc == 3
+    assert not frame.is_fd
+    assert bus.metrics.rx_frames == 1
+
+    # Empty queue -> clean None within timeout (not an exception)
+    assert bus.recv(timeout_s=0.05) is None
+
+
+def test_rp1210_bus_recv_rejects_truncated_packet() -> None:
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    header = (0x10 << 4) | 6  # claims DLC=6...
+    mock.rx_queue.append(header.to_bytes(2, "little") + b"\x01\x02")  # ...only 2 bytes
+
+    # Malformed packet is dropped as None; the bus stays alive for the next read
+    assert bus.recv(timeout_s=0.05) is None
+    assert bus.is_connected
+
+
+def test_rp1210_bus_recv_read_error_does_not_kill_loop() -> None:
+    class _FailingReadMock(_MockRP1210Client):
+        def read_message(self, buffer_size: int = 2048, block: bool = False) -> bytes | None:
+            raise HardwareError("transient vendor RX fault")
+
+    bus = _make_bus(_FailingReadMock())
+    bus.connect()
+    assert bus.recv(timeout_s=0.05) is None  # logged-and-skipped, not raised
+
+
+def test_build_bus_routes_rp1210_and_rejects_bad_device() -> None:
+    """K4-a: the shared factory wires rp1210 to RP1210Bus and validates the
+    numeric device id up front instead of failing deep in the driver."""
+    from src.hal.rp1210.bus import RP1210Bus
+    from src.main import build_bus
+
+    # Bad device id fails fast with a clear message
+    with pytest.raises(ValueError, match="numeric device id"):
+        build_bus(interface="rp1210", channel="vcan0", bitrate=250000)
+
+    # A numeric id yields the RP1210Bus adapter (with an unloaded real DLL —
+    # constructing RP1210Bus loads the DLL; patch it to a mock)
+    import unittest.mock as mock
+
+    with mock.patch("src.hal.rp1210.bus.RP1210Client") as mock_client:
+        bus = build_bus(interface="rp1210", channel="3", bitrate=500000)
+    assert isinstance(bus, RP1210Bus)
+    assert bus.device_id == 3
+    assert bus.bitrate == 500000
+    mock_client.assert_called_once()
+
+    # Non-rp1210 interfaces still go through python-can
+    from src.hal.drivers.pcan_kvaser import PythonCanBus
+
+    classic = build_bus(interface="virtual", channel="vcan0", bitrate=250000)
+    assert isinstance(classic, PythonCanBus)
+    classic.disconnect()

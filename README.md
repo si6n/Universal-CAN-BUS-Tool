@@ -21,7 +21,7 @@
 | **SAE J1939 (21, 71, 73, 81)** | 🟢 Doğrulanmış Conformance | BAM, RTS/CTS, 64-bit NAME | DM1..DM11, SPN/FMI/OC/Lamp, Sentinel |
 | **ISO-TP & UDS (15765-2 / 14229-1)** | 🟢 Doğrulanmış Conformance | Single/Multi-Frame, Seed-Key | 0x10, 0x11, 0x22, 0x27, 0x2E, 0x31, 0x34..0x37 |
 | **NMEA 2000 & Volvo Penta EVC** | 🟢 Doğrulanmış Conformance | Fast Packet (223B), PGN 65360/65361 | Motor, Şanzıman, Trim (-100%..+100%), Dümen |
-| **TMC RP1210 (A/B/C)** | 🟡 İstemci Hazır, Entegrasyon Planlı | Nexiq, Noregon, Cummins, DPA5 | Çoklu Donanım HAL & Hata Yönetimi *(HAL istemcisi mevcut; ürün kablolaması sürüyor)* |
+| **TMC RP1210 (A/B/C)** | 🟢 Aktif (Yazılım Kapsamı) | RP1210Bus adaptörü + mock-DLL yaşam döngüsü testleri | Çoklu Donanım HAL & Hata Yönetimi *(yazma yolu TxSafetyGateway üzerinden; canlı donanım saha doğrulaması beklenir)* |
 | **Lisanslama & Anti-Tamper** | 🟡 Altyapı Hazır, Entegrasyon Planlı | DPAPI + CIM HWID + 7-Day Grace *(kütüphane doğrulandı; ürün akışına bağlanacak)* | Anti-Clock Rollback + Win32 Anti-Debug |
 | **Kod Kalitesi & Statik Analiz** | 🟢 Ruff Linting Temiz | 0 Hata / 0 Uyarı | Python 3.13 Strict Type Hints |
 
@@ -377,14 +377,17 @@ python src/main.py --interface=pcan --channel=PCAN_USBBUS1 --bitrate=500000
 # 5. Kvaser Leaf Donanımı ile J1939 Ağında Başlatma (250 kbps)
 python src/main.py --interface=kvaser --channel=0 --bitrate=250000
 
-# 6. Vector Donanımı ile Başlatma (500 kbps)
+# 6. TMC RP1210 Ağır Vasıta Adaptörü ile Başlatma (Nexiq/Noregon; cihaz ID = 1)
+python src/main.py --interface=rp1210 --channel=1 --bitrate=250000
+
+# 7. Vector Donanımı ile Başlatma (500 kbps)
 python src/main.py --interface=vector --channel=0 --bitrate=500000
 
-# 7. Konsol Sniffer (CLI) Modunda Çalıştırma
+# 8. Konsol Sniffer (CLI) Modunda Çalıştırma
 python src/main.py --cli --interface=virtual --channel=vcan0 --bitrate=250000
 ```
 
-> ℹ️ **RP1210 Notu:** TMC RP1210 istemcisi (`src/hal/rp1210/`) kütüphane olarak hazır ve birim testleriyle doğrulanmıştır; ancak `--interface=rp1210` henüz CLI/GUI'ye bağlı DEĞİLDİR. Entegrasyon tamamlandığında bu bölüm güncellenecektir.
+> ℹ️ **RP1210 Notu:** `--interface=rp1210` artık CLI/GUI yollarının tamamında etkindir (ortak `build_bus` fabrikası + `RP1210Bus` adaptörü üzerinden). `--channel` bu arayüzde **sayısal cihaz ID'sidir** (örn. `1`). Donanım DLL'i yalnız mutlak System32/SysWOW64 yollarından yüklenir; adaptör yaşam döngüsü, wire formatı ve hata yolları mock-DLL birim testleriyle doğrulanmıştır — gerçek adaptörle saha doğrulaması sürmektedir.
 
 ---
 
@@ -392,7 +395,7 @@ python src/main.py --cli --interface=virtual --channel=vcan0 --bitrate=250000
 
 | Parametre | Varsayılan | Seçenekler | Açıklama |
 | :--- | :--- | :--- | :--- |
-| `--interface`, `-i` | `virtual` | `virtual`, `pcan`, `kvaser`, `vector`, `socketcan` | Donanım arayüzü |
+| `--interface`, `-i` | `virtual` | `virtual`, `pcan`, `kvaser`, `vector`, `rp1210`, `socketcan` | Donanım arayüzü |
 | `--channel`, `-c` | `vcan0` | `vcan0`, `PCAN_USBBUS1`, `0`, vb. | Donanım kanal adı / numarası |
 | `--bitrate`, `-b` | `250000` | `125000`, `250000`, `500000`, `1000000` | Standart CAN veri hızı (bps) |
 | `--cli` | `False` | Flag (`--cli`) | GUI yerine konsol sniffer modunda çalıştırır |
@@ -444,7 +447,7 @@ Bu derleme scripti sırasıyla:
 | **Sanal CAN (Virtual)** | Dahili Simülatör | CAN 2.0A/B, CAN-FD, J1939, N2K, Demo | `vcan0` |
 | **PEAK-System** | `PCANBasic.dll` | CAN 2.0A/B, CAN-FD | `PCAN_USBBUS1` |
 | **Kvaser** | `canlib32.dll` | CAN 2.0A/B, CAN-FD, J1939 | `0`, `1` |
-| **TMC RP1210 Adaptörleri** | `rp121032.dll` | Nexiq USB-Link, Noregon DLA, Cummins INLINE, DPA5 *(deneysel — HAL istemcisi hazır, tam sürücü entegrasyonu sürüyor)* | Cihaz ID + Kanal |
+| **TMC RP1210 Adaptörleri** | `rp121032.dll` | Nexiq USB-Link, Noregon DLA, Cummins INLINE, DPA5 *(klasik CAN; canlı donanım saha doğrulaması sürüyor)* | Cihaz ID (`1`, `2`, vb.) |
 | **Vector Informatik** | `vcan2.dll` | CANoe, CANalyzer VN Donanımları | `0`, `1` |
 | **Linux SocketCAN** | Linux Kernel vcan/can | Classical CAN, CAN-FD | `can0`, `vcan0` |
 | **ReplayBus** | Dahili Oynatıcı | Yalnızca Vector `.asc` *(CSV ve BLF ayrıştırıcıları henüz uygulanmadı)* | Dosya Yolu |
@@ -522,6 +525,7 @@ Universal CAN-Bus Diagnostic & Telemetry Tool/
 │   │   │   ├── player.py                  # Mikrosaniye Hassasiyetli Oynatıcı
 │   │   │   └── safety_filter.py           # Replay Güvenlik Filtresi
 │   │   └── rp1210/
+│   │       ├── bus.py                     # RP1210Bus — AbstractBus Adaptörü (K4-a)
 │   │       ├── client.py                  # TMC RP1210C İstemcisi
 │   │       └── types.py                   # RP1210 Veri Tipleri & Hata Kodları
 │   ├── protocols/                         # Protokol Ayrıştırıcıları ve Teşhis Servisleri

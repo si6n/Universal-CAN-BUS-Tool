@@ -13,10 +13,30 @@ import sys
 from typing import Any
 
 from src.core.logging import get_logger, setup_logging
+from src.hal.base import AbstractBus
 from src.hal.drivers.pcan_kvaser import PythonCanBus
 from src.ui.desktop_app import UniversalCanDesktopApp
 
 logger = get_logger("app.main")
+
+
+def build_bus(interface: str, channel: str, bitrate: int) -> AbstractBus:
+    """Single bus factory for every launch path (K4-a).
+
+    rp1210 uses the RP1210Bus adapter over the vendor client (device id from
+    --channel, e.g. "1"); all other interfaces go through python-can.
+    """
+    if interface == "rp1210":
+        from src.hal.rp1210.bus import RP1210Bus
+
+        try:
+            device_id = int(channel)
+        except ValueError as exc:
+            raise ValueError(
+                f"rp1210 interface requires a numeric device id, got {channel!r}"
+            ) from exc
+        return RP1210Bus(device_id=device_id, bitrate=bitrate)
+    return PythonCanBus(interface=interface, channel=channel, bitrate=bitrate)
 
 # Global placeholder for Qt testing hooks
 QApplication: Any = None
@@ -49,7 +69,10 @@ def main() -> int:
     parser.add_argument("--cli", action="store_true", help="Run in CLI mode instead of GUI")
     parser.add_argument("--channel", type=str, default="vcan0", help="CAN Channel (e.g. PCAN_USBBUS1, 0, vcan0)")
     parser.add_argument(
-        "--interface", type=str, default="virtual", help="Hardware driver (virtual, pcan, kvaser, vector)"
+        "--interface",
+        type=str,
+        default="virtual",
+        help="Hardware driver (virtual, pcan, kvaser, vector, rp1210)",
     )
     parser.add_argument("--bitrate", type=int, default=250000, help="CAN Bitrate (e.g. 250000, 500000)")
     parser.add_argument("--log-level", type=str, default="INFO", help="Logging level (DEBUG, INFO, WARNING, ERROR)")
@@ -65,7 +88,7 @@ def main() -> int:
 
     if args.cli:
         print("=== Universal CAN-Bus CLI Mode ===")
-        bus = PythonCanBus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
+        bus = build_bus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
         bus.connect()
         print(f"Connected to {args.interface}:{args.channel} @ {args.bitrate} bps. Listening for frames...")
         try:
@@ -86,7 +109,7 @@ def main() -> int:
     qapp_cls = getattr(sys.modules.get("src.main", sys.modules[__name__]), "QApplication", None)
     if qapp_cls is not None:
         qapp = qapp_cls(sys.argv)
-        bus = PythonCanBus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
+        bus = build_bus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
         window = UniversalCanMainWindow(bus=bus)
         window.show()
         try:

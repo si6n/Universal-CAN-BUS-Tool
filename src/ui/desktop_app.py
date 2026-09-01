@@ -90,9 +90,17 @@ class UniversalCanDesktopApp:
         # Safety & HAL Architecture
         # F-30: composition root owns exactly ONE bus instance — injected when
         # available, created once otherwise. Settings changes reconnect it.
-        self.bus = bus if bus is not None else PythonCanBus(
-            interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
-        )
+        # K4-a: rp1210 goes through the RP1210Bus adapter; the rest python-can.
+        if bus is not None:
+            self.bus = bus
+        elif interface == "rp1210":
+            from src.main import build_bus
+
+            self.bus = build_bus(interface=interface, channel=channel, bitrate=bitrate)
+        else:
+            self.bus = PythonCanBus(
+                interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+            )
         self.estop = EmergencyStopSystem()
         self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
         self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=800.0)
@@ -283,15 +291,23 @@ class UniversalCanDesktopApp:
         Driver validation can reject the new combination as early as the
         constructor (e.g. kvaser demands an integer channel); the previous bus
         stays bound in that case so a bad settings change never kills the app.
+        K4-a: rp1210 reconnects through the shared build_bus factory.
         """
         try:
             self.bus.disconnect()
         except (OSError, RuntimeError) as exc:
             logger.debug("Bus disconnect during reconnect failed", extra={"error": str(exc)})
         try:
-            new_bus = PythonCanBus(
-                interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
-            )
+            if self.interface_val == "rp1210":
+                from src.main import build_bus
+
+                new_bus = build_bus(
+                    interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                )
+            else:
+                new_bus = PythonCanBus(
+                    interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                )
         except (OSError, RuntimeError, ValueError, PlatformError) as exc:
             logger.warning(
                 "CAN bus reconnect rejected the new settings; keeping previous bus",
