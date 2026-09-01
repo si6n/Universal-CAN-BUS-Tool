@@ -15,6 +15,7 @@ from __future__ import annotations
 import collections
 import threading
 import time
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, ClassVar
 
 from src.core.errors import SafetyError
@@ -39,6 +40,32 @@ if TYPE_CHECKING:
 logger = get_logger("safety.gateway")
 
 
+class TxBudget:
+    """Monotonic token bucket: `capacity` burst tokens refilled at `refill_per_sec`."""
+
+    __slots__ = ("capacity", "refill_per_sec", "_tokens", "_last_refill_ns", "_lock")
+
+    def __init__(self, capacity: int, refill_per_sec: float) -> None:
+        self.capacity = capacity
+        self.refill_per_sec = refill_per_sec
+        self._tokens = float(capacity)
+        self._last_refill_ns = time.monotonic_ns()
+        self._lock = threading.Lock()
+
+    def try_consume(self, n: int = 1) -> bool:
+        """Consume `n` tokens if available; returns False when the bucket is dry."""
+        with self._lock:
+            now_ns = time.monotonic_ns()
+            elapsed_s = (now_ns - self._last_refill_ns) / 1e9
+            if elapsed_s > 0:
+                self._tokens = min(float(self.capacity), self._tokens + elapsed_s * self.refill_per_sec)
+                self._last_refill_ns = now_ns
+            if self._tokens >= n:
+                self._tokens -= n
+                return True
+            return False
+
+
 class TxSafetyGateway:
     """Security and Functional Safety Gateway filtering all outgoing CAN transmissions."""
 
@@ -47,6 +74,15 @@ class TxSafetyGateway:
     SPEED_VALIDITY_TIMEOUT_NS: ClassVar[int] = 1_000_000_000  # 1.0 second speed freshness timeout
     RATE_LIMIT_WINDOW_NS: ClassVar[int] = 1_000_000_000  # 1.0 second sliding window (nanoseconds)
 
+    # Per-category token buckets (F-18): protocol bursts such as a J1939 BAM
+    # transfer (<=255 packets) must fit inside a single burst budget.
+    BUDGETS: ClassVar[dict[str, tuple[int, float]]] = {
+        "diagnostic": (10, 10.0),
+        "calibration": (5, 5.0),
+        "protocol_burst": (255, 100.0),
+        "default": (100, 100.0),
+    }
+
     def __init__(
         self,
         bus: AbstractBus,
@@ -54,16 +90,28 @@ class TxSafetyGateway:
         supervisor: SafetySupervisor | None = None,
         watchdog: TxWatchdogSupervisor | None = None,
         whitelist_ids: set[int] | None = None,
-        allow_all_for_testing: bool = False,
+        whitelist_masks: Sequence[tuple[int, int]] | None = None,
     ) -> None:
         self.bus = bus
         self.estop = estop or EmergencyStopSystem()
         self.supervisor = supervisor
         self.watchdog = watchdog
         self.whitelist_ids: set[int] = set(whitelist_ids) if whitelist_ids is not None else set()
-        self.allow_all_for_testing = allow_all_for_testing
+        # (value, mask) pairs: an ID passes when (id & mask) == value. Used to
+        # authorize whole protocol-response families (e.g. TP.CM frames sourced
+        # from our J1939 address) without enumerating every peer address.
+        self.whitelist_masks: tuple[tuple[int, int], ...] = (
+            tuple(whitelist_masks) if whitelist_masks is not None else ()
+        )
+        # Fail-closed whitelist stage can only be bypassed through the
+        # explicit for_testing() factory — never via a constructor flag
+        # that production wiring could set by accident.
+        self._whitelist_bypass_for_testing: bool = False
 
-        self._tx_timestamps: collections.deque[int | float] = collections.deque()
+        self._tx_timestamps: collections.deque[int] = collections.deque()
+        self._budgets: dict[str, TxBudget] = {
+            name: TxBudget(capacity, refill) for name, (capacity, refill) in self.BUDGETS.items()
+        }
         self._current_vehicle_speed_kmh: float = 0.0
         self._last_speed_update_ns: int = time.monotonic_ns()
         self._lock = threading.RLock()
@@ -73,6 +121,24 @@ class TxSafetyGateway:
 
         if self.supervisor:
             self.supervisor.register_callback(self._on_safety_state_changed)
+
+    @classmethod
+    def for_testing(
+        cls,
+        bus: AbstractBus,
+        estop: EmergencyStopSystem | None = None,
+        whitelist_ids: set[int] | None = None,
+    ) -> TxSafetyGateway:
+        """Test/demo-only factory that bypasses the fail-closed whitelist stage.
+
+        Kept out of the production constructor signature on purpose: the
+        bypass is only reachable through this explicitly named factory.
+        All other policy stages (E-Stop, speed interlock, dual confirmation,
+        rate budget) remain fully enforced.
+        """
+        instance = cls(bus=bus, estop=estop, whitelist_ids=whitelist_ids)
+        instance._whitelist_bypass_for_testing = True
+        return instance
 
     def _on_estop_triggered(self, event: object) -> None:
         logger.warning("TX Gateway notified of E-Stop engagement. All TX halted.")
@@ -97,6 +163,7 @@ class TxSafetyGateway:
         frame: CanFrame,
         is_critical_command: bool = False,
         user_confirmed: bool = False,
+        budget_category: str = "default",
     ) -> bool:
         """Enforce strict 6-stage policy evaluation order before transmitting onto HAL."""
         with self._lock:
@@ -151,12 +218,15 @@ class TxSafetyGateway:
             # -----------------------------------------------------------------
             # Stage 3: Whitelist Authorization (Fail-Closed)
             # -----------------------------------------------------------------
-            if not self.allow_all_for_testing:
-                if not self.whitelist_ids:
+            if not self._whitelist_bypass_for_testing:
+                if not self.whitelist_ids and not self.whitelist_masks:
                     raise WhitelistFailClosedError(
                         "Transmission blocked: Dynamic whitelist is empty or unconfigured (Fail-Closed)",
                     )
-                if frame.arbitration_id not in self.whitelist_ids:
+                id_allowed = frame.arbitration_id in self.whitelist_ids or any(
+                    (frame.arbitration_id & mask) == value for value, mask in self.whitelist_masks
+                )
+                if not id_allowed:
                     logger.warning(
                         "TX Frame rejected by Whitelist filter",
                         extra={"arbitration_id": hex(frame.arbitration_id)},
@@ -209,31 +279,51 @@ class TxSafetyGateway:
                 )
 
             # -----------------------------------------------------------------
-            # Stage 6: Rate Budget Enforcement (Sliding Window in monotonic nanoseconds)
+            # Stage 6: Rate Budget Enforcement
+            # The sliding window (Stage 6a) throttles the general traffic lane.
+             # Categorised bursts are governed by their own token bucket (Stage
+            # 6b) — e.g. a J1939 BAM transfer legitimately sends up to 255
+            # packets well above MAX_TX_RATE_PER_SEC, so it is exempt from the
+            # default-lane window and bounded by its bucket instead.
             # -----------------------------------------------------------------
-            while self._tx_timestamps:
-                first_ts = self._tx_timestamps[0]
-                first_ts_ns = int(first_ts * 1_000_000_000) if first_ts < 1_000_000_000_000 else int(first_ts)
-                if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
-                    self._tx_timestamps.popleft()
-                else:
-                    break
+            if budget_category == "default":
+                while self._tx_timestamps:
+                    first_ts_ns = self._tx_timestamps[0]
+                    if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
+                        self._tx_timestamps.popleft()
+                    else:
+                        break
 
-            if len(self._tx_timestamps) >= self.MAX_TX_RATE_PER_SEC:
-                logger.error("TX Rate limit exceeded! Triggering E-Stop.")
-                self.estop.trigger(
-                    EStopTriggerSource.RATE_LIMIT_OVERFLOW,
-                    f"Exceeded max TX rate ({self.MAX_TX_RATE_PER_SEC} msg/s)",
+                if len(self._tx_timestamps) >= self.MAX_TX_RATE_PER_SEC:
+                    logger.error("TX Rate limit exceeded! Triggering E-Stop.")
+                    self.estop.trigger(
+                        EStopTriggerSource.RATE_LIMIT_OVERFLOW,
+                        f"Exceeded max TX rate ({self.MAX_TX_RATE_PER_SEC} msg/s)",
+                    )
+                    raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
+
+                self._tx_timestamps.append(now_ns)
+
+            # Stage 6b: per-category token bucket (F-18) — bursts like a J1939
+            # BAM transfer (<=255 packets) fit the protocol_burst budget.
+            budget = self._budgets.get(budget_category)
+            if budget is None:
+                raise FrameSanityError(
+                    f"Unknown TX budget category '{budget_category}'",
+                    details={"category": budget_category},
                 )
-                raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
+            if not budget.try_consume():
+                logger.error(
+                    "TX budget exhausted",
+                    extra={"category": budget_category},
+                )
+                raise RateLimitExceededError(
+                    f"TX budget '{budget_category}' exhausted (capacity {budget.capacity})",
+                )
 
-            self._tx_timestamps.append(now_ns)
-
-            # Privileged dispatch to HAL driver via _send_raw
-            if hasattr(self.bus, "_send_raw"):
-                self.bus._send_raw(frame)
-            else:
-                self.bus.send(frame)
+            # D8: privileged dispatch through the explicit gateway port — no
+            # more duck-typed reach into the driver's private _send_raw
+            self.bus.privileged_send(frame)
             return True
 
     def send_sync(self, frame: CanFrame) -> None:
@@ -241,5 +331,12 @@ class TxSafetyGateway:
         self.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False)
 
     async def send(self, frame: CanFrame) -> None:
-        """Asynchronously transmit frame conforming to TxPort protocol."""
-        self.send_sync(frame)
+        """Asynchronously transmit without blocking the running event loop (F-26/E-12).
+
+        The synchronous validation pipeline may perform blocking work (driver TX,
+        E-Stop state checks) — offloading it keeps ISO-TP CF bursts responsive.
+        """
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.send_sync, frame)

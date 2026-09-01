@@ -1,0 +1,205 @@
+"""Device registration & Ed25519 license activation against the cloud (Task 5.3 client side).
+
+ Flow (MASTER_PLAN §3.2):
+   1. Desktop sends its CIM HWID fingerprint to POST /devices/register.
+   2. Cloud responds with a device_token — stored under Windows DPAPI.
+   3. Desktop exchanges device_token + license_ref for an Ed25519-signed
+      ticket via POST /licenses/activate.
+   4. The ticket is verified locally with the EMBEDDED public key before it
+      is ever trusted; the canonical cloud schema (license_id, device_id,
+      features, offline_until, nonce — MASTER_PLAN §3.1) is checked fully.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import secrets as pysecrets
+from dataclasses import dataclass
+from typing import Any
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+from src.core.errors import LicenseError
+from src.core.logging import get_logger
+from src.security.cloud.client import CloudClient
+from src.security.hwid.collector import generate_hardware_fingerprint
+
+logger = get_logger("security.cloud.license_flow")
+
+
+@dataclass(slots=True, frozen=True)
+class CloudLicenseClaims:
+    """Fully verified canonical license ticket claims (MASTER_PLAN §3.1 SSOT)."""
+
+    license_id: str
+    organization_id: str
+    device_id: str
+    tier: str
+    features: tuple[str, ...]
+    issued_at: int
+    expires_at: int
+    offline_until: int
+    key_id: str
+    nonce: str
+
+
+@dataclass(slots=True, frozen=True)
+class DeviceRegistration:
+    """Result of POST /devices/register."""
+
+    device_id: str
+    device_token: str
+    hwid_resets_remaining: int
+
+
+class LicenseFlow:
+    """Orchestrates device registration + license activation against the cloud."""
+
+    def __init__(
+        self,
+        client: CloudClient,
+        public_key: ed25519.Ed25519PublicKey,
+        app_version: str = "13.0.0",
+    ) -> None:
+        self.client = client
+        self.public_key = public_key
+        self.app_version = app_version
+
+    # ------------------------------------------------------------------
+    # POST /api/v1/devices/register
+    # ------------------------------------------------------------------
+    def register_device(self, device_name: str, hwid: str | None = None) -> DeviceRegistration:
+        payload = {
+            "device_name": device_name,
+            "hwid": hwid or generate_hardware_fingerprint(),
+            "app_version": self.app_version,
+        }
+        resp = self.client.request("POST", "/devices/register", json_body=payload)
+        if resp.status in (401, 403):
+            raise LicenseError(
+                "Device registration rejected — check your cloud session (login on the web portal).",
+                code="REGISTRATION_UNAUTHORIZED",
+            )
+        if resp.status == 429:
+            raise LicenseError("Too many registration attempts — try again later.", code="RATE_LIMITED")
+        if resp.status != 201:
+            raise LicenseError(
+                f"Device registration failed (HTTP {resp.status})",
+                code="REGISTRATION_FAILED",
+            )
+
+        data = resp.json()
+        registration = DeviceRegistration(
+            device_id=data["device_id"],
+            device_token=data["device_token"],
+            hwid_resets_remaining=data.get("hwid_resets_remaining", 0),
+        )
+
+        # Persist the device token under DPAPI (never plaintext on disk).
+        self.client.store_device_token(registration.device_token)
+        logger.info(
+            "Device registered with cloud",
+            extra={"device_id": registration.device_id, "hwid": payload["hwid"][:8] + "…"},
+        )
+        return registration
+
+    # ------------------------------------------------------------------
+    # POST /api/v1/licenses/activate
+    # ------------------------------------------------------------------
+    def activate_license(self, license_ref: str) -> CloudLicenseClaims:
+        device_token = self.client.get_device_token()
+        if not device_token:
+            raise LicenseError(
+                "No device token on record — register the device first.",
+                code="NO_DEVICE_TOKEN",
+            )
+
+        resp = self.client.request(
+            "POST",
+            "/licenses/activate",
+            json_body={
+                "device_token": device_token,
+                "license_ref": license_ref,
+                "nonce": pysecrets.token_hex(8),
+            },
+        )
+        if resp.status in (401, 403):
+            raise LicenseError(
+                "License activation rejected — token/license mismatch or expired license.",
+                code="ACTIVATION_REJECTED",
+            )
+        if resp.status != 200:
+            raise LicenseError(f"License activation failed (HTTP {resp.status})", code="ACTIVATION_FAILED")
+
+        data = resp.json()
+        claims = self.verify_cloud_ticket(data["license_token"])
+
+        # Persist the signed ticket for offline re-verification within grace.
+        self.client.store_license_ticket(data["license_token"])
+        logger.info(
+            "Cloud license activated",
+            extra={"license_id": claims.license_id, "tier": claims.tier},
+        )
+        return claims
+
+    # ------------------------------------------------------------------
+    # Local verification of the Ed25519 ticket (trust anchor: embedded key)
+    # ------------------------------------------------------------------
+    def verify_cloud_ticket(self, token: str) -> CloudLicenseClaims:
+        """Verify signature + canonical schema; raise LicenseError on any flaw."""
+        parts = token.strip().split(".")
+        if len(parts) != 2:
+            raise LicenseError("Invalid cloud ticket format", code="INVALID_TICKET_FORMAT")
+
+        def _pad(s: str) -> str:
+            return s + "=" * (-len(s) % 4)
+
+        try:
+            payload_bytes = base64.urlsafe_b64decode(_pad(parts[0]))
+            sig_bytes = base64.urlsafe_b64decode(_pad(parts[1]))
+        except Exception as exc:
+            raise LicenseError("Cloud ticket base64 decode failed", code="TICKET_DECODE_ERROR", cause=exc) from exc
+
+        try:
+            self.public_key.verify(sig_bytes, payload_bytes)
+        except InvalidSignature as exc:
+            logger.error("Cloud ticket Ed25519 signature verification FAILED")
+            raise LicenseError(
+                "Cloud license ticket signature is invalid.",
+                code="INVALID_SIGNATURE",
+                cause=exc,
+            ) from exc
+
+        try:
+            data: dict[str, Any] = json.loads(payload_bytes.decode("utf-8"))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise LicenseError("Malformed ticket payload", code="MALFORMED_PAYLOAD", cause=exc) from exc
+
+        required = {
+            "iss", "aud", "kid", "license_id", "organization_id", "device_id",
+            "tier", "features", "iat", "exp", "offline_until", "schema_version", "nonce",
+        }
+        if not required.issubset(data.keys()):
+            raise LicenseError("Incomplete cloud ticket schema", code="INCOMPLETE_SCHEMA")
+        if data["iss"] != "universal-can-cloud" or data["aud"] != "diagnostic-desktop-app":
+            raise LicenseError("Ticket issuer/audience mismatch", code="ISSUER_MISMATCH")
+
+        import time
+
+        if time.time() > data["exp"]:
+            raise LicenseError("Cloud license ticket has expired.", code="LICENSE_EXPIRED")
+
+        return CloudLicenseClaims(
+            license_id=data["license_id"],
+            organization_id=data["organization_id"],
+            device_id=data["device_id"],
+            tier=data["tier"],
+            features=tuple(data["features"]),
+            issued_at=data["iat"],
+            expires_at=data["exp"],
+            offline_until=data["offline_until"],
+            key_id=data["kid"],
+            nonce=data["nonce"],
+        )

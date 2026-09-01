@@ -175,6 +175,7 @@ class SafetySupervisor:
 
     def transition_to(self, new_state: SafetyState, reason: str = "") -> None:
         """Execute a formal validated state transition adhering to Snapshot-Then-Release."""
+        illegal: str | None = None
         with self._lock:
             if self._state == new_state:
                 return
@@ -185,6 +186,10 @@ class SafetySupervisor:
 
             allowed = self.ALLOWED_TRANSITIONS.get(self._state, set())
             if new_state not in allowed:
+                # Illegal transition: mutate state and snapshot listeners under
+                # the lock, but defer dispatch AND the raise to outside (B6) so
+                # re-entrant callbacks cannot deadlock and no SafetyError ever
+                # unwinds through a held lock.
                 err_msg = (
                     f"Illegal Safety State transition from '{self._state.value}' to '{new_state.value}'. "
                     f"Reason: {reason or 'N/A'}"
@@ -192,7 +197,8 @@ class SafetySupervisor:
                 logger.critical(err_msg)
                 old_state = self._state
                 self._state = SafetyState.FAULT
-                self._fault_reason = "ILLEGAL_STATE_TRANSITION: " + err_msg
+                fault_reason = "ILLEGAL_STATE_TRANSITION: " + err_msg
+                self._fault_reason = fault_reason
                 self._epoch += 1
                 self._state_change_timestamp_ns = now_monotonic_ns
                 self._last_duration_ns = 0
@@ -200,7 +206,31 @@ class SafetySupervisor:
                 record = StateTransitionRecord(
                     from_state=old_state,
                     to_state=SafetyState.FAULT,
-                    reason=self._fault_reason,
+                    reason=fault_reason,
+                    epoch=self._epoch,
+                    monotonic_timestamp_ns=now_monotonic_ns,
+                    wall_time_utc=now_utc,
+                    duration_ns=duration_ns,
+                )
+                self._history.append(record)
+                callbacks_snapshot = list(self._callbacks)
+                illegal = err_msg
+            else:
+                old_state = self._state
+                self._state = new_state
+                self._epoch += 1
+                self._state_change_timestamp_ns = now_monotonic_ns
+                self._last_duration_ns = 0
+
+                if new_state == SafetyState.FAULT:
+                    self._fault_reason = reason
+                elif old_state == SafetyState.FAULT and new_state in {SafetyState.PASSIVE, SafetyState.SAFE}:
+                    self._fault_reason = ""
+
+                record = StateTransitionRecord(
+                    from_state=old_state,
+                    to_state=new_state,
+                    reason=reason,
                     epoch=self._epoch,
                     monotonic_timestamp_ns=now_monotonic_ns,
                     wall_time_utc=now_utc,
@@ -209,32 +239,10 @@ class SafetySupervisor:
                 self._history.append(record)
                 callbacks_snapshot = list(self._callbacks)
 
-                # Snapshot-Then-Release: Dispath callbacks outside lock on illegal transition
-                self._dispatch_callbacks(callbacks_snapshot, old_state, SafetyState.FAULT, self._fault_reason)
-                raise SafetyError(err_msg, code="ILLEGAL_SAFETY_TRANSITION")
-
-            old_state = self._state
-            self._state = new_state
-            self._epoch += 1
-            self._state_change_timestamp_ns = now_monotonic_ns
-            self._last_duration_ns = 0
-
-            if new_state == SafetyState.FAULT:
-                self._fault_reason = reason
-            elif old_state == SafetyState.FAULT and new_state in {SafetyState.PASSIVE, SafetyState.SAFE}:
-                self._fault_reason = ""
-
-            record = StateTransitionRecord(
-                from_state=old_state,
-                to_state=new_state,
-                reason=reason,
-                epoch=self._epoch,
-                monotonic_timestamp_ns=now_monotonic_ns,
-                wall_time_utc=now_utc,
-                duration_ns=duration_ns,
-            )
-            self._history.append(record)
-            callbacks_snapshot = list(self._callbacks)
+        if illegal is not None:
+            # Snapshot-Then-Release: dispatch + raise outside the lock (B6)
+            self._dispatch_callbacks(callbacks_snapshot, old_state, SafetyState.FAULT, self._fault_reason)
+            raise SafetyError(illegal, code="ILLEGAL_SAFETY_TRANSITION")
 
         logger.info(
             "Safety State Transition",

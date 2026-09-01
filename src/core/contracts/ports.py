@@ -74,7 +74,8 @@ class ClockProvider(Protocol):
     """High-resolution monotonic time provider.
 
     Supplies high-precision monotonic timestamps in seconds and nanoseconds
-    for protocol state machine timers (N_As, N_Bs, N_Cr, T1..T4, STmin).
+    for protocol state machine timers (N_As, N_Bs, N_Cr, T1..T4, STmin), plus
+    a wall-clock reading for license/HWM style absolute-time comparisons.
     """
 
     def now_monotonic(self) -> float:
@@ -83,6 +84,10 @@ class ClockProvider(Protocol):
 
     def now_monotonic_ns(self) -> int:
         """Return current monotonic time in nanoseconds."""
+        ...
+
+    def now_wall_ns(self) -> int:
+        """Return current wall-clock (real) time in nanoseconds since epoch."""
         ...
 
 
@@ -113,7 +118,7 @@ class SecretProvider(Protocol):
 
 
 class SystemClockProvider:
-    """Default system clock provider using standard library monotonic time."""
+    """Default system clock provider using standard library clocks."""
 
     def now_monotonic(self) -> float:
         """Return monotonic time in fractional seconds."""
@@ -122,6 +127,10 @@ class SystemClockProvider:
     def now_monotonic_ns(self) -> int:
         """Return monotonic time in nanoseconds."""
         return time.monotonic_ns()
+
+    def now_wall_ns(self) -> int:
+        """Return wall-clock time in nanoseconds since the epoch."""
+        return time.time_ns()
 
 
 class InMemorySecretProvider:

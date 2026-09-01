@@ -5,7 +5,7 @@ Matches NO-GO Remediation Plan (v1.0 Release Blockers).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from src.hal.base import AbstractBus
 
@@ -27,15 +27,11 @@ class SafeMultiplexedBus(AbstractBus):
         physical_bus: AbstractBus,
         gateway: TxSafetyGateway,
         router: FrameRouter,
-        is_critical_command: bool = False,
-        user_confirmed: bool = False,
     ) -> None:
         super().__init__(channel_id=physical_bus.channel_id, bitrate=physical_bus.bitrate, is_fd=physical_bus.is_fd)
         self.physical_bus = physical_bus
         self.gateway = gateway
         self.router = router
-        self.is_critical_command = is_critical_command
-        self.user_confirmed = user_confirmed
 
         # Subscribe to FrameRouter for RX without stealing frames from hardware
         self.sub_id, self.rx_queue = self.router.subscribe(use_queue=True)
@@ -50,23 +46,40 @@ class SafeMultiplexedBus(AbstractBus):
         """Unsubscribe from router upon teardown."""
         self.router.unsubscribe(self.sub_id)
 
-    def send(self, frame: CanFrame) -> None:
-        """Enforce CORE_SAFETY_FLOOR on every transmission."""
+    def send(
+        self,
+        frame: CanFrame,
+        *,
+        is_critical_command: bool = False,
+        user_confirmed: bool = False,
+    ) -> None:
+        """Enforce CORE_SAFETY_FLOOR on every transmission.
+
+        Critical-command status and operator dual confirmation are decided
+        per transmission; neither can be granted once at construction time.
+        """
         self.gateway.validate_and_transmit(
             frame,
-            is_critical_command=self.is_critical_command,
-            user_confirmed=self.user_confirmed,
+            is_critical_command=is_critical_command,
+            user_confirmed=user_confirmed,
         )
 
-    def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
-        """Asynchronously read from the dedicated subscription queue, avoiding hardware race conditions."""
+    DEFAULT_RECV_TIMEOUT_S: ClassVar[float] = 1.0
+
+    def recv(self, timeout_s: float | None = None) -> CanFrame | None:
+        """Asynchronously read from the dedicated subscription queue, avoiding hardware race conditions.
+
+        A `None` timeout falls back to the bounded default (F-23) — the queue
+        never blocks forever, so callers stay responsive.
+        """
         import queue
 
         if self.rx_queue is None:
             return None
 
+        effective_timeout = timeout_s if timeout_s is not None else self.DEFAULT_RECV_TIMEOUT_S
         try:
             # Block until frame available or timeout
-            return self.rx_queue.get(timeout=timeout_s)
+            return self.rx_queue.get(timeout=effective_timeout)
         except queue.Empty:
             return None

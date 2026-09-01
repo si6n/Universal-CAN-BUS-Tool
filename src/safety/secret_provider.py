@@ -13,7 +13,6 @@ import ctypes
 import importlib
 import json
 import os
-import platform
 import sys
 import threading
 from abc import ABC, abstractmethod
@@ -214,17 +213,34 @@ class LinuxSecretBackend(SecretProvider):
         ]
         for candidate in candidates:
             try:
-                if candidate.exists() and candidate.is_file():
+                if candidate.is_file():
                     content = candidate.read_bytes().strip()
                     if content:
                         return content
-            except Exception:
+            except OSError:
                 continue
 
-        # Fallback to user and node info
-        node_id = platform.node() or "localhost"
-        user_id = os.environ.get("USER", os.environ.get("USERNAME", "default_user"))
-        return f"{node_id}:{user_id}:UniversalCAN_Fixed_Machine_Seed".encode("utf-8")
+        # Deterministic fallback: a persistent random seed file (0600) — never a
+        # hardcoded constant (F-09). Second run reuses the same seed.
+        seed_file = self.storage_path.parent / "machine_seed.bin"
+        if seed_file.exists():
+            try:
+                existing = seed_file.read_bytes()
+                if existing:
+                    return existing
+            except OSError:
+                pass
+        seed = os.urandom(32)
+        try:
+            seed_file.parent.mkdir(parents=True, exist_ok=True)
+            fd = os.open(seed_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                f.write(seed)
+            os.chmod(seed_file, 0o600)
+            logger.info("Generated persistent random machine seed for secret backend")
+        except OSError as exc:
+            logger.warning("Failed to persist machine seed; using ephemeral seed", extra={"error": str(exc)})
+        return seed
 
     def _load_all_secrets(self) -> dict[str, bytes]:
         """Load and decrypt all secrets from file."""
@@ -307,20 +323,21 @@ class LinuxSecretBackend(SecretProvider):
                 fd = os.open(temp_file, flags, mode)
                 with os.fdopen(fd, "wb") as f:
                     f.write(blob)
-            except Exception:
+            except OSError as exc:
+                logger.debug("os.open with 0600 failed, using plain write", extra={"error": str(exc)})
                 temp_file.write_bytes(blob)
 
             try:
                 os.chmod(temp_file, 0o600)
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("Could not enforce 0600 on temp secret store", extra={"error": str(exc)})
 
             temp_file.replace(self.storage_path)
 
             try:
                 os.chmod(self.storage_path, 0o600)
-            except Exception:
-                pass
+            except OSError as exc:
+                logger.debug("Could not enforce 0600 on secret store", extra={"error": str(exc)})
 
         except Exception as exc:
             raise SecurityError(
@@ -428,25 +445,24 @@ class WindowsDPAPISecretBackend(SecretProvider):
                 0,
             )
             return bytes(protected)
-        except Exception:
-            pass
+        except (ImportError, OSError, AttributeError) as exc:
+            logger.debug("win32crypt unavailable, falling back to ctypes", extra={"error": str(exc)})
 
         # 2. Use ctypes crypt32
         crypt32 = ctypes.windll.crypt32
         kernel32 = ctypes.windll.kernel32
 
-        blob_in = _WindowsDATA_BLOB(
-            len(data),
-            ctypes.cast(ctypes.create_string_buffer(data), ctypes.POINTER(ctypes.c_byte)),
-        )
+        # B7: buffers are bound to named locals so the ctypes GC cannot free
+        # them while the BLOB fields still point into their memory.
+        data_buffer = ctypes.create_string_buffer(data)
+        blob_in = _WindowsDATA_BLOB(len(data), ctypes.cast(data_buffer, ctypes.POINTER(ctypes.c_byte)))
         blob_out = _WindowsDATA_BLOB()
 
         blob_entropy_ptr = None
+        entropy_buffer = None
         if self.entropy:
-            blob_entropy = _WindowsDATA_BLOB(
-                len(self.entropy),
-                ctypes.cast(ctypes.create_string_buffer(self.entropy), ctypes.POINTER(ctypes.c_byte)),
-            )
+            entropy_buffer = ctypes.create_string_buffer(self.entropy)
+            blob_entropy = _WindowsDATA_BLOB(len(self.entropy), ctypes.cast(entropy_buffer, ctypes.POINTER(ctypes.c_byte)))
             blob_entropy_ptr = ctypes.byref(blob_entropy)
 
         res = crypt32.CryptProtectData(
@@ -480,25 +496,25 @@ class WindowsDPAPISecretBackend(SecretProvider):
                 0,
             )
             return bytes(decrypted)
-        except Exception:
-            pass
+        except (ImportError, OSError, AttributeError) as exc:
+            logger.debug("win32crypt unavailable, falling back to ctypes", extra={"error": str(exc)})
 
         # 2. Use ctypes crypt32
         crypt32 = ctypes.windll.crypt32
         kernel32 = ctypes.windll.kernel32
 
-        blob_in = _WindowsDATA_BLOB(
-            len(encrypted_data),
-            ctypes.cast(ctypes.create_string_buffer(encrypted_data), ctypes.POINTER(ctypes.c_byte)),
-        )
+        # B7: keep the input buffer alive on a named local for the duration of
+        # the call — an anonymous create_string_buffer could be collected while
+        # blob_in still points into it.
+        data_buffer = ctypes.create_string_buffer(encrypted_data)
+        blob_in = _WindowsDATA_BLOB(len(encrypted_data), ctypes.cast(data_buffer, ctypes.POINTER(ctypes.c_byte)))
         blob_out = _WindowsDATA_BLOB()
 
         blob_entropy_ptr = None
+        entropy_buffer = None
         if self.entropy:
-            blob_entropy = _WindowsDATA_BLOB(
-                len(self.entropy),
-                ctypes.cast(ctypes.create_string_buffer(self.entropy), ctypes.POINTER(ctypes.c_byte)),
-            )
+            entropy_buffer = ctypes.create_string_buffer(self.entropy)
+            blob_entropy = _WindowsDATA_BLOB(len(self.entropy), ctypes.cast(entropy_buffer, ctypes.POINTER(ctypes.c_byte)))
             blob_entropy_ptr = ctypes.byref(blob_entropy)
 
         res = crypt32.CryptUnprotectData(
@@ -563,6 +579,13 @@ class WindowsDPAPISecretBackend(SecretProvider):
                 store = self._load_store()
                 secrets = store.get("secrets", {})
                 if name not in secrets:
+                    # B3: a miss in the DPAPI store must also check the
+                    # fallback depot before raising — the split-brain case
+                    # (secret written via fallback during a DPAPI outage).
+                    fallback = self._get_fallback()
+                    if fallback.has_secret(name):
+                        logger.warning("Secret served from fallback depot (missing in DPAPI store)", extra={"name": name})
+                        return fallback.get_secret(name)
                     raise KeyError(f"Secret '{name}' not found in {self.__class__.__name__}")
 
                 encrypted_b64 = secrets[name]

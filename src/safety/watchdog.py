@@ -22,7 +22,7 @@ logger = get_logger("safety.watchdog")
 class TxWatchdogSupervisor:
     """Independent supervisor thread enforcing monotonic heartbeat leases for transmission."""
 
-    DEFAULT_TIMEOUT_MS: ClassVar[float] = 500.0  # 500ms lease duration
+    DEFAULT_TIMEOUT_MS: ClassVar[float] = 800.0  # 800ms lease duration (B8: README-documented value)
     CHECK_INTERVAL_SEC: ClassVar[float] = 0.050  # 50ms check loop resolution
 
     def __init__(
