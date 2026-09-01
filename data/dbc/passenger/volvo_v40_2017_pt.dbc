@@ -215,7 +215,6 @@ BO_ 853 FSM5: 8 FSM
  SG_ TargetSpeedOdo : 23|8@0+ (1,0) [0|63] "kph" XXX
  SG_ SpeedSign : 36|5@0+ (5,0) [0|32] "" XXX
  SG_ TextUnderSign : 37|1@0+ (1,0) [0|1] "" XXX
- SG_ NEW_SIGNAL_6 : 39|3@0+ (1,0) [0|3] "" XXX
  SG_ NEW_SIGNAL_5 : 47|8@0+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_3 : 31|8@0+ (1,0) [0|255] "" XXX
  SG_ LaneMarkingsOdo : 15|4@0+ (1,0) [0|7] "" XXX

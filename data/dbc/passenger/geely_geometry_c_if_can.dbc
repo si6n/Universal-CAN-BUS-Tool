@@ -1,0 +1,607 @@
+VERSION "geely-geometry-c-if-can 1.0.0"
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: AC ACU BCM BMSH EGSM EPS ESC GW IPK MMI OBC PDM SAS VCU
+
+BO_ 166 ACCELERATOR_PEDAL: 8 Vector__XXX
+ SG_ AcceleratorPedal : 39|8@0+ (0.4,0) [0|100] "%" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 176 BMS_HVIL: 8 BMSH
+ SG_ ChargeConnectorBMS : 43|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 224 STEERING_SENSOR: 8 SAS
+ SG_ SteeringAngle : 7|16@0- (0.1,0) [-540|540] "deg" Vector__XXX
+ SG_ SteeringRate : 23|8@0+ (4,0) [0|1020] "deg/s" Vector__XXX
+ SG_ Counter : 39|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 47|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 290 WHEEL_SPEED_FRONT: 8 Vector__XXX
+ SG_ WheelSpeedFrontLeft : 7|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ WheelSpeedFrontLeftTag : 10|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ WheelSpeedFrontRight : 23|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ WheelSpeedFrontRightTag : 26|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ BrakePedalCoarse : 39|8@0+ (1.6666667,0) [0|100] "%" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 291 WHEEL_SPEED_REAR: 8 Vector__XXX
+ SG_ WheelSpeedRearLeft : 7|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ WheelSpeedRearLeftTag : 10|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ WheelSpeedRearRight : 23|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ WheelSpeedRearRightTag : 26|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ BrakePedalFine : 39|16@0+ (0.0192678,-0.3198) [0|100] "%" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 293 ESC_STATUS: 8 ESC
+ SG_ VehicleSpeedFrontAxle : 15|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ VehicleSpeedFrontAxleTag : 18|3@0+ (1,0) [0|7] "" Vector__XXX
+ SG_ BrakeSwitch : 24|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ParkingBrake : 27|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ParkingBrakeMoving : 28|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 325 GEAR_LEVER: 8 EGSM
+ SG_ GearLeverParkButton : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ GearLeverPosition : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 336 EPS_STEERING: 8 EPS
+ SG_ SteeringTorqueCoarse : 7|8@0+ (1,-127) [-127|128] "" Vector__XXX
+ SG_ SteeringAssistInactive : 17|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ SteeringMode : 19|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ SteeringTorqueMagnitude : 31|8@0+ (1,0) [0|234] "" Vector__XXX
+ SG_ SteeringTorqueSign : 32|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ EPS_Unknown_b4_bits67 : 39|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 352 POWER_STATE: 8 Vector__XXX
+ SG_ QuiescentState : 47|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 354 VCU_POWERTRAIN: 8 VCU
+ SG_ GearMirror : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ OffThrottleRegen : 30|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DriveReady : 31|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RegenLevelValid : 40|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RegenLevel : 43|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 357 GEAR_SELECTED: 8 VCU
+ SG_ GearEngaged : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 378 BMS_SOC: 8 BMSH
+ SG_ BatterySOC : 37|10@0+ (0.1,0) [0|102.3] "%" Vector__XXX
+ SG_ SOC_RollingCounter : 39|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 420 DRIVE_EFFORT: 8 Vector__XXX
+ SG_ DriveEffortSigned : 7|16@0+ (1,-6000) [-6000|10000] "" Vector__XXX
+ SG_ DriveEffortPositive : 23|16@0+ (1,-6000) [-6000|10000] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 496 BCM_LIGHTING: 8 BCM
+ SG_ TurnLampLeft : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ TurnLampRight : 3|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ TurnStalkLeft : 4|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ TurnStalkRight : 5|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ HighBeamStalkPush : 6|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ LightSwitchRequest : 12|5@0+ (1,0) [0|31] "" Vector__XXX
+ SG_ LockAndLeave : 13|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ LightRequestUnknownBit6 : 14|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RearFogLamp : 15|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ AmbientLightFast : 39|8@0+ (1,0) [0|253] "cnt" Vector__XXX
+ SG_ AmbientLightFastFiltered : 47|8@0+ (1,0) [0|253] "cnt" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 498 TPMS: 8 Vector__XXX
+ SG_ TyrePressureFrontLeft : 7|8@0+ (1.375,0) [0|350] "kPa" Vector__XXX
+ SG_ TyrePressureFrontRight : 15|8@0+ (1.375,0) [0|350] "kPa" Vector__XXX
+ SG_ TyrePressureRearLeft : 23|8@0+ (1.375,0) [0|350] "kPa" Vector__XXX
+ SG_ TyrePressureRearRight : 31|8@0+ (1.375,0) [0|350] "kPa" Vector__XXX
+ SG_ TyreTempFrontLeft : 39|8@0+ (1,-50) [-50|205] "degC" Vector__XXX
+ SG_ TyreTempFrontRight : 47|8@0+ (1,-50) [-50|205] "degC" Vector__XXX
+ SG_ TyreTempRearLeft : 55|8@0+ (1,-50) [-50|205] "degC" Vector__XXX
+ SG_ TyreTempRearRight : 63|8@0+ (1,-50) [-50|205] "degC" Vector__XXX
+
+BO_ 517 HVAC_ACTUATOR: 8 AC
+ SG_ AC_Compressor : 15|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 532 RANGE_TEMP_MIRROR: 8 Vector__XXX
+ SG_ RangeEstimateMirror : 7|12@0+ (1,0) [0|4095] "km" Vector__XXX
+ SG_ OutsideTempMirror : 31|8@0+ (0.5,-40) [-40|87.5] "degC" Vector__XXX
+
+BO_ 544 OBC_CHARGE: 8 OBC
+ SG_ ChargeState : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ ChargeConnectorLatched : 43|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ChargeConnectorUnlatched : 44|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ChargeConnectorInserted : 46|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 592 BMS_PACK_POWER: 8 BMSH
+ SG_ PackCurrent : 7|16@0+ (0.025,-500) [-500|500] "A" Vector__XXX
+ SG_ PackVoltage : 23|8@0+ (1,256) [256|511] "V" Vector__XXX
+ SG_ Charging : 56|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 621 VEHICLE_SPEED: 8 IPK
+ SG_ VehicleSpeedDisplayed : 47|13@0+ (0.05625,0) [0|460] "km/h" Vector__XXX
+ SG_ VehicleSpeedDisplayedTag : 50|3@0+ (1,0) [0|7] "" Vector__XXX
+
+BO_ 628 DRIVER_SEAT: 8 Vector__XXX
+ SG_ DriverSeatOccupied : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 639 LOCK_REQUEST: 8 Vector__XXX
+ SG_ LockRequestFob : 3|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ LockRequestExterior : 7|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ LockRequestActive : 8|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 641 IPK_STALKS: 8 IPK
+ SG_ RearWasher : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Washer : 2|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ HighBeamStalkPushMirror : 6|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ WiperStalkPosition : 13|6@0+ (1,0) [0|63] "" Vector__XXX
+ SG_ FlashToPass : 14|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RearWiper : 18|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ RearFogSwitch : 22|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ LightSwitchMode : 31|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ Counter : 51|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 63|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 644 BCM_BODY_SECURITY: 8 BCM
+ SG_ RearDefrost : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ InteriorLockActuation : 3|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ WiperSweep : 6|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ Bonnet : 8|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Trunk : 10|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ CentralLockingActive : 16|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ CentralLockingDirection : 17|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ AlarmCounter : 27|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ AlarmState : 31|4@0+ (1,0) [0|15] "" Vector__XXX
+
+BO_ 645 DOORS_LEFT: 8 Vector__XXX
+ SG_ WindowFrontLeft : 7|8@0+ (0.5,-0.5) [0|100] "%" Vector__XXX
+ SG_ WindowRearLeft : 23|8@0+ (0.5,-0.5) [0|100] "%" Vector__XXX
+ SG_ DoorFrontLeftOpen : 32|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorRearLeftOpen : 33|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorRearLeftLocked : 34|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorFrontLeftLocked : 36|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 646 DOORS_RIGHT: 8 PDM
+ SG_ WindowFrontRight : 7|8@0+ (0.5,-0.5) [0|100] "%" Vector__XXX
+ SG_ WindowRearRight : 23|8@0+ (0.5,-0.5) [0|100] "%" Vector__XXX
+ SG_ DoorFrontRightOpen : 32|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorRearRightOpen : 33|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorRearRightLocked : 34|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ DoorFrontRightLocked : 36|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 647 AMBIENT_LIGHT_COARSE: 8 Vector__XXX
+ SG_ AmbientLightCoarseLow : 39|8@0+ (1,0) [0|255] "cnt" Vector__XXX
+ SG_ AmbientLightCoarseHigh : 45|2@0+ (1,0) [0|3] "cnt" Vector__XXX
+
+BO_ 674 AVAS_COMMAND: 8 MMI
+ SG_ AVAS_VolumeCommand : 39|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 676 DRIVE_MODE_COMMAND: 8 Vector__XXX
+ SG_ RegenRequest : 27|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ DriveModeRequest : 31|4@0+ (1,0) [0|15] "" Vector__XXX
+
+BO_ 677 HVAC_PANEL_COMMAND: 8 Vector__XXX
+ SG_ HVAC_ModeButton : 7|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ FanSpeedCommand : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ VentDirectionCommand : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ DriverTempCommand : 31|8@0+ (0.5,17) [17|31.5] "degC" Vector__XXX
+ SG_ PassengerTempCommand : 39|8@0+ (0.5,17) [17|31.5] "degC" Vector__XXX
+ SG_ HVAC_Button_b6 : 55|8@0+ (1,0) [0|255] "" Vector__XXX
+ SG_ SelfDryingCommand : 60|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 690 AVAS_STATE: 8 Vector__XXX
+ SG_ AVAS_Level : 15|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 753 AC_TEMPERATURES: 8 AC
+ SG_ BlowerRunning : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ OutsideTempFault : 1|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ OutsideTemp : 15|8@0+ (0.5,-40) [-40|87.5] "degC" Vector__XXX
+ SG_ CabinTemp : 55|8@0+ (0.5,-40) [-40|87.5] "degC" Vector__XXX
+
+BO_ 754 HVAC_STATE: 8 Vector__XXX
+ SG_ FrontDefrost : 3|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ IntakeRecirculate : 4|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ GClean : 6|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ FanSpeed : 11|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ FanFlags : 15|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ VentDirection : 19|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ SelfDrying : 29|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ AutoLevel : 62|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ AutoLevelValid : 63|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 764 KEY_AND_TRUNK: 8 Vector__XXX
+ SG_ KeyFobMissing : 19|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ TrunkUnlocked : 23|1@0+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 765 DRIVE_MODE_STATE: 8 Vector__XXX
+ SG_ DriveMode : 35|2@0+ (1,0) [0|3] "" Vector__XXX
+ SG_ DriveModeChanging : 38|2@0+ (1,0) [0|3] "" Vector__XXX
+
+BO_ 896 ACU_RESTRAINTS: 8 ACU
+ SG_ BeltDriverUnbuckled : 0|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ BeltPassengerUnbuckled : 1|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ SeatPassengerOccupied : 2|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ BeltRearRightUnbuckled : 3|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ ACU_ConstantBit : 4|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ BeltRearLeftUnbuckled : 10|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ BeltRearCenterUnbuckled : 11|1@0+ (1,0) [0|1] "" Vector__XXX
+ SG_ Counter : 15|4@0+ (1,0) [0|15] "" Vector__XXX
+ SG_ Checksum : 23|8@0+ (1,0) [0|255] "" Vector__XXX
+
+BO_ 1008 CLOCK_DATE: 8 Vector__XXX
+ SG_ ClockSecond : 7|8@0+ (1,0) [0|59] "s" Vector__XXX
+ SG_ ClockMinute : 15|8@0+ (1,0) [0|59] "min" Vector__XXX
+ SG_ ClockHour : 23|8@0+ (1,0) [0|23] "h" Vector__XXX
+ SG_ DateDay : 31|8@0+ (1,0) [0|31] "" Vector__XXX
+ SG_ DateMonth : 39|8@0+ (1,0) [0|12] "" Vector__XXX
+ SG_ DateYear : 47|8@0+ (1,2000) [2000|2255] "" Vector__XXX
+
+BO_ 1009 ODOMETER: 8 IPK
+ SG_ Odometer : 7|24@0+ (0.1,0) [0|1677721.5] "km" Vector__XXX
+
+BO_ 1015 RANGE_ESTIMATE: 8 Vector__XXX
+ SG_ RangeEstimate : 7|12@0+ (1,0) [0|4095] "km" Vector__XXX
+
+
+CM_ BO_ 166 "Accelerator pedal position. Only byte 4 is decoded.";
+CM_ BO_ 176 "BMS high-voltage interlock / fault frame, gateway-forwarded from HB_CAN. Only the charge-connector bit is decoded.";
+CM_ BO_ 224 "Steering angle sensor. Counter/checksum are NOT in the usual place on this frame: counter is b4 high nibble, checksum is b5.";
+CM_ BO_ 290 "Front wheel speeds plus the coarse brake-pedal channel. Sides were assigned by spinning one wheel at a time on stands.";
+CM_ BO_ 291 "Rear-axle twin of 0x122 - same period, encoding and byte layout - plus the fine brake-pedal channel.";
+CM_ BO_ 293 "Stability-control frame: front-axle speed, brake switch and the electric parking brake.";
+CM_ BO_ 325 "Gear-lever REQUEST, monostable - it spring-returns to 0x00 rest and the engaged gear (0x165 / 0x162) does not follow if the shift is rejected.";
+CM_ BO_ 336 "Electric power steering: driver torque on two channels of different resolution, plus the steering-effort mode.";
+CM_ BO_ 352 "Power/shutdown frame. b2-b3 ramp through a boot sequence on every wake, so values are not trustworthy for the first ~2 s after one.";
+CM_ BO_ 354 "Powertrain state: drive-ready, a mirror of the engaged gear, and the regen-braking level.";
+CM_ BO_ 357 "The engaged gear, i.e. what the car has actually selected.";
+CM_ BO_ 378 "Battery state of charge. THE ONLY SOC SIGNAL ON IF_CAN - the 0x3F7 row that used to claim the name is the range estimate.";
+CM_ BO_ 420 "UNCALIBRATED. Two channels in offset binary about 0x1770 = 6000, which is why they dither 5998-6006 at standstill. Not wheel speed (that is 0x122/0x123) and NOT longitudinal acceleration - that lead was retracted. Best remaining hypothesis: a torque pair, delivered against requested. Published raw for whoever finishes it.";
+CM_ BO_ 496 "Body-control lighting frame: turn lamps, stalk contacts, the lighting REQUEST byte and the fast ambient-light channel. NOTE IF_CAN carries the lighting REQUEST, never lamp state - a low-beam telltale was retracted for reading clear through 1500 frames of a night drive with the lamps confirmed lit.";
+CM_ BO_ 498 "Tyre pressure monitoring. Four pressures then four temperatures, in FL/FR/RL/RR order.";
+CM_ BO_ 517 "Climate actuator state. b2/b4/b5 shift with intake and vent changes but are not decoded.";
+CM_ BO_ 532 "DOWNSTREAM MIRROR FRAME - every field in it has a better source elsewhere. Kept because it is on the bus and someone will decode it again otherwise.";
+CM_ BO_ 544 "On-board charger. Charge state and the connector/latch bits.";
+CM_ BO_ 592 "Pack current and voltage, plus the battery side's own view of whether a charge session is running.";
+CM_ BO_ 621 "Cluster frame - this is the DISPLAYED speed.";
+CM_ BO_ 628 "Carries ONE BIT and nothing else - the rest of the frame is hard zero in all 4750 frames on file.";
+CM_ BO_ 639 "EVENT FRAME - a 3-frame momentary burst carrying what was pressed and by what. Absent from the 83-ID idle survey because it only appears on a press. It reports the REQUEST; 0x284 reports the actuation, and on an already-locked car the second does not follow the first. Byte 0 splits into two nibbles, one per input device, with the SAME code in each: source is the nibble, action is the value. Count one press per contiguous block of frames, not per frame.";
+CM_ BO_ 641 "Cluster frame carrying the wiper/washer stalk, the flasher and the coarse light-switch mode. CHECK WHETHER A BYTE IS SHARED BEFORE READING IT WHOLE - this frame has hidden two unrelated controls in one byte twice now.";
+CM_ BO_ 644 "Body-security frame doing quadruple duty: rear defrost in b0, bonnet/trunk in b1, the central-locking announcement in b2 and the alarm state machine in b3. THE ONLY FRAME ON FILE THAT CHANGES ITS OWN PERIOD ON AN EVENT - 100 ms at rest, 40 ms for the three frames of a lock or unlock, which is itself a usable trigger.";
+CM_ BO_ 645 "Driver's-side doors and windows. Twin of 0x286. SHARED BYTE - read the bit, never the byte: a whole-byte lock test was retracted because bits 0/1 are the door-open flags, so any open door read as unlocked.";
+CM_ BO_ 646 "Passenger-side twin of 0x285. WARNING: no bit of this frame has ever been seen to move on its own, so the front/rear split here is structural symmetry with 0x285 rather than an observation. Per-door semantics are proved on the twin frame, which makes this a weak assumption rather than a real gap.";
+CM_ BO_ 647 "The damped copy of the light sensor, and the one the auto-light function appears to act on. THE VALUE IS 10 BITS SPLIT ACROSS TWO NON-ADJACENT PLACES and cannot be expressed as a single DBC signal: combine as (AmbientLightCoarseHigh << 8) | AmbientLightCoarseLow. Reading the low byte alone is NOT monotone across light regimes, which is what pins the high bits.";
+CM_ BO_ 674 "COMMAND REGISTER. Pedestrian-warning volume. Only byte 4 is known; the remaining bytes have not been characterised.";
+CM_ BO_ 676 "COMMAND REGISTER - byte 3 packs two selects, each a momentary ~3-frame pulse. Unlike the climate toggles these are ABSOLUTE SELECTS, so a repeated press is harmless. Physical controls broadcast this frame; it is not write-only. Idle payload on the bus is 00 40 00 00 08 00 00 00.";
+CM_ BO_ 677 "COMMAND REGISTER, MOMENTARY - it does NOT hold state (a fan held at 4 still reads idle here) and most entries are TOGGLES, not absolute sets. Idle payload 00 0F 07 1F 1F 00 00 00; each press is the idle template with one byte changed, held for about 3 frames. Presses are counted as idle-to-press transitions, not as frames. REPLAYING THIS FRAME ACTUATES THE CAR - confirmed 2026-07-26, and one of the few that does: the gateway drops most injected frames, but the functions the infotainment screen can command (this and 0x2A4) go through.";
+CM_ BO_ 690 "Low-speed pedestrian-warning (AVAS) volume state - the hum below about 30 km/h.";
+CM_ BO_ 753 "The AC node owns the outdoor sensor and publishes it here. Two temperatures on one convention, raw/2 - 40, with 0xFF the not-available sentinel.";
+CM_ BO_ 754 "The main climate STATE frame - what the system is doing now, as opposed to 0x2A5 which is what was just pressed. No E2E framing on this frame: every byte is data.";
+CM_ BO_ 764 "Key-fob and boot status. Both bits live in byte 2 - read the bit, never the byte.";
+CM_ BO_ 765 "Drive-mode state. WHY THIS WENT UNFOUND FOR SO LONG: every capture before 2026-08-10 was taken in sport, so no diff could ever have revealed it.";
+CM_ BO_ 896 "Airbag-control-unit frame: five seatbelt buckles plus the front-passenger seat. NOTE THE POLARITY - 1 = UNBUCKLED on the wire. Counter/checksum are NOT in the usual place: counter is b1 high nibble, checksum is b2.";
+CM_ BO_ 1008 "A whole frame decoded end to end. THE CLOCK IS FREE-RUNNING AND INDEPENDENT of any other clock - observed reading 2026-08-03 08:58 while local time was 2026-08-02 18:58. Treat it as what the car's own computer believes, not as a timezone to be corrected.";
+CM_ BO_ 1009 "Cluster odometer.";
+CM_ BO_ 1015 "Estimated remaining range. THIS FRAME WAS DECODED AS THE STATE OF CHARGE FOR WEEKS AND IT IS NOT - see the signal comment. There is no SOC on this frame; SOC is 0x17A.";
+CM_ SG_ 166 AcceleratorPedal "raw/250 -> 0.000-1.000 in SIGNALS.md, published here as a percentage (0xFA = 250 = 100.00 % exactly). Confirmed over 3x rest-to-floor, capture 2026-07-31.";
+CM_ SG_ 166 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 166 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 176 ChargeConnectorBMS "1 = charge gun in the car. Second witness to the OBC bit on 0x220 b5 bit 6, which it trails by about 390 ms on insertion.";
+CM_ SG_ 176 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 176 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 224 SteeringAngle "POSITIVE = LEFT, 0 = straight ahead. Absolutely calibrated - released and pointed straight it reads -0.6 deg, and the two locks straddle zero within a degree (about 2.87 turns lock to lock). Widest span on file -518.3 to +516.7 deg; the mechanical stop is not a repeatable calibration constant.";
+CM_ SG_ 224 SteeringRate "UNSIGNED MAGNITUDE, carries no direction - take the sign from SteeringAngle. Reads 0 whenever the wheel is still. Scale fitted separately per direction and agreed to 0.03 %.";
+CM_ SG_ 224 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 224 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 290 WheelSpeedFrontLeft "Moved alone while the left front wheel turned; read 0 while the right one did. Front axle identified because only these turned with the fronts jacked up.";
+CM_ SG_ 290 WheelSpeedFrontLeftTag "Low 3 bits of the 16-bit word are a channel tag, NOT part of the value - shift them out, do not mask them in. Observed 2 while rolling (and 0 when the whole word is 0).";
+CM_ SG_ 290 WheelSpeedFrontRight "Moved alone while the right front wheel turned.";
+CM_ SG_ 290 WheelSpeedFrontRightTag "Channel tag, see WheelSpeedFrontLeftTag.";
+CM_ SG_ 290 BrakePedalCoarse "COARSE channel - prefer BrakePedalFine on 0x123 b4-b5. Full scale about 0x3C (60) is EMPIRICAL over 3 full presses; the hardware maximum is not independently confirmed, so a reading near 100 % means 'at least fully pressed as observed'.";
+CM_ SG_ 290 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 290 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 291 WheelSpeedRearLeft "Read exactly 0 throughout a rear-right-only spin.";
+CM_ SG_ 291 WheelSpeedRearLeftTag "Channel tag, not value.";
+CM_ SG_ 291 WheelSpeedRearRight "Moved alone while the rear-right wheel was hand-spun, tracing a clean coast-down from 10.0 km/h with every other wheel channel at exactly 0.";
+CM_ SG_ 291 WheelSpeedRearRightTag "Channel tag. Usually 2 but sometimes 4 here, unlike 0x122 where it is always 2 - it may be a status bit worth a look.";
+CM_ SG_ 291 BrakePedalFine "Same pedal as 0x122 b4 at about 86.5x the resolution (r = 1.000, slope 86.5, intercept 16.6 over 501 frames). FULL SCALE IS EXTRAPOLATED through the coarse channel's empirical 0x3C, so trust the shape more than the absolute percentage. May be pressure rather than position - nothing separates the two here. Raw form: (raw - 16.6) / 5190.";
+CM_ SG_ 291 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 291 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 293 VehicleSpeedFrontAxle "Specifically mean(front-left, front-right): with one wheel spinning it reads exactly half that wheel's speed (fits the mean to 0.15 km/h against 1.95 for max and 1.93 for min, n = 350). Front axle, not all-wheel - it stayed at 0 through a rear-wheel spin. Tracks the wheels, not the display.";
+CM_ SG_ 293 VehicleSpeedFrontAxleTag "Channel tag, constant 1 in every frame on file. Not value.";
+CM_ SG_ 293 BrakeSwitch "The on/off brake-light switch. Matched 'pedal > 0' on 501/501 frames.";
+CM_ SG_ 293 ParkingBrake "EPB clamped. CORRECTED 2026-08-07 - the old decode read 0x123 b4, which is really the high byte of the fine brake pedal, so it followed the driver's foot.";
+CM_ SG_ 293 ParkingBrakeMoving "Set while the EPB motor runs. On release this runs about 0.75 s after ParkingBrake drops; on apply it runs first and ParkingBrake sets when the clamp completes.";
+CM_ SG_ 293 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 293 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 325 GearLeverParkButton "The P button on the lever.";
+CM_ SG_ 325 GearLeverPosition "Two detents each way. The 1st detents are seen only in transit and are probably N - unconfirmed, so labelled as such.";
+CM_ SG_ 325 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 325 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 336 SteeringTorqueCoarse "The b0 mirror of SteeringTorqueMagnitude at about 1/4.5 the resolution (b3 = 4.39 x |b0-127| + 3.26, R2 = 0.9985 on an unclipped sweep). INDEPENDENTLY FILTERED, not derived from b3. The zero sits in a 127-128 band rather than on one code, so this reads 0 or +1 at rest - do not read +/-1 count as torque. Prefer the b3 channel.";
+CM_ SG_ 336 SteeringAssistInactive "TENTATIVE. Only ever set in captures taken with the car not drive-ready, i.e. EPS unpowered, so it may be an assist-inactive flag. One interpretation, never exercised deliberately.";
+CM_ SG_ 336 SteeringMode "The comfort/normal/sport steering-effort setting. Switched live between three sweeps and tracked exactly, with driver torque rising in step (peak |b3| 23 -> 27 -> 32). Treat a reading taken with the EPS unpowered as stale, not as a real selection.";
+CM_ SG_ 336 SteeringTorqueMagnitude "MAGNITUDE ONLY - combine with SteeringTorqueSign, positive = turning left. SATURATES AT 234: a reading of 234 means 'at least this much', not a measurement (201 of 1000 frames in the 2026-08-07 sweep). UNITS UNCONFIRMED.";
+CM_ SG_ 336 SteeringTorqueSign "Sign bit for SteeringTorqueMagnitude. Verified against the b0 mirror on 1000/1000 frames.";
+CM_ SG_ 336 EPS_Unknown_b4_bits67 "UNIDENTIFIED 4-state field, the last undecoded part of this frame. Ruled out against full sweeps: not the steering mode, not a rolling counter, not the torque sign, not direction of wheel motion, not the low bits of a wider torque field. The one real association is that state 1 dominates at low effort, which fits an assist-level or damping indicator. Note bit 6 alone also toggles at the 20 ms frame rate while parked.";
+CM_ SG_ 336 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 336 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 352 QuiescentState "RETRACTED AS 'VEHICLE ASLEEP' 2026-08-11 - it read awake for 120 s while the car sat locked and armed, and asleep through an alarm, a fob unlock and a re-lock. What it actually is: a shutdown/quiescent mode driven by a TIMER, repeating to 5 ms. After a lock it goes 0x19 for 7.00 s, returns to 0x7D, and goes 0x19 again 127.06 s after the lock, after which the bus falls silent about 8 s later. Do not read it as lock state.";
+CM_ SG_ 354 GearMirror "Second copy of the engaged gear, PRND in +4 steps. Prefer GearEngaged on 0x165.";
+CM_ SG_ 354 OffThrottleRegen "CANDIDATE, NOT A SHIPPED DECODE. b3 takes 0xC1 as well as 0x81 in seven episodes of one road trip and again in another, and it is clearly tied to off-throttle regeneration: when set the accelerator averages 0.03-0.06 against 0.15-0.40 clear, and pack current is negative in 72-85 % of frames against 3-28 %. NOT SHIPPED because 72-85 % is not a bit - it is associated with regen but is not simply 'current < 0', and the brake is pressed in only 30 % of set frames.";
+CM_ SG_ 354 DriveReady "1 = drive-ready (READY on the dash). SIGNALS.md phrases this row as 'b3 == 0x81'; the archive also contains 0x21 and 0xC1, and bit 7 is the reading consistent with all four observed byte values. Every light capture on file has this CLEAR, which is why the auto-headlamp function was never seen to fire.";
+CM_ SG_ 354 RegenLevelValid "Bit 0 of the regen byte. Locking the car produces 0x0C - bit 0 clear with the level bits still reading 'high' - so a decoder that ignores this displays a live-looking value for a sleeping car. Read the level only when this is set.";
+CM_ SG_ 354 RegenLevel "BITFIELD, NOT A FLAT ENUM (corrected 2026-08-10). The old row listed whole-byte codes 0x05/0x09/0x0D and read the '+4 step' as an enum; every one of those is odd, which is the validity bit. Trails the 0x2A4 command by about 150 ms.";
+CM_ SG_ 354 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 354 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 357 GearEngaged "PRND + 1. 0x80 has been seen 6 times on file, presumably during initialisation, and is not mapped.";
+CM_ SG_ 357 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 357 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 378 BatterySOC "10-bit field straddling two bytes: b4 bits 0-5 high, b5 bits 4-7 low. CONFIRMED EXACTLY against an external OBD2 tool 2026-08-10 - 84/84 payloads, zero error, spanning 33.6-41.9 %, which pins field, scale and zero offset jointly. MODE-INVARIANT: held one value through a whole drive-mode walk while the range stepped 111/114/117 km, which is the property that identified it. THE DASH READS ABOUT 0.7 % LOWER (31 % where this says 31.7 %), probably a usable-SOC display - do NOT calibrate against it. Corrected from a wrong first attempt at b0-b1 x 0.05: the field is not byte-aligned, so no byte-or-BE16 search could have found it.";
+CM_ SG_ 378 SOC_RollingCounter "Top 2 bits of b4 are a rolling counter, not part of the SOC field: 0x15 / 0x55 / 0x95 / 0xD5 all carry the same value.";
+CM_ SG_ 378 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 378 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 420 DriveEffortSigned "Signed about 6000: positive under drive, negative under braking/regen. Sign tracks motion at r = +0.97/+0.93 against d(speed)/dt but the MAGNITUDE DOES NOT - counts per km/h/s range from 25 to 300 across one run, so this is not an accelerometer.";
+CM_ SG_ 420 DriveEffortPositive "Positive-only, and clamps to exactly 0 whenever the throttle is released, even under heavy braking. At constant pedal it FALLS as speed rises (2743 at 5 km/h and 62 % pedal -> 2218 at 70 km/h and 82 %), which is the shape of a motor-torque curve tapering into constant power.";
+CM_ SG_ 420 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 420 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 496 TurnLampLeft "Blinks at about 1.25 Hz while active, so it reads false for roughly half of every cycle. Lit by a left turn OR by hazards.";
+CM_ SG_ 496 TurnLampRight "As TurnLampLeft, right side.";
+CM_ SG_ 496 TurnStalkLeft "Steady while the stalk is held, not blinking. HAZARDS SET NEITHER STALK BIT - that is the only way to tell hazards from a stalk turn on this frame.";
+CM_ SG_ 496 TurnStalkRight "Steady while held.";
+CM_ SG_ 496 HighBeamStalkPush "TENTATIVE. A 1.3 s pulse coincident with engaging high beam, mirrored simultaneously on 0x281 b0 bit 6, and NOT set by the flasher - which is the discriminator against the lamp bit. Whether it is momentary or a latch that was released is unconfirmed: one capture, one push.";
+CM_ SG_ 496 LightSwitchRequest "The BCM's lighting REQUEST, not the stalk position: the stalk was never touched during a lock capture yet the code went from auto to no-request, so a change here does not imply the driver moved anything. THE HIGH-BEAM LAMP IS BIT 2 INSIDE THIS FIELD (mask 0x04) - it could not be published as its own signal without overlapping, so the combinations are named in the value table instead. It is the LAMP, not the switch: set for the whole flasher pull and latched on by the stalk push, staying set for the remaining 26 s of a capture after the switch pulse ended, which is what separates it from the switch bit. Two further flags live outside this field and are separate signals (LockAndLeave bit 5, RearFogLamp bit 7). 0x08 is bit 3 with no lamp-request bits, i.e. out of the OFF detent but requesting nothing. 0x10 is an UNMAPPED CANDIDATE for daytime running lights - it appeared 103 ms after D was selected, held for a whole trip and cleared on park - deliberately left unnamed until someone looks at the front of the car. THIS CAR HAS NO FRONT FOG LIGHTS; a 0x08 = front fog entry was retracted.";
+CM_ SG_ 496 LightRequestUnknownBit6 "Inside the 0x5B position mask but never observed set. Kept distinct so it is not silently folded into the position code.";
+CM_ SG_ 496 LockAndLeave "NOT 'doors locked' and NOT a clean 'asleep' flag - both readings were tested and failed. The car was locked from the inside for 8.4 s with this clear, and a locked+armed+asleep car had it clear too. It belongs to the lock-and-leave / go-to-sleep sequence and may only appear layered on a position code that requests something. For lock state read 0x285/0x286 b4.";
+CM_ SG_ 496 RearFogLamp "Latched by the sprung top detent of the stalk. This is the only fog light on the car.";
+CM_ SG_ 496 AmbientLightFast "UNCALIBRATED COUNTS, NOT LUX. The rain/light sensor pod behind the mirror. 0 = dark, rising with light, CLAMPING AT 0xFD (253) - which an indoor incandescent bulb already reaches, so equal readings up there are not equal light. Filtered and asymmetric: bulb on took 0 -> 20 -> 253 in about 200 ms, off took 253 -> 140 -> 25 -> 5 -> 0 in about 400 ms.";
+CM_ SG_ 496 AmbientLightFastFiltered "THE SAME QUANTITY AGAIN, more heavily filtered - b4 and b5 are two 8-bit channels, NOT a BE16. That reading was retracted the day it was written: the two are equal on 94-99 % of frames, b5 never exceeds b4 on any of 600 frames, and both clamp at exactly 0xFD. Read b4; this one only differs mid-slew.";
+CM_ SG_ 496 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 496 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 498 TyrePressureFrontLeft "x 0.145038 for PSI. Archive spans 207-258 kPa (30-37 PSI). A raw 0x00 or 0xFF would decode to 0 or 350 kPa and has never been observed - treat either as not-available rather than as a flat tyre.";
+CM_ SG_ 498 TyrePressureFrontRight "See TyrePressureFrontLeft.";
+CM_ SG_ 498 TyrePressureRearLeft "See TyrePressureFrontLeft.";
+CM_ SG_ 498 TyrePressureRearRight "See TyrePressureFrontLeft.";
+CM_ SG_ 498 TyreTempFrontLeft "Sensor temperature at the wheel, so it runs above ambient once the car has been moving. Archive spans 22-34 degC.";
+CM_ SG_ 498 TyreTempFrontRight "See TyreTempFrontLeft.";
+CM_ SG_ 498 TyreTempRearLeft "See TyreTempFrontLeft.";
+CM_ SG_ 498 TyreTempRearRight "See TyreTempFrontLeft.";
+CM_ SG_ 517 AC_Compressor "The COMPRESSOR, not climate-system power - it mirrors the panel A/C button. With it off the blower still runs, and nothing observed on the bus represents 'climate system on/off'.";
+CM_ SG_ 532 RangeEstimateMirror "Byte-identical mirror of the 0x3F7 range raw at two different states of charge. This pair was decoded as a DRIVE MODE for a while - the eco/eco+/sport codes were range low bytes read as an enum. Drive mode is 0x2FD b4.";
+CM_ SG_ 532 OutsideTempMirror "DO NOT USE AS THE SOURCE - read 0x2F1 b1 instead. The two agree on 98.9 % of frames and the 1.1 % is the part that matters: with the sensor open-circuit the AC node published 0xFF (honest) while this published 120, a substituted and entirely plausible 20.0 degC. A monitor fed from here shows a healthy reading for a sensor lying on the floor. It also lags the source by 318-419 ms.";
+CM_ SG_ 544 ChargeState "Walked the full sequence in order during a real session: 0x0B -> 0x01 on insertion -> 0x04 when charging began -> 0x0B 99 ms after the connector bit cleared. With a dead cable it stayed at 0x01 after the gun came out, so the return to standby is not instant when no session ever started.";
+CM_ SG_ 544 ChargeConnectorLatched "1 = the car has locked the gun into the socket. THE LATCH HAS TWO TRIGGERS AND THE FOB IS ONLY ONE: the car latches by itself when charging starts (a session capture containing no 0x27F frame at all still latched, 300 ms after the charge state went to 0x04), and a fob LOCK press latches it early. Polarity re-confirmed 2026-08-11 against a live charge - if a UI shows this backwards, check the UI before touching the decode.";
+CM_ SG_ 544 ChargeConnectorUnlatched "Complementary to ChargeConnectorLatched: exactly one of the two is set in all 150 frames of the session capture, which is why the latch has to be read as a bit and not as a byte value.";
+CM_ SG_ 544 ChargeConnectorInserted "1 = charge gun plugged into the car. Confirmed twice on 2026-08-10, once with the cable dead and once through a full session. It tracks the CONNECTOR, not the supply - identical behaviour dead or live. b5 read 0x10 in all 5900 archive frames before that, i.e. the car had never been plugged in during a capture.";
+CM_ SG_ 544 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 544 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 592 PackCurrent "NEGATIVE = REGEN / CHARGE INTO THE PACK. Sign convention confirmed against a real charge 2026-08-10: it crossed zero at 21.283 s and settled at -1.69 A mean, having sat at +2.0 A before the gun went in. Reaches +472 A under load and that is REAL, not a sentinel - all 153 archived samples above 300 A occurred with the car moving and pack voltage sagging in step.";
+CM_ SG_ 592 PackVoltage "SHAPE SOLID, ABSOLUTE VALUE +/- A FEW VOLTS. Fitting V against I over 1500 frames of a 150 s road trip (-135 to +116 A) gives V = 354.2 - 0.0429 x I at r = -0.968, i.e. 42.9 mOhm pack resistance and 354.2 V open-circuit, monotone across seven current bins. THE OFFSET IS UNCONFIRMED AND NO AMOUNT OF DRIVING DATA CAN FIX IT - Ohm's law constrains the slope only, so raw+250 fits exactly as well as raw+256. Closing it needs one external pack-voltage reading. 0xFF (-> 511 V) IS A NOT-AVAILABLE MARKER: a 96s pack cannot reach it, and all 64 archived readings above 400 V occurred at near-zero current.";
+CM_ SG_ 592 Charging "1 = charging, from the battery side rather than the OBC's view, so a disagreement with 0x220 ChargeState is worth noticing. NOTE WHAT IT MEANS: in the capture that decoded it pack current never went negative (it stayed +1.5 to +2.2 A) - the flag reports the SESSION, not energy flowing in.";
+CM_ SG_ 621 VehicleSpeedDisplayed "What the speedometer shows: it steps in whole km/h and read exactly 9.000 on a held 9 km/h run. IT IS FILTERED - it settles about 16 % above the wheel channels (the mandated speedometer over-read) only on a STEADY speed, and during short bursts it lags well behind them, so do not compare it to a wheel channel instant-for-instant.";
+CM_ SG_ 621 VehicleSpeedDisplayedTag "Channel tag, constant 0 on file. Not part of the value.";
+CM_ SG_ 628 DriverSeatOccupied "Confirmed 2026-08-10: set when the driver sat down and cleared when they got off, with every door and window byte static for the whole capture. Cross-checked against the archive - set in 3950 frames from sessions with someone in the seat and clear in all 800 from the nobody-inside ones.";
+CM_ SG_ 639 LockRequestFob "Requests from the key fob's own buttons. 0x04 and 0x0E are unidentified, both from one fob boot-button HOLD: 0x04 is what woke the bus and is probably the press itself, and 0x0E is exactly unlock|trunk, which hints the nibble is a small bitfield (bit 1 lock, bit 2 turning it into unlock, bit 3 trunk) rather than an enum.";
+CM_ SG_ 639 LockRequestExterior "Requests from the car's own exterior controls - the door-handle sensors and the tailgate button. THIS NIBBLE WAS A PREDICTION THAT HELD: 0x80 put a trunk code here, so the nibble reads as 'the car's own controls', and the fob's boot button was then predicted to appear as 0x08 in the low nibble - and one capture later it did, to the code.";
+CM_ SG_ 639 LockRequestActive "Set during both lock and unlock bursts.";
+CM_ SG_ 641 RearWasher "Bit 0, NOT the front washer's bit 2 of the same byte. Steady for the whole hold (3.4 s observed), never set in any other capture on file.";
+CM_ SG_ 641 Washer "Front windscreen washer. Momentary, but steady for the whole hold, so it reads as state.";
+CM_ SG_ 641 HighBeamStalkPushMirror "Mirrors 0x1F0 b0 bit 6 simultaneously. See that signal for the momentary-versus-latch caveat.";
+CM_ SG_ 641 WiperStalkPosition "Bits 5-0 of a byte SHARED WITH THE HEADLIGHT FLASHER at bit 6 - the codes below are the byte value with that bit masked off, and before it was masked a flash-to-pass made this read as byte, and before it was masked a flash-to-pass made this read as unknown wiper code 0x40. Continuous low/normal speed has NEVER BEEN CAPTURED, so an unknown code here is probably one of those.";
+CM_ SG_ 641 FlashToPass "Steady for the whole pull. Sets the high-beam LAMP bit while held but not the high-beam switch bit.";
+CM_ SG_ 641 RearWiper "Steady while the rear wiper is selected - three on-windows matched three switch-ons. Shares b2 with the rear-fog switch. UNTESTED: the wiper was off during the washer hold, so whether a wash drives the blades on its own is unknown.";
+CM_ SG_ 641 RearFogSwitch "About a 300 ms PULSE on press, not a state - the stalk's top detent is sprung and returns to the previous position, which is why rear fog is a latched bit on 0x1F0 b1 bit 7 instead.";
+CM_ SG_ 641 LightSwitchMode "The cluster's COARSE view of the switch: every position below AUTO reads 'manual', so it does not tell parking from headlights - 0x1F0 LightSwitchRequest is what does that. This replaces a retracted 'front fog icon' decode: the car has no front fog lights, and the bit looked sticky because MANUAL MODE is sticky.";
+CM_ SG_ 641 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 641 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 644 RearDefrost "Heated rear glass. A body function, not on the HVAC frame.";
+CM_ SG_ 644 InteriorLockActuation "CANDIDATE. Set for exactly the 3 frames of one interior lock and nowhere else in the archive. The fob lock nine days earlier set the central-locking bit WITHOUT it, so it appears to distinguish locking from the inside mechanism - but that is one observation of each, and it could as easily be 'lock with an occupant inside'. Do not rely on it until a second interior lock reproduces it.";
+CM_ SG_ 644 WiperSweep "TENTATIVE. b0 bits 5/6 toggle in step with the wiping motion (blade position or park); noisy, not cleanly decoded.";
+CM_ SG_ 644 Bonnet "CONFIRMED 2026-08-12 after carrying 'never once observed set' since Round 1: set in 300/300 frames of the capture taken with the outdoor temperature sensor being worked on, clear in all 1503 frames of the drive 81 min later and in all 50 captures before it. Owner-confirmed after the fact.";
+CM_ SG_ 644 Trunk "Confirmed 2026-08-11 against a narrated open-and-close, the first time this bit had ever been set in any capture on file. The row had been carried since Round 1 on no evidence at all.";
+CM_ SG_ 644 CentralLockingActive "A 3-frame pulse WHILE THE ACTUATORS RUN. Across every 0x284 frame on file it is set in 12 frames, in exactly 4 episodes, and all 4 are real lock/unlock events. It tracks the ACTUATOR, NOT THE BUTTON: a fob lock press with the driver's door open produced no pulse, because the car did not lock.";
+CM_ SG_ 644 CentralLockingDirection "Valid only while CentralLockingActive is set (b2 = 0x41 lock, 0x43 unlock). IT IS THE UNLOCK, NOT THE HANDLE PRESENTATION - the car presented all four flush handles twice with the doors still locked and this frame was byte-identical across all 150 frames, with no rate burst.";
+CM_ SG_ 644 AlarmCounter "CANDIDATE, and the 'alarm has sounded' latch reading was RETRACTED 2026-08-12. It read 4 in all 7970 frames predating any alarm, stepped 4 -> 3 exactly at the triggered-to-sounding transition, held 3 for seven captures including a whole drive cycle (falsifying the stated reset prediction), then read 1 with no alarm in between. A latch cannot go 3 -> 1. Best reading now: a small counter that decrements. Falsifiable prediction: it never increases without an external reset.";
+CM_ SG_ 644 AlarmState "READ THE HIGH NIBBLE - the low nibble is a separate field, so a whole-byte enum breaks. Confirmed by a full arm -> trigger -> disarm -> re-arm cycle. Arming starts 0.4-0.5 s after the lock command and completes 3.000 s later (a pre-arm delay); triggered -> sounding is 500 ms; the hazards start 141 ms after sounding. THE TRIGGER IS A DOOR OPENING WHILE ARMED, NOT AN UNLOCK - the key blade unlocks without disarming, which is what sets it off. 0xB is a BYPASSED ZONE, not an intrusion: opening the trunk with its own button on a locked armed car goes armed -> 0xB and never reaches triggered.";
+CM_ SG_ 645 WindowFrontLeft "Raw clamps to 0x01-0xC9; 0x01 = shut, 0xC9 = fully open.";
+CM_ SG_ 645 WindowRearLeft "See WindowFrontLeft.";
+CM_ SG_ 645 DoorFrontLeftOpen "The driver's door. Shares its byte with the lock bits.";
+CM_ SG_ 645 DoorRearLeftOpen "Shares its byte with the lock bits.";
+CM_ SG_ 645 DoorRearLeftLocked "Per-door state, not a group flag: the key blade moved the front bit alone while this one stayed locked. A per-door unlock by hand produces no 0x284 command frame at all - only the driver's door does - so these bits are reported independently of the central-locking actuator.";
+CM_ SG_ 645 DoorFrontLeftLocked "The driver's door. Identified by the unlock cascade (it cleared 253 ms BEFORE the car unlocked everything, and command after state means the driver initiated it) and confirmed by the key blade, which released this bit alone while the other three stayed locked.";
+CM_ SG_ 646 WindowFrontRight "Raw clamps to 0x01-0xC9; 0x01 = shut, 0xC9 = fully open.";
+CM_ SG_ 646 WindowRearRight "See WindowFrontRight.";
+CM_ SG_ 646 DoorFrontRightOpen "Shares its byte with the lock bits.";
+CM_ SG_ 646 DoorRearRightOpen "Shares its byte with the lock bits.";
+CM_ SG_ 646 DoorRearRightLocked "Front/rear on this side is INFERRED BY SYMMETRY with 0x285, not observed - see the message comment.";
+CM_ SG_ 646 DoorFrontRightLocked "Front/rear on this side is INFERRED BY SYMMETRY with 0x285, not observed. Unlocking this door by hand 5.5 s after the rear-left moved nothing on the bus - it was already unlocked by that first pull.";
+CM_ SG_ 647 AmbientLightCoarseLow "Low 8 bits of the 10-bit coarse channel.";
+CM_ SG_ 647 AmbientLightCoarseHigh "High 2 bits of the same value. TENTATIVE in one respect: only 0, 1 and 2 have ever been seen, so a value of 3 is unconfirmed, and nothing rules out these being a coarse class that merely correlates. REFRESHES ON A 3.000 s GRID - the anti-flicker damping you would expect on a headlamp trigger. Combined it is monotone across every light regime on file: 6-9 dim indoor < 12-92 indoors bulb off < 259-275 sensor covered in daylight < 531-533 bulb on. Different scale from the 0x1F0 channel - do not compare the two.";
+CM_ SG_ 674 AVAS_VolumeCommand "State is reported on 0x2B2 b1.";
+CM_ SG_ 676 RegenRequest "State follows on 0x162 RegenLevel about 150 ms later.";
+CM_ SG_ 676 DriveModeRequest "State follows on 0x2FD DriveMode by 74-153 ms. Both selects come from the same on-screen switch, which is why the frame carries them together.";
+CM_ SG_ 677 HVAC_ModeButton "Meanings confirmed live by transmitting each and watching the car.";
+CM_ SG_ 677 FanSpeedCommand "Speed 1-8; 0x0F is the idle sentinel, i.e. nothing pressed. State is 0x2F2 FanSpeed, which follows about 101 ms later.";
+CM_ SG_ 677 VentDirectionCommand "Low nibble is the vent direction; 0x17 and 0x27 are unrelated buttons sharing the byte. The blended positions (face+feet, feet+windshield) are dial positions only and have no press code.";
+CM_ SG_ 677 DriverTempCommand "Ladder: degC = 17.0 + 0.5 x code over codes 0x01-0x1D. The three special codes are in the value table and are NOT temperatures.";
+CM_ SG_ 677 PassengerTempCommand "Same ladder as DriverTempCommand.";
+CM_ SG_ 677 HVAC_Button_b6 "Cabin refresh and the auto-level presses share this byte. 'mild' is observable as a state but has no press code.";
+CM_ SG_ 677 SelfDryingCommand "A/C self-drying toggle press. State is 0x2F2 b3 bit 5.";
+CM_ SG_ 690 AVAS_Level "Level is the high nibble (0/1/2); the low nibble is a constant 0x4.";
+CM_ SG_ 753 BlowerRunning "The blower actually TURNING, which is not the 0x2F2 fan SETTING. Across 15756 frames it is a strict SUBSET of 'fan > 0': never once set with fan 0, but clear in 310 frames with a setting of 3. Pair the two to see a setting the car has not acted on. Both candidate explanations for those 310 (a low-ambient inhibit and the drive-ready state) were tested against a later drive and both fail.";
+CM_ SG_ 753 OutsideTempFault "Set if and only if OutsideTemp reads 0xFF - a 1:1 match across 14262 frames and 50 captures, the 35 set frames being exactly the window in which the sensor was physically off the loom. The one sentinel on this bus with a companion flag.";
+CM_ SG_ 753 OutsideTemp "CONFIRMED 2026-08-12 against a resistor of known value: a 220 kOhm resistor hardwired in place of the NTC (about -15.7 degC) gave raw 50 = -15.0 degC with the dash showing -15. The scale rests on three independent constraints, not one anchor: the archive alone forces 0.36-0.66 degC/count, and b6 of this same frame takes ODD values while b1 has been even in all 14227 frames on file, so 0.5 is the frame's convention and b1's evenness is its 1 degC source resolution. THE OFFSET IS PINNED ONLY TO +/-0.5 degC because the dash rounds. THE CHANNEL IS SLEW-RATE LIMITED ON THE BUS: it held -15.0 for 138.6 s and stepped one degree while the real ambient was +27 degC, which bounds the rate at <= 0.43 degC/min. A cluster reading it can therefore be badly stale without any fault being flagged. 0xFF = not available. Mirrored on 0x214 b3 - read THIS one.";
+CM_ SG_ 753 CabinTemp "A DIFFERENT SENSOR from OutsideTemp, not a copy: unplugging the outdoor NTC drove b1 to 0xFF while this sat untouched for the whole capture. Behaves as cabin air - it fell 23.5 -> 20.5 degC across 52 min of A/C on while the outdoor channel held exactly constant, and it sits above outdoor at night and below it at midday. Unlike b1 it takes ODD values, i.e. genuine 0.5 degC resolution, and it refreshes on its own 5.000 s grid. Owner-verified 2026-08-12 against the expected cabin temperature - a live observation with no capture on disk pinning the absolute value.";
+CM_ SG_ 754 FrontDefrost "Windscreen defrost. It FORCES THE FAN TO 5, so a fan speed that moved on its own may be this rather than a command.";
+CM_ SG_ 754 IntakeRecirculate "Set = recirculate, clear = fresh air.";
+CM_ SG_ 754 GClean "Cabin air-purify function.";
+CM_ SG_ 754 FanSpeed "0 = blower off, 1-8 = speed. THE FAN STATE, found 2026-08-09 from a deliberate 1-to-8-to-1 sweep: r = 1.000 against the commanded level with ZERO hysteresis, where the next-best byte on the whole bus managed r = 0.60. Windscreen defrost forces the fan to 5. This corrects an earlier reading of the WHOLE byte as an auto-fan value - the fan was in the low nibble all along, with the high-nibble flags churning on top.";
+CM_ SG_ 754 FanFlags "UNIDENTIFIED. Two independent bits, four states seen (0/2/4/6). Not the fan speed, not the compressor, not defrost, and NOT manual-versus-auto - that was proposed and withdrawn when a manual fan sweep turned up sitting at flags 2 throughout. Only one capture on file ever changes them and it changes six other things at the same time.";
+CM_ SG_ 754 VentDirection "An enumerated mode DIAL, not a bitfield: it sweeps face -> face+feet -> feet -> feet+windshield -> windshield.";
+CM_ SG_ 754 SelfDrying "A/C self-drying. Commanded by 0x2A5 b7 bit 4.";
+CM_ SG_ 754 AutoLevel "Bit 7 of the byte is always set; the level is bits 5-6.";
+CM_ SG_ 754 AutoLevelValid "Bit 7, set in every frame on file.";
+CM_ SG_ 764 KeyFobMissing "DOUBTFUL - RE-TEST BEFORE TRUSTING. It BLINKS AT 5 Hz through two stretches of one drive with the fob unquestionably in the car, and sits steady for 4.5 s after the driver got out. A missing-fob flag does not blink while you drive. Changed from a whole-byte test to a bit test 2026-08-11 when bit 7 of the same byte turned out to carry the trunk state: 0x88 would have read as 'fob present'.";
+CM_ SG_ 764 TrunkUnlocked "CANDIDATE. Set while the boot is unlocked but not yet re-secured: set 246 ms after the fob's boot-unlock request and cleared 33 ms after the lid closed, so it spans 'unlocked' through 'open' and ends on closure. The control is a good one - opening the trunk with the tailgate button on a still-locked car never set it, which is what separates unlocked from open (open is 0x284 Trunk). One capture on file.";
+CM_ SG_ 765 DriveMode "Found by walking sport -> eco -> eco+ -> eco -> sport; the two RETURN legs are what make it trustworthy, because a candidate byte had to come back to the same value twice. Follows the 0x2A4 command by 74-153 ms. Note bit 1 of this byte is set in some archive frames and must not be read as part of the field.";
+CM_ SG_ 765 DriveModeChanging "A roughly 300 ms transient present on all four transitions of the walk and on nothing else.";
+CM_ SG_ 896 BeltDriverUnbuckled "1 = unbuckled. Drives the cluster seatbelt-warning icon.";
+CM_ SG_ 896 BeltPassengerUnbuckled "Front passenger. 1 = unbuckled.";
+CM_ SG_ 896 SeatPassengerOccupied "Confirmed 2026-08-10 by two captures whose DURATIONS disagree, which is what settles it as a held state: a brief lean held the bit for 5 frames = 1.0 s, a sustained load for 40 frames = 8.00 s, and no fixed-duration pulse can do both. It lives beside the belt bits because the belt reminder and passenger-airbag suppression are gated on occupancy. THE REAR SEATS ARE NOT INSTRUMENTED - the car has no rear occupancy sensors fitted (owner-confirmed), so an absent signal here is an absent SENSOR, not a missing decode.";
+CM_ SG_ 896 BeltRearRightUnbuckled "1 = unbuckled. The three rear belt bits rest in the same byte pair as the fronts; the rear SEATS are not instrumented, only the buckles.";
+CM_ SG_ 896 ACU_ConstantBit "Set in 2850/2850 frames across every capture on file - parked, key-on, drive-ready, mid-drive, and with all five belts buckled. Indistinguishable from a hard-wired 1. Documented so nobody decodes it twice.";
+CM_ SG_ 896 BeltRearLeftUnbuckled "1 = unbuckled. Byte 1 low nibble is belts, high nibble is the rolling counter.";
+CM_ SG_ 896 BeltRearCenterUnbuckled "1 = unbuckled.";
+CM_ SG_ 896 Counter "Geely E2E rolling counter. Does not advance = the sender stopped and this is a stale repeat, not fresh state.";
+CM_ SG_ 896 Checksum "CRC-8/SAE-J1850-ZERO (poly 0x2F, init 0xFF, xorout 0xFF) over bytes 0..6. NOTHING ON THE BUS ENFORCES IT - on the frames that are acted on at all, a wrong checksum does not stop them. It is not a safety net. Note separately that the GATEWAY drops most injected frames regardless of checksum.";
+CM_ SG_ 1008 ClockSecond "Verified wrapping 59 -> 0 and incrementing the minute in step.";
+CM_ SG_ 1008 ClockMinute "0-59.";
+CM_ SG_ 1008 ClockHour "24-hour, not 12-hour.";
+CM_ SG_ 1008 DateDay "Day of month. Useful as a sanity check when correlating captures: it is one of the few bytes that identifies WHICH day a capture came from without trusting the file timestamp.";
+CM_ SG_ 1008 DateMonth "1-12.";
+CM_ SG_ 1008 DateYear "Year - 2000 on the wire.";
+CM_ SG_ 1009 Odometer "A RAW 0 IS THE UNINITIALISED SENTINEL, not a reading of zero - it is what this frame publishes for the first couple of seconds after a bus wake.";
+CM_ SG_ 1015 RangeEstimate "RETRACTED AS SOC 2026-08-10. A drive-mode walk moved it 111 -> 114 -> 117 -> 114 -> 111 while pack current stayed strictly POSITIVE (+1.0 to +1.9 A, discharging): SOC cannot rise while the pack drains, cannot rise 0.83 %/step in 200 ms, and cannot follow a button reversibly - range can, because the estimator re-runs with a new efficiency factor. WHY THE OLD FIT PASSED FOR SO LONG: range is PROPORTIONAL to SOC, so a single dash cross-check cannot separate them; only a mode change can. Units confirmed against the dash (111 km at 31 % while this decoded exactly 111). 12-bit with 16-count granularity - the low 4 bits of the 16-bit word are 0 in every frame on file. 0xFFF = 4095 IS THE NOT-AVAILABLE MARKER, seen 33 times as a single-frame dropout (146 -> 4095 -> 146) and the single most common value of the field, which is itself the tell.";
+BA_DEF_ "BusType" STRING ;
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 65535;
+BA_DEF_ BO_ "GenMsgSendType" ENUM  "Cyclic","Event";
+BA_DEF_DEF_  "BusType" "CAN";
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "GenMsgSendType" "Cyclic";
+BA_ "BusType" "CAN";
+BA_ "GenMsgCycleTime" BO_ 166 10;
+BA_ "GenMsgCycleTime" BO_ 176 10;
+BA_ "GenMsgCycleTime" BO_ 224 10;
+BA_ "GenMsgCycleTime" BO_ 290 20;
+BA_ "GenMsgCycleTime" BO_ 291 20;
+BA_ "GenMsgCycleTime" BO_ 293 20;
+BA_ "GenMsgCycleTime" BO_ 325 20;
+BA_ "GenMsgCycleTime" BO_ 336 20;
+BA_ "GenMsgCycleTime" BO_ 352 20;
+BA_ "GenMsgCycleTime" BO_ 354 20;
+BA_ "GenMsgCycleTime" BO_ 357 20;
+BA_ "GenMsgCycleTime" BO_ 378 100;
+BA_ "GenMsgCycleTime" BO_ 420 20;
+BA_ "GenMsgCycleTime" BO_ 496 50;
+BA_ "GenMsgCycleTime" BO_ 498 50;
+BA_ "GenMsgCycleTime" BO_ 517 100;
+BA_ "GenMsgCycleTime" BO_ 532 100;
+BA_ "GenMsgCycleTime" BO_ 544 100;
+BA_ "GenMsgCycleTime" BO_ 592 100;
+BA_ "GenMsgCycleTime" BO_ 621 100;
+BA_ "GenMsgCycleTime" BO_ 628 100;
+BA_ "GenMsgSendType" BO_ 639 1;
+BA_ "GenMsgCycleTime" BO_ 641 100;
+BA_ "GenMsgCycleTime" BO_ 644 100;
+BA_ "GenMsgCycleTime" BO_ 645 100;
+BA_ "GenMsgCycleTime" BO_ 646 100;
+BA_ "GenMsgCycleTime" BO_ 647 100;
+BA_ "GenMsgCycleTime" BO_ 674 100;
+BA_ "GenMsgCycleTime" BO_ 676 100;
+BA_ "GenMsgCycleTime" BO_ 677 100;
+BA_ "GenMsgCycleTime" BO_ 690 100;
+BA_ "GenMsgCycleTime" BO_ 753 100;
+BA_ "GenMsgCycleTime" BO_ 754 100;
+BA_ "GenMsgCycleTime" BO_ 764 100;
+BA_ "GenMsgCycleTime" BO_ 765 100;
+BA_ "GenMsgCycleTime" BO_ 896 200;
+BA_ "GenMsgCycleTime" BO_ 1008 500;
+BA_ "GenMsgCycleTime" BO_ 1009 1000;
+BA_ "GenMsgCycleTime" BO_ 1015 1000;
+VAL_ 176 ChargeConnectorBMS 0 "unplugged" 1 "plugged_in" ;
+VAL_ 293 ParkingBrake 0 "released" 1 "engaged" ;
+VAL_ 325 GearLeverPosition 0 "rest" 1 "up_1st_detent_N_unconfirmed" 2 "down_1st_detent_N_unconfirmed" 3 "up_2nd_detent_R" 4 "down_2nd_detent_D" ;
+VAL_ 336 SteeringMode 1 "normal" 2 "comfort" 3 "sport" ;
+VAL_ 336 SteeringTorqueSign 0 "left_positive" 1 "right_negative" ;
+VAL_ 352 QuiescentState 25 "quiescent" 125 "normal" ;
+VAL_ 354 GearMirror 6 "P" 10 "R" 14 "N" 18 "D" ;
+VAL_ 354 RegenLevel 1 "low" 2 "medium" 3 "high" ;
+VAL_ 357 GearEngaged 129 "P" 130 "R" 131 "N" 132 "D" ;
+VAL_ 496 LightSwitchRequest 0 "off" 4 "off_high_beam" 8 "no_request" 9 "headlights" 11 "auto" 12 "no_request_high_beam" 13 "headlights_high_beam" 15 "auto_high_beam" 16 "drl_candidate_unconfirmed" 24 "parking" 28 "parking_high_beam" ;
+VAL_ 544 ChargeState 1 "connected_not_charging" 4 "charging" 11 "no_connector" ;
+VAL_ 628 DriverSeatOccupied 0 "empty" 1 "occupied" ;
+VAL_ 639 LockRequestFob 0 "none" 2 "lock" 6 "unlock" 8 "boot_unlock" ;
+VAL_ 639 LockRequestExterior 0 "none" 2 "lock" 6 "unlock" 8 "trunk_release" ;
+VAL_ 641 WiperStalkPosition 0 "off" 8 "intermittent" 16 "fast" 37 "auto" ;
+VAL_ 641 LightSwitchMode 0 "off" 1 "manual" 4 "auto" ;
+VAL_ 644 Bonnet 0 "shut" 1 "open" ;
+VAL_ 644 Trunk 0 "shut" 1 "open" ;
+VAL_ 644 CentralLockingDirection 0 "lock" 1 "unlock" ;
+VAL_ 644 AlarmState 1 "armed" 3 "arming" 5 "disarmed" 9 "sounding" 11 "armed_trunk_open" 13 "triggered" ;
+VAL_ 645 DoorFrontLeftOpen 0 "shut" 1 "open" ;
+VAL_ 645 DoorRearLeftOpen 0 "shut" 1 "open" ;
+VAL_ 645 DoorRearLeftLocked 0 "unlocked" 1 "locked" ;
+VAL_ 645 DoorFrontLeftLocked 0 "unlocked" 1 "locked" ;
+VAL_ 646 DoorFrontRightOpen 0 "shut" 1 "open" ;
+VAL_ 646 DoorRearRightOpen 0 "shut" 1 "open" ;
+VAL_ 646 DoorRearRightLocked 0 "unlocked" 1 "locked" ;
+VAL_ 646 DoorFrontRightLocked 0 "unlocked" 1 "locked" ;
+VAL_ 674 AVAS_VolumeCommand 0 "idle" 1 "low" 2 "medium" 3 "high" ;
+VAL_ 676 RegenRequest 0 "none" 4 "low" 8 "medium" 12 "high" ;
+VAL_ 676 DriveModeRequest 0 "none" 1 "eco" 2 "eco_plus" 3 "sport" ;
+VAL_ 677 HVAC_ModeButton 0 "idle" 4 "ac_max" 32 "intake_toggle" 128 "ac_on_off_toggle" ;
+VAL_ 677 FanSpeedCommand 15 "idle" ;
+VAL_ 677 VentDirectionCommand 1 "face" 2 "feet" 3 "windshield" 7 "idle" 23 "ac_off" 39 "eco" ;
+VAL_ 677 DriverTempCommand 0 "LOW" 30 "HIGH" 31 "idle" ;
+VAL_ 677 PassengerTempCommand 0 "LOW" 30 "HIGH" 31 "idle" ;
+VAL_ 677 HVAC_Button_b6 0 "idle" 8 "auto_comfort" 12 "auto_strong" 32 "cabin_refresh" ;
+VAL_ 690 AVAS_Level 4 "low" 20 "medium" 36 "high" ;
+VAL_ 754 IntakeRecirculate 0 "fresh" 1 "recirculate" ;
+VAL_ 754 VentDirection 0 "face" 1 "face_feet" 2 "feet" 3 "feet_windshield" 4 "windshield" ;
+VAL_ 754 AutoLevel 0 "mild" 1 "comfort" 2 "strong" ;
+VAL_ 765 DriveMode 0 "eco" 1 "eco_plus" 2 "sport" ;
+VAL_ 896 BeltDriverUnbuckled 0 "buckled" 1 "unbuckled" ;
+VAL_ 896 BeltPassengerUnbuckled 0 "buckled" 1 "unbuckled" ;
+VAL_ 896 SeatPassengerOccupied 0 "empty" 1 "occupied" ;
+VAL_ 896 BeltRearRightUnbuckled 0 "buckled" 1 "unbuckled" ;
+VAL_ 896 BeltRearLeftUnbuckled 0 "buckled" 1 "unbuckled" ;
+VAL_ 896 BeltRearCenterUnbuckled 0 "buckled" 1 "unbuckled" ;

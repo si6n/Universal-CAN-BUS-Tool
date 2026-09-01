@@ -168,7 +168,6 @@ BO_ 268 Slave_1: 8 XXX
  SG_ Fehler_Getriebe_Moment : 18|1@1+ (1,0) [0|0] "" XXX
  SG_ Fehler_Bremsenbotschaft : 17|1@1+ (1,0) [0|0] "" XXX
  SG_ Indiziertes_Istmoment__Slave_ : 0|16@1+ (0.0015259,0) [0|99.998] "%" XXX
- SG_ Timeout_Bremsenbotschaft : 0|1@1+ (1,0) [0|0] "" XXX
 
 BO_ 1332 Sitz_info: 2 XXX
  SG_ Positionserkennung_Beifahrersit : 15|1@1+ (1,0) [0|0] "" XXX
@@ -189,8 +188,6 @@ BO_ 1298 PSG_2: 8 XXX
 
 BO_ 274 PSG_1: 8 XXX
  SG_ Pumpentemperatur__2_1_ : 48|16@1+ (0.0625,0) [0|4096] "K" XXX
- SG_ Pumpentemperatur__3_2_2_ : 44|12@1+ (1,0) [0|0] "" XXX
- SG_ Zylinderzaehler__3_2_2_ : 43|3@1+ (1,0) [1|8] "Zaehler" XXX
  SG_ Ansteuerdauer__3_2_2_ : 32|11@1+ (0.0469,0) [0|96] "NW" XXX
  SG_ Nockenwellendrehzahl__3_2_2_ : 20|12@1+ (4,0) [0|16380] "upm" XXX
  SG_ Pumpen_Statuswort__3_2_2_ : 0|20@1+ (1,0) [0|0] "" XXX
@@ -550,20 +547,6 @@ BO_ 976 Lenkhilfe_1: 2 XXX
  SG_ LH1_Akustiksign : 13|1@1+ (1,0) [0|1] "" XXX
  SG_ LH1_SleepInd : 14|1@1+ (1,0) [0|1] "" XXX
  SG_ LH1_Fehlereintr : 15|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_EPS_Diagmode : 16|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_gue_ECU_Temp : 19|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_Kuehlung : 20|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_Mode_Hybrid : 21|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_Untersp : 24|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_Uebersp : 25|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_Uebertemp : 26|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_Sensor : 27|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_CAN_SS : 28|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_ECU : 29|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_Motor : 30|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_NL_LeistDichte : 31|1@1+ (1,0) [0|1] "" XXX
- SG_ LH1_ULeistung : 32|8@1+ (0.5,0) [0|100] "%" XXX
- SG_ LH1_ECU_Temp : 40|8@1+ (1,-70) [-70|185] "°C" XXX
 
 BO_ 1312 Kombi_3: 8 XXX
  SG_ Frei_Kombi_3_2 : 60|4@1+ (1,0) [0|0] "" XXX
@@ -776,8 +759,6 @@ BO_ 912 Gate_Komf_1: 8 XXX
  SG_ GK1_Sta_Licht2 : 38|1@1+ (1,0) [0|1] "" XXX
  SG_ GK1_Sta_LSM : 39|1@1+ (1,0) [0|1] "" XXX
  SG_ GK1_Count_Anhaen : 40|4@1+ (1,0) [0|15] "" XXX
- SG_ BSK_BT_geoeffnet : 41|1@1+ (1,0) [0|1] "" XXX
- SG_ BSK_HD_Hauptraste : 43|1@1+ (1,0) [0|1] "" XXX
  SG_ GK1_BLS_AAG : 44|1@1+ (1,0) [0|1] "" XXX
  SG_ GK1_EDC_AAG : 45|1@1+ (1,0) [0|1] "" XXX
  SG_ GK1_Anhaenger : 46|1@1+ (1,0) [0|1] "" XXX
@@ -802,8 +783,6 @@ BO_ 912 Gate_Komf_1: 8 XXX
 
 BO_ 1340 Fahrwerk_1: 1 XXX
  SG_ Frei_Fahrwerk_1_2 : 7|1@1+ (1,0) [0|0] "" XXX
- SG_ Frei_Fahrwerk_1_1 : 6|2@1+ (1,0) [0|0] "" XXX
- SG_ Einstellung_Fahrwerkdaempfung_4 : 4|3@1+ (1,0) [0|7] "" XXX
  SG_ Ansteuererung_Fahrzeugniveau : 0|4@1+ (1,0) [0|15] "" XXX
 
 BO_ 1472 EPB_1: 8 XXX
@@ -1638,8 +1617,6 @@ CM_ SG_ 896 MO3_FPGradient "Accelerator pedal gradient when MO3_Sta_FPG=1 (0-635
 CM_ SG_ 912 GK1_Fa_Tuerkont "Status of the driver's door rotary latch";
 CM_ SG_ 912 BSK_HL_geoeffnet "Status of the rear left door rotary latch";
 CM_ SG_ 912 BSK_HR_geoeffnet "Status of the rear right door rotary latch";
-CM_ SG_ 912 BSK_BT_geoeffnet "Status of the passenger door rotary latch";
-CM_ SG_ 912 BSK_HD_Hauptraste "Status of trunk lid main detent";
 
 CM_ BO_ 1088 "Getriebe 1 - Contains gear status, torque requests, and control signals";
 

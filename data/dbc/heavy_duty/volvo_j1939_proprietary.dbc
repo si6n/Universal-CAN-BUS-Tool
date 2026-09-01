@@ -1,4 +1,4 @@
-VERSION "Volvo_J1939_Proprietary_v1.0"
+VERSION "Volvo_J1939_Proprietary_v2.0"
 
 NS_ :
 	NS_DESC_
@@ -32,25 +32,45 @@ NS_ :
 
 BS_:
 
-BU_: EMS_Volvo ACM_Volvo
+BU_: ACM_Volvo
 
-BO_ 2583664896 Volvo_DPF_Soot_Regen: 8 EMS_Volvo
- SG_ DPF_SootLoadPct : 0|8@1+ (0.5,0) [0|100] "%" Vector__XXX
- SG_ DPF_AshLoadPct : 8|8@1+ (0.5,0) [0|100] "%" Vector__XXX
- SG_ RegenThermalState : 16|8@1+ (1,0) [0|255] "" Vector__XXX
- SG_ HydrocarbonDoserRate : 24|16@1+ (0.01,0) [0|655.35] "g/h" Vector__XXX
- SG_ SeventhInjectorStatus : 40|8@1+ (1,0) [0|255] "" Vector__XXX
+BO_ 2566866432 Volvo_PGN_65350: 8 ACM_Volvo
+ SG_ Volvo_DPF_Soot_Accumulation_Level : 0|16@1+ (0.1,0) [0|6553.5] "g" Vector__XXX
+ SG_ DPF_Regeneration_Active_State : 16|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ DPF_Regeneration_Inhibit_Switch_State : 18|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ High_Exhaust_Temperature_Warning_Flag : 20|4@1+ (1,0) [0|15] "" Vector__XXX
+ SG_ Volvo_AdBlue_Dosing_Mass_Flow_Rate : 24|16@1+ (0.05,0) [0|3276.75] "g/s" Vector__XXX
+ SG_ Volvo_AdBlue_Tank_Level : 40|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Volvo_AdBlue_Concentration_Quality : 48|8@1+ (0.2,0) [0|51] "%" Vector__XXX
+ SG_ Volvo_ACM_Subsystem_Health_Status : 56|8@1+ (1,0) [0|255] "" Vector__XXX
 
-BO_ 2583667456 Volvo_AdBlue_SCR_Status: 8 ACM_Volvo
- SG_ DEF_DosingRateActual : 0|16@1+ (0.1,0) [0|6553.5] "g/h" Vector__XXX
- SG_ DEF_DosingRateDemand : 16|16@1+ (0.1,0) [0|6553.5] "g/h" Vector__XXX
- SG_ DEF_PressureKPa : 32|16@1+ (1,0) [0|65535] "kPa" Vector__XXX
- SG_ SCR_CatalystTempUpstream : 48|8@1+ (5,-40) [-40|1235] "degC" Vector__XXX
- SG_ SCR_CatalystTempDownstream : 56|8@1+ (5,-40) [-40|1235] "degC" Vector__XXX
+BO_ 2566866944 Volvo_PGN_65352: 8 ACM_Volvo
+ SG_ Volvo_VEB_Engine_Brake_Stage : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ Volvo_Retarder_Torque_Demand : 8|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Volvo_Retarder_Delivered_Braking_Torque : 16|16@1+ (0.5,-1000) [-1000|31767.5] "Nm" Vector__XXX
+ SG_ Interlocks_Flags : 32|32@1+ (1,0) [0|4.29497e+09] "" Vector__XXX
 
-CM_ "Volvo Truck & Construction Equipment (D11/D13/D16, V-MAC, ACM, Tea2+) Proprietary J1939 DBC";
-CM_ BO_ 2583664896 "PGN 65401 (0xFF79): Volvo DPF Soot/Ash Load and 7th Hydrocarbon Injector Telemetry";
-CM_ BO_ 2583667456 "PGN 65411 (0xFF83): Volvo Aftertreatment ACM AdBlue/DEF Dosing and SCR Temperatures";
+BO_ 2566867712 Volvo_PGN_65355: 8 ACM_Volvo
+ SG_ Cylinder_Adaptive_Trim_Offset_1 : 0|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Adaptive_Trim_Offset_2 : 8|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Adaptive_Trim_Offset_3 : 16|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Adaptive_Trim_Offset_4 : 24|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Adaptive_Trim_Offset_5 : 32|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Adaptive_Trim_Offset_6 : 40|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Volvo_Common_Rail_System_Pressure_Actual : 48|16@1+ (0.1,0) [0|6553.5] "MPa" Vector__XXX
 
-VAL_ 2583664896 RegenThermalState 0 "Cold" 1 "Warming Up" 2 "Active Bed Temp" 3 "High Exotherm" 4 "Cooling Down" ;
-VAL_ 2583664896 SeventhInjectorStatus 0 "Inactive" 1 "Priming" 2 "Dosing Active" 3 "Purging" 4 "Fault" ;
+
+BA_DEF_ BO_  "J1939PGN" INT 0 262143;
+BA_DEF_DEF_  "J1939PGN" 0;
+CM_ SG_ 2566866432 DPF_Regeneration_Active_State "enum values: see Volvo decoder MAP in project source";
+CM_ SG_ 2566866432 DPF_Regeneration_Inhibit_Switch_State "enum values: see Volvo decoder MAP in project source";
+CM_ SG_ 2566866432 High_Exhaust_Temperature_Warning_Flag "enum values: see Volvo decoder MAP in project source";
+CM_ SG_ 2566866432 Volvo_ACM_Subsystem_Health_Status "enum values: see Volvo decoder MAP in project source";
+CM_ BO_ 2566866432 "PGN 65350 (0xFF46): Volvo proprietary layout derived from project OEM decoder";
+CM_ SG_ 2566866944 Volvo_VEB_Engine_Brake_Stage "enum values: see Volvo decoder MAP in project source";
+CM_ SG_ 2566866944 Interlocks_Flags "enum values: see Volvo decoder MAP in project source";
+CM_ BO_ 2566866944 "PGN 65352 (0xFF48): Volvo proprietary layout derived from project OEM decoder";
+CM_ BO_ 2566867712 "PGN 65355 (0xFF4B): Volvo proprietary layout derived from project OEM decoder";
+BA_ "J1939PGN" BO_ 2566866432 65350;
+BA_ "J1939PGN" BO_ 2566866944 65352;
+BA_ "J1939PGN" BO_ 2566867712 65355;

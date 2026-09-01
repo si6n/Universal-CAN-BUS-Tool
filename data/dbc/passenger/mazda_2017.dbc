@@ -287,7 +287,6 @@ BO_ 1078 HVAC: 8 XXX
  SG_ NEW_SIGNAL_1 : 2|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_2 : 8|1@0+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_3 : 23|1@0+ (1,0) [0|65535] "" XXX
- SG_ NEW_SIGNAL_4 : 56|5@0+ (1,0) [0|255] "" XXX
 
 BO_ 1056 CHECK_AND_TEMP: 8 XXX
  SG_ NEW_SIGNAL_1 : 29|6@0+ (1,0) [0|255] "" XXX
@@ -572,8 +571,6 @@ BO_ 540 CRZ_CTRL: 8 XXX
  SG_ _5_SEC_DISABLE_TIMER : 45|3@0+ (1,0) [0|7] "" XXX
  SG_ NEW_SIGNAL_3 : 13|1@0+ (1,0) [0|3] "" XXX
  SG_ MSG_1_INV_COPY : 8|1@0+ (1,0) [0|7] "" XXX
- SG_ RADAR_HAS_LEAD : 23|1@0+ (1,0) [0|1] "" XXX
- SG_ RADAR_LEAD_RELATIVE_DISTANCE : 31|3@0+ (1,0) [0|5] "" XXX
 
 BO_ 539 CRZ_INFO: 8 XXX
  SG_ CTR1 : 55|8@0+ (1,0) [0|255] "" XXX
@@ -785,7 +782,5 @@ CM_ SG_ 540 HANDS_ON_STEER_WARN "0 no warning, b warning";
 CM_ SG_ 540 DISTANCE_SETTING "Radar distance 0: disabled, 1: 4 bars, 2: 3 bars, 3: 2 bars, 4: 1 bar";
 CM_ SG_ 1143 REAR_CT_ALERT "Rear Cross Traffic Alert";
 VAL_ 552 GEAR 1 "P" 2 "R" 3 "N" 4 "D" ;
-VAL_ 540 RADAR_HAS_LEAD 0 "NO LEAD" 1 "HAS LEAD" ;
-VAL_ 540 RADAR_LEAD_RELATIVE_DISTANCE 0 "NO LEAD" 1 "FARTHEST" 2 "4" 3 "3" 4 "2" 5 "NEAREST" ;
 VAL_ 1143 LEFT_BS_STATUS 0 "No object detected" 1 "Object detected in left blindspot" 2 "Object detected in left blindspot with blinker - warning" ;
 VAL_ 1143 RIGHT_BS_STATUS 0 "No object detected" 1 "Object detected in right blindspot" 2 "Object detected in right blindspot with blinker - warning" ;

@@ -1,0 +1,64 @@
+VERSION "Caterpillar_J1939_Proprietary_v2.0"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: ECM_CAT
+
+BO_ 2566858752 Caterpillar_PGN_65320: 8 ECM_CAT
+ SG_ CAT_ARD_Combustion_Air_Pressure : 0|8@1+ (0.5,0) [0|127.5] "kPa" Vector__XXX
+ SG_ CAT_ARD_Fuel_Pressure : 8|8@1+ (2,0) [0|510] "kPa" Vector__XXX
+ SG_ CAT_ARD_Flame_Temperature : 16|8@1+ (5,-40) [-40|1235] "°C" Vector__XXX
+ SG_ CAT_DPF_Regeneration_Mode : 24|4@1+ (1,0) [0|15] "" Vector__XXX
+ SG_ CAT_Regeneration_Inhibit_Status : 28|4@1+ (1,0) [0|15] "" Vector__XXX
+ SG_ CAT_DPF_Soot_Loading_Index : 32|16@1+ (0.01,0) [0|655.35] "%" Vector__XXX
+ SG_ CAT_DEF_Quality_Urea_Concentration : 48|8@1+ (0.25,0) [0|63.75] "%" Vector__XXX
+ SG_ CAT_Compression_Brake_Retarder_Request : 56|8@1+ (0.5,0) [0|127.5] "%" Vector__XXX
+
+BO_ 2566860032 Caterpillar_PGN_65325: 8 ECM_CAT
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_1 : 0|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_2 : 8|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_3 : 16|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_4 : 24|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_5 : 32|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ Cylinder_MEUI_HEUI_Trim_Offset_6 : 40|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/stroke" Vector__XXX
+ SG_ CAT_Rail_Actuation_High_Pressure : 48|16@1+ (0.1,0) [0|6553.5] "MPa" Vector__XXX
+
+
+BA_DEF_ BO_  "J1939PGN" INT 0 262143;
+BA_DEF_DEF_  "J1939PGN" 0;
+CM_ SG_ 2566858752 CAT_DPF_Regeneration_Mode "enum values: see Caterpillar decoder MAP in project source";
+CM_ SG_ 2566858752 CAT_Regeneration_Inhibit_Status "enum values: see Caterpillar decoder MAP in project source";
+CM_ BO_ 2566858752 "PGN 65320 (0xFF28): Caterpillar proprietary layout derived from project OEM decoder";
+CM_ BO_ 2566860032 "PGN 65325 (0xFF2D): Caterpillar proprietary layout derived from project OEM decoder";
+BA_ "J1939PGN" BO_ 2566858752 65320;
+BA_ "J1939PGN" BO_ 2566860032 65325;

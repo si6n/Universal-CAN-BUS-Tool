@@ -275,9 +275,6 @@ BO_ 790 EMS1: 8 XXX
 
 BO_ 809 EMS2: 8 XXX
     SG_ TQ_STND : 0|6@1+ (10,0) [0|630] "Nm" XXX
-    SG_ CAN_VERS : 0|6@1+ (1,0) [0|7.7] "" XXX
-    SG_ CONF_TCU : 0|6@1+ (1,0) [0|63] "" XXX
-    SG_ OBD_FRF_ACK : 0|6@1+ (1,0) [0|63] "" XXX
     SG_ MUL_CODE : 6|2@1+ (1,0) [0|3] "" XXX
     SG_ TEMP_ENG : 8|8@1+ (0.75,-48) [-48|143.25] "" XXX
     SG_ MAF_FAC_ALTI_MMV : 16|8@1+ (0.00781,0) [0|1.99155] "" XXX
