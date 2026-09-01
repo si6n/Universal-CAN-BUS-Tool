@@ -14,6 +14,16 @@ from cantools.database.conversion import BaseConversion
 from src.engine.discovery.hypotheses import IdReport
 
 
+import re
+
+def _sanitize_c_identifier(name: str) -> str:
+    """Sanitize arbitrary string into valid DBC C identifier."""
+    cleaned = re.sub(r"[^a-zA-Z0-9_]", "_", name.strip())
+    if cleaned and cleaned[0].isdigit():
+        cleaned = f"sig_{cleaned}"
+    return cleaned or "signal"
+
+
 class DbcBuilder:
     """Constructs and serializes cantools CAN databases from discovery hypothesis reports."""
 
@@ -51,7 +61,8 @@ class DbcBuilder:
                 if hyp_bits & occupied_bits:
                     continue
 
-                sig_name = hyp.name or f"SIG_{hyp.start_bit}_{hyp.length}"
+                raw_name = hyp.name or f"SIG_{hyp.start_bit}_{hyp.length}"
+                sig_name = _sanitize_c_identifier(raw_name)
                 # Guarantee signal name uniqueness within message
                 base_name = sig_name
                 counter = 1

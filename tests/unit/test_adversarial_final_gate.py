@@ -238,6 +238,7 @@ def test_gateway_complete_rule_matrix() -> None:
     nonce = estop.get_reset_nonce()
     estop.reset(estop.compute_reset_token(nonce))
     assert estop.is_engaged is False
+    gateway.update_vehicle_speed(0.0)
 
     # Rule 4: Critical command missing user confirmation
     with pytest.raises(SafetyError, match="Operator dual-confirmation missing"):

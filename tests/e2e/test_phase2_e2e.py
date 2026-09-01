@@ -174,7 +174,9 @@ def test_tier1_txport_uds_client_read_did_over_txport() -> None:
 def test_tier1_txport_uds_client_session_and_routine_controls() -> None:
     """Tier 1.1.3: Verify UdsClient session change and routine controls over TxPort."""
     bus = MockMemoryBus()
-    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
+    gateway = TxSafetyGateway.for_testing(bus=bus)
+    gateway.update_vehicle_speed(0.0)
+    client = UdsClient(bus=bus, tx_port=gateway, tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Change Session
     bus.inject_rx(
@@ -934,10 +936,12 @@ def test_tier2_r5_system_wall_clock_shift_does_not_affect_monotonic_invariants()
 
 
 def test_tier2_r5_speed_interlock_negative_speed_sanitization() -> None:
-    """Tier 2.5.5: Verify negative speed values (e.g. sensor reverse polarity) are clamped to >= 0."""
+    """Tier 2.5.5: Verify negative speed values (sensor reverse polarity / corrupt) fail-closed."""
     gateway = TxSafetyGateway(bus=MockMemoryBus(), whitelist_ids={0x7E0})
+    gateway.update_vehicle_speed(0.0)
+    assert gateway._last_speed_update_ns > 0
     gateway.update_vehicle_speed(-15.0)
-    assert gateway._current_vehicle_speed_kmh == 0.0
+    assert gateway._last_speed_update_ns == 0
 
 
 # ===========================================================================
@@ -1190,7 +1194,7 @@ def test_tier4_scenario1_full_diagnostic_session_stationary_vehicle() -> None:
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(0.0)
 
-    client = UdsClient(bus=bus, tx_port=TxSafetyGateway.for_testing(bus=bus), tx_id=0x7E0, rx_id=0x7E8)
+    client = UdsClient(bus=bus, tx_port=gateway, tx_id=0x7E0, rx_id=0x7E8)
 
     # 1. Diagnostic Session Control (0x10 0x03)
     bus.inject_rx(
