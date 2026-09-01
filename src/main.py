@@ -26,8 +26,12 @@ class UniversalCanMainWindow:
     """MainWindow wrapper supporting both Qt and Desktop webview lifecycle."""
 
     def __init__(self, bus: Any | None = None, channel: str = "vcan0", bitrate: int = 250000) -> None:
-        self.bus = bus if bus is not None else PythonCanBus(interface="virtual", channel=channel, bitrate=bitrate)
-        self._desktop_app = UniversalCanDesktopApp(channel=channel, bitrate=bitrate)
+        # F-30: single composition root — reuse the injected bus or let the
+        # desktop app own exactly one bus; never create a second instance.
+        self.bus = bus
+        self._desktop_app = UniversalCanDesktopApp(
+            channel=channel, bitrate=bitrate, bus=bus
+        )
 
     def show(self) -> None:
         pass
@@ -92,7 +96,7 @@ def main() -> int:
             bus.disconnect()
 
     # Launch Modern Native Desktop GUI (WebView2 + React + Tailwind)
-    app = UniversalCanDesktopApp(channel=args.channel, bitrate=args.bitrate)
+    app = UniversalCanDesktopApp(channel=args.channel, bitrate=args.bitrate, interface=args.interface)
     app.run()
     return 0
 

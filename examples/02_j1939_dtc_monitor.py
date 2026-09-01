@@ -3,11 +3,6 @@
 Decodes SAE J1939 Active Faults (PGN 65226 / 0xFECA).
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
-
 from src.core.models.can_frame import CanFrame
 from src.protocols.j1939.diagnostics import PGN_DM1, J1939DiagnosticService
 

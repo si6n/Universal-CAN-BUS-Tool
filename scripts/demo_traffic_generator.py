@@ -17,6 +17,11 @@ import time
 
 from src.core.models.can_frame import CanFrame
 from src.hal.drivers.pcan_kvaser import PythonCanBus
+from src.safety.gateway import TxSafetyGateway
+
+# Demo traffic may only target sandboxed buses — physical interfaces are refused (F-07).
+ALLOWED_INTERFACES = frozenset({"virtual", "socketcan"})
+ALLOWED_CHANNEL_PREFIXES = ("vcan", "slcan", "vxcan")
 
 
 class UniversalTrafficSimulator:
@@ -38,7 +43,19 @@ class UniversalTrafficSimulator:
         self.hz = hz
         self.enable_can_fd = enable_can_fd
 
+        if interface not in ALLOWED_INTERFACES or not channel.startswith(ALLOWED_CHANNEL_PREFIXES):
+            raise RuntimeError(
+                f"Demo traffic generator refuses non-virtual bus '{interface}:{channel}'. "
+                f"Use an interface in {sorted(ALLOWED_INTERFACES)} with a channel prefixed by "
+                f"{ALLOWED_CHANNEL_PREFIXES} (e.g. vcan0)."
+            )
+
         self.bus = PythonCanBus(interface=self.interface, channel=self.channel, bitrate=self.bitrate)
+        # Whitelist bypass is reserved for the simulator's synthetic traffic
+        # (dozens of dynamic IDs that no static whitelist can enumerate). The
+        # bus is already hard-locked to virtual interfaces by the guard above,
+        # and estop/supervisor/watchdog stages remain fully enforced.
+        self.gateway = TxSafetyGateway.for_testing(bus=self.bus)
         self.rolling_counter = 0
         self.sim_time = 0.0
 
@@ -110,8 +127,9 @@ class UniversalTrafficSimulator:
             data=bytes(eec1_data),
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_eec1)
+        self.gateway.validate_and_transmit(f_eec1)
 
         # 2. EV / BMS Pack Voltage & Current (0x1806E5F4)
         if self.scenario in ("bms", "ev", "nominal"):
@@ -132,7 +150,7 @@ class UniversalTrafficSimulator:
                 is_extended=True,
                 direction="rx",
             )
-            self.bus.send(f_bms)
+            self.gateway.validate_and_transmit(f_bms)
 
         # 3. CAN-FD 64-Byte Radar Object Tracking (0x220)
         if self.enable_can_fd or self.scenario == "canfd":
@@ -151,7 +169,7 @@ class UniversalTrafficSimulator:
                 is_fd=True,
                 direction="rx",
             )
-            self.bus.send(f_radar)
+            self.gateway.validate_and_transmit(f_radar)
 
         # 4. Proprietary Discovery Frame with Rolling Counter and XOR Checksum
         prop_data = bytearray(8)
@@ -167,8 +185,9 @@ class UniversalTrafficSimulator:
             data=bytes(prop_data),
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_prop)
+        self.gateway.validate_and_transmit(f_prop)
 
     def _broadcast_100ms_frames(self, t: float) -> None:
         """Broadcast medium-frequency frames (N2K Marine, Speed, SOC%)."""
@@ -191,8 +210,9 @@ class UniversalTrafficSimulator:
             data=bytes(n2k_rapid),
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_n2k)
+        self.gateway.validate_and_transmit(f_n2k)
 
         # 2. NMEA 2000 Water Depth Sonar (PGN 128267 / 0x19F50300)
         depth_m = 24.5 + 6.0 * math.sin(t * 0.1)
@@ -210,8 +230,9 @@ class UniversalTrafficSimulator:
             data=bytes(n2k_depth),
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_depth)
+        self.gateway.validate_and_transmit(f_depth)
 
     def _broadcast_1000ms_frames(self, t: float) -> None:
         """Broadcast slow frames: Temperature (ET1), Hours, and Active DTCs (DM1)."""
@@ -226,8 +247,9 @@ class UniversalTrafficSimulator:
             data=bytes(et1_data),
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_et1)
+        self.gateway.validate_and_transmit(f_et1)
 
         # 2. J1939 DM1 Diagnostic Fault Frame (PGN 65226 / 0x18FECA00)
         if self.scenario == "misfire":
@@ -252,8 +274,9 @@ class UniversalTrafficSimulator:
             data=dm1_data,
             is_extended=True,
             direction="rx",
+            source="virtual",
         )
-        self.bus.send(f_dm1)
+        self.gateway.validate_and_transmit(f_dm1)
 
     def _handle_mock_uds_responder(self) -> None:
         """Inspect bus for diagnostic UDS requests (0x7E0) and emit positive responses (0x7E8)."""
@@ -290,8 +313,9 @@ class UniversalTrafficSimulator:
                     data=bytes(resp),
                     is_extended=False,
                     direction="rx",
+                    source="virtual",
                 )
-                self.bus.send(f_uds_resp)
+                self.gateway.validate_and_transmit(f_uds_resp)
 
 
 def main() -> int:

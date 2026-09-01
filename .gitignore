@@ -51,11 +51,25 @@ reports/*.html
 reports/*.pdf
 !reports/.gitkeep
 
-# Secrets & Environment Variables
+# Secrets & Environment Variables (F-37)
 .env
 .env.*
 *.pem
 *.key
+*.lic
+*.ed25519
+*.dpapi
+secrets.*
+machine_seed.bin
+secrets.bin
+
+# Telemetry data & rolling disk chunks (F-37)
+# Ignore runtime data files but keep the tracked .gitkeep directory skeleton
+data/*
+!data/dbc/
+!data/traces/
+*.bin.zst
+traces/
 
 # AI Agent Workspaces & Local Prompts
 .agents/

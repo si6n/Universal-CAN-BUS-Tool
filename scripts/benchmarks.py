@@ -5,6 +5,7 @@ from __future__ import annotations
 import cProfile
 import io
 import pstats
+import statistics
 import sys
 import time
 import tracemalloc
@@ -18,12 +19,27 @@ from src.engine.buffer.ring_buffer import BinaryRingBuffer
 from src.engine.decoder.dbc_decoder import DbcSignalDecoder
 from src.protocols.uds.isotp import IsoTpTransport
 from src.safety.estop import EmergencyStopSystem
-from src.safety.gateway import TxSafetyGateway
+from src.safety.gateway import TxBudget, TxSafetyGateway
 
 
 class MockBus:
     def send(self, frame: CanFrame) -> None:
         pass
+
+
+# F-40: run each benchmark REPEATS times and report median ± stdev instead of
+# a single noisy sample.
+REPEATS = 10
+
+
+def run_with_stats(label: str, fn, *args, **kwargs) -> float:
+    """Execute a benchmark REPEATS times; print median ± stdev (F-40)."""
+    samples = [fn(*args, **kwargs) for _ in range(REPEATS)]
+    median = statistics.median(samples)
+    stdev = statistics.stdev(samples) if len(samples) > 1 else 0.0
+    unit = "msgs/sec" if "ISO-TP" in label else "ops/sec"
+    print(f"[STATS] {label}: median={median:,.0f} {unit}  stdev={stdev:,.0f}  (n={len(samples)})")
+    return median
 
 
 SAMPLE_DBC = """VERSION ""
@@ -158,8 +174,10 @@ def benchmark_tx_safety_gateway(n: int = 50_000) -> float:
     frame = CanFrame(channel_id="vcan0", arbitration_id=0x150, dlc=8, data=b"\x01" * 8)
 
     t0 = time.perf_counter()
-    # Bypass 100/s rate limit for raw gateway engine validation speed measurement
+    # Bypass the rate window + default token bucket for raw engine speed
+    # measurement (F-18 added the per-category TxBudget on top of the window).
     gateway.MAX_TX_RATE_PER_SEC = 1_000_000
+    gateway._budgets["default"] = TxBudget(capacity=n, refill_per_sec=float(n))
     for _ in range(n):
         gateway.validate_and_transmit(frame)
     t1 = time.perf_counter()
@@ -193,4 +211,10 @@ if __name__ == "__main__":
     print("=======================================================")
     print(">>> Python Performance Benchmark Baseline")
     print("=======================================================")
+    run_with_stats("CanFrame Creation", benchmark_can_frame_creation, 100_000)
+    run_with_stats("RingBuffer Single Append", benchmark_ring_buffer_append, 100_000)
+    run_with_stats("RingBuffer Batch Append", benchmark_ring_buffer_batch_append, 100_000)
+    run_with_stats("DBC Signal Decoder", benchmark_dbc_decoder, 50_000)
+    run_with_stats("ISO-TP Segment+Reassemble", benchmark_isotp_segmentation_reassembly, 10_000)
+    run_with_stats("TX Safety Gateway Filter", benchmark_tx_safety_gateway, 50_000)
     run_cprofile()

@@ -19,8 +19,10 @@ export class GeminiClient {
 
     // 1. Try ListModels to dynamically detect all active models for this API key
     try {
-      const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(cleanKey)}`;
-      const listRes = await fetch(listUrl);
+      const listUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+      const listRes = await fetch(listUrl, {
+        headers: { 'x-goog-api-key': cleanKey }
+      });
       if (listRes.ok) {
         const listData = await listRes.json();
         const models: Array<{ name: string; supportedGenerationMethods?: string[] }> = listData.models || [];
@@ -162,7 +164,7 @@ export class GeminiClient {
     promptText: string
   ): Promise<{ success: boolean; text?: string; error?: string }> {
     const cleanModel = modelName.replace(/^models\//, '');
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent`;
 
     const isThinkingModel = cleanModel.includes('2.5') || cleanModel.includes('thinking');
     const generationConfig: Record<string, any> = {
@@ -177,7 +179,10 @@ export class GeminiClient {
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey.trim()
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: promptText }] }],
           generationConfig

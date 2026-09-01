@@ -306,6 +306,7 @@ export class CANSimulatorEngine {
 
   private listeners: {
     onNewFrame?: (frame: CANFrame) => void;
+    onNewFrameBatch?: (frames: CANFrame[]) => void;  // F-35: batched emission
     onTelemetryUpdate?: (telemetry: TelemetryPoint) => void;
     onStatsUpdate?: (stats: { totalPackets: number; busLoad: number; errorCount: number; frameRate: number }) => void;
   } = {};
@@ -436,16 +437,46 @@ export class CANSimulatorEngine {
     this.listeners = { ...this.listeners, ...callbacks };
   }
 
+  /**
+   * F-29: single simulator module with LIVE/DEMO split. When the native
+   * pywebview bridge is present the backend already streams real CAN frames
+   * and telemetry (F-28) — synthetic generation is suppressed so the two
+   * generators never collide. Browser-only runs fall back to DEMO mode.
+   */
+  public isLiveMode(): boolean {
+    return typeof window !== 'undefined' && !!window.pywebview;
+  }
+
   private restartFrameTimer() {
     if (this.timerId) clearInterval(this.timerId);
-    const intervalMs = Math.max(4, Math.floor(1000 / (this.frameRateTarget * this.speedMultiplier)));
+    if (this.isLiveMode()) return;
+    // F-35: batch IPC — generate 5 frames per 200ms tick instead of one
+    // frame per interval. At the same average rate the number of timer (and
+    // potential bridge) invocations drops 5x.
+    const BATCH_SIZE = 5;
+    const BATCH_INTERVAL_MS = 200;
+    const framesPerTick = Math.max(
+      1,
+      Math.round((BATCH_SIZE * BATCH_INTERVAL_MS * this.frameRateTarget * this.speedMultiplier) / 1000)
+    );
     this.timerId = window.setInterval(() => {
       if (!this.isRunning) return;
-      this.generateNextFrame();
-    }, intervalMs);
+      const batch: CANFrame[] = [];
+      for (let i = 0; i < framesPerTick; i++) {
+        batch.push(this.generateNextFrame());
+      }
+      if (batch.length > 0 && this.listeners.onNewFrameBatch) {
+        this.listeners.onNewFrameBatch(batch);
+      }
+    }, BATCH_INTERVAL_MS);
   }
 
   private startSimulation() {
+    if (this.isLiveMode()) {
+      // LIVE: real data arrives via window.onNewCanFrame / onTelemetryTick /
+      // onStatsTick — never start synthetic timers next to the real stream.
+      return;
+    }
     this.restartFrameTimer();
 
     this.telemetryTimerId = window.setInterval(() => {

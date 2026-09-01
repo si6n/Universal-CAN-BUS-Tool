@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def _run_npm_build(frontend_dir: Path) -> int:
+    npm = shutil.which("npm")
+    if npm is None:
+        print("[HATA] npm bulunamadi. Node.js kurulu mu?")
+        return 1
+    return subprocess.call([npm, "run", "build"], cwd=str(frontend_dir))
 
 
 def build_exe() -> int:
@@ -19,7 +28,7 @@ def build_exe() -> int:
     # 1. Check & Build Frontend if needed
     if not frontend_dist.exists() or not (frontend_dist / "index.html").exists():
         print("[1/2] Frontend React+Tailwind paketi derleniyor...")
-        ret = subprocess.call('cmd.exe /c "npm run build"', cwd=str(frontend_dir), shell=True)
+        ret = _run_npm_build(frontend_dir)
         if ret != 0:
             print("[HATA] Frontend derleme hatasi!")
             return ret
@@ -40,6 +49,16 @@ def build_exe() -> int:
         "--noconsole",
         "--clean",
         f"--add-data={data_arg}",
+        # N-05/F-36: guarantee safety & security modules are bundled — the
+        # runtime import graph is analysed from src/, root added to search path
+        f"--paths={root_dir}",
+        "--hidden-import=src.safety.gateway",
+        "--hidden-import=src.safety.estop",
+        "--hidden-import=src.safety.watchdog",
+        "--hidden-import=src.safety.state_machine",
+        "--hidden-import=src.safety.secret_provider",
+        "--hidden-import=src.security.license.validator",
+        "--hidden-import=src.security.anti_tamper.guard",
         # Exclude legacy unused heavy GUI packages
         "--exclude-module=PySide6",
         "--exclude-module=pyqtgraph",

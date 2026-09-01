@@ -124,6 +124,10 @@ export const App: React.FC = () => {
       onNewFrame: (newFrame) => {
         setFrames((prev) => [...prev.slice(-199), newFrame]);
       },
+      onNewFrameBatch: (batch) => {
+        // F-35: single state update for the whole 5-frame batch
+        setFrames((prev) => [...prev.slice(-(200 - batch.length)), ...batch].slice(-200));
+      },
       onTelemetryUpdate: (point) => {
         setCurrentTelemetry(point);
         setTelemetryHistory((prev) => [...prev.slice(-149), point]);
@@ -157,6 +161,30 @@ export const App: React.FC = () => {
       simulator.destroy();
     };
   }, [simulator]);
+
+  // UI-alive heartbeat for the TX Watchdog (F-16 / E-11):
+  // driven by the render/rAF loop, NOT a blind setInterval — if the UI
+  // genuinely freezes (main-thread block), the pulse stops and the Python
+  // watchdog expires (800ms timeout, 250ms pulse => 550ms tolerance).
+  useEffect(() => {
+    let alive = true;
+    let lastSent = 0;
+    const tick = () => {
+      const now = performance.now();
+      if (alive && now - lastSent >= 250 && window.pywebview?.api?.heartbeat) {
+        lastSent = now;
+        window.pywebview.api.heartbeat().catch(() => {
+          // Bridge hiccup: next frame retries; watchdog tolerates misses.
+        });
+      }
+      requestAnimationFrame(tick);
+    };
+    const raf = requestAnimationFrame(tick);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   // Update diagnostic state upon scenario change
   useEffect(() => {

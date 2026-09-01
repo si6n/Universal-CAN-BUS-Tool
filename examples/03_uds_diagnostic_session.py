@@ -3,11 +3,6 @@
 Demonstrates UDS Service 0x22 (ReadDataByIdentifier) request construction.
 """
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
-
 from src.protocols.uds.services import DiagnosticSessionType, UdsServiceBuilder
 
 

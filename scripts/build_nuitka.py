@@ -13,10 +13,17 @@ from pathlib import Path
 
 def run_nuitka_build() -> int:
     """Execute Nuitka native compilation command."""
-    root_dir = Path(__file__).parent.parent
+    root_dir = Path(__file__).parent.parent.resolve()  # F-41: absolute, symlink-safe
     entry_point = root_dir / "src" / "main.py"
     output_dir = root_dir / "dist"
     frontend_dist = root_dir / "src" / "ui" / "frontend" / "dist"
+
+    if not entry_point.is_file():
+        raise FileNotFoundError(f"Entry point not found: {entry_point}")
+    if not (frontend_dist / "index.html").is_file():
+        raise FileNotFoundError(
+            f"Frontend dist missing: {frontend_dist} — run 'npm run build' in src/ui/frontend first"
+        )
 
     cmd = [
         sys.executable,

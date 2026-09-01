@@ -6,6 +6,7 @@ declare global {
     pywebview?: {
       api: {
         trigger_estop: () => Promise<void>;
+        heartbeat: () => Promise<boolean>;
         toggle_simulator: () => Promise<boolean>;
         select_scenario: (name: string) => Promise<void>;
         ask_copilot: (query: string) => Promise<string>;

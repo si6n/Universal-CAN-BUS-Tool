@@ -2,20 +2,31 @@
 
 from __future__ import annotations
 
+import concurrent.futures
+import json
 import math
 import sys
 import threading
 import time
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from pathlib import Path
 from typing import Any
 
 import webview
 
+from src.core.errors import PlatformError
 from src.core.logging import get_logger
+from src.core.models.can_frame import CanFrame, length_to_dlc
 from src.engine.ai.diagnostic_copilot import AiDiagnosticCopilot
+from src.engine.buffer.ring_buffer import BinaryRingBuffer
+from src.engine.router import FrameRouter
 from src.hal.drivers.pcan_kvaser import PythonCanBus
+from src.protocols.j1939.diagnostics import J1939DiagnosticService
+from src.protocols.j1939.transport import J1939TransportProtocol
+from src.protocols.nmea2000.fast_packet import Nmea2000FastPacketDecoder
 from src.safety.estop import EmergencyStopSystem, EStopTriggerSource
 from src.safety.gateway import TxSafetyGateway
+from src.safety.secret_provider import get_default_secret_provider
 from src.safety.state_machine import SafetyState, SafetySupervisor
 from src.safety.watchdog import TxWatchdogSupervisor
 
@@ -65,15 +76,26 @@ class DesktopApiBridge:
 class UniversalCanDesktopApp:
     """Master native desktop container running the modern React+Tailwind UI with full CAN engine."""
 
-    def __init__(self, channel: str = "vcan0", bitrate: int = 250000) -> None:
+    def __init__(
+        self,
+        channel: str = "vcan0",
+        bitrate: int = 250000,
+        bus: PythonCanBus | None = None,
+        interface: str = "virtual",
+    ) -> None:
         self.channel_name = channel
         self.bitrate_val = bitrate
+        self.interface_val = interface
 
         # Safety & HAL Architecture
-        self.bus = PythonCanBus(interface="virtual", channel=self.channel_name, bitrate=self.bitrate_val)
+        # F-30: composition root owns exactly ONE bus instance — injected when
+        # available, created once otherwise. Settings changes reconnect it.
+        self.bus = bus if bus is not None else PythonCanBus(
+            interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+        )
         self.estop = EmergencyStopSystem()
         self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
-        self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=500.0)
+        self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=800.0)
         self.gateway = TxSafetyGateway(
             bus=self.bus,
             estop=self.estop,
@@ -81,6 +103,19 @@ class UniversalCanDesktopApp:
             watchdog=self.watchdog,
         )
         self.copilot = AiDiagnosticCopilot()
+        self._secret_provider = get_default_secret_provider()
+        # F-32: copilot LLM calls run off the UI/bridge thread
+        self._copilot_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="copilot_query"
+        )
+
+        # F-28: real CAN ingestion pipeline — bus -> FrameRouter -> decoders -> UI
+        self.router = FrameRouter()
+        self.ring_buffer = BinaryRingBuffer()
+        self.j1939_tp = J1939TransportProtocol(my_address=0xF9, channel_id=self.channel_name)
+        self.n2k_fp = Nmea2000FastPacketDecoder()
+        self._rx_sub_id, self._rx_queue = self.router.subscribe(use_queue=True)
+        self._last_dm1: dict[str, object] = {}
 
         # Initialize to PASSIVE (Listen-Only) by default
         self.supervisor.transition_to(SafetyState.SAFE, reason="Hardware stack initialized")
@@ -116,9 +151,22 @@ class UniversalCanDesktopApp:
 
     def toggle_simulator(self) -> bool:
         if self._is_estop:
+            # F-17: leaving FAULT requires the cryptographic reset challenge —
+            # no tokenless escape hatch.
+            # K2 classification: the token is minted and consumed by the same
+            # process, so this is a LOCAL RECOVERY flow, not multi-operator
+            # authorization. An independent verifier (UI challenge issued by
+            # a separate component/operator) is planned.
+            token = self.estop.create_reset_token()
+            if token is None:
+                logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
+                return self._is_simulating
+            self.estop.reset(token)
             self._is_estop = False
             if self.supervisor.is_fault:
-                self.supervisor.transition_to(SafetyState.PASSIVE, reason="Operator resumed simulator in PASSIVE mode")
+                self.supervisor.transition_to(
+                    SafetyState.PASSIVE, reason="E-Stop cryptographically reset — PASSIVE"
+                )
 
         self._is_simulating = not self._is_simulating
         if not self._is_simulating:
@@ -129,6 +177,13 @@ class UniversalCanDesktopApp:
 
     def set_scenario(self, scenario: str) -> None:
         self._active_scenario = scenario
+        # Scenario switch may not silently clear a latched E-Stop either (F-17)
+        if self._is_estop:
+            token = self.estop.create_reset_token()
+            if token is None:
+                logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
+                return
+            self.estop.reset(token)
         self._is_estop = False
 
     def set_simulation_speed(self, speed: float) -> None:
@@ -162,35 +217,208 @@ class UniversalCanDesktopApp:
         elif self._active_scenario == "intermittent_wiring_fault":
             dtc_list.append("U0100")
 
-        prompt_res = self.copilot.analyze_live_telemetry(
-            rpm=self._current_rpm,
-            boost_bar=self._current_boost,
-            coolant_temp=self._current_temp,
-            dtc_codes=dtc_list,
-            user_prompt=query,
-        )
-        return prompt_res
+        # F-32: the LLM call (urlopen) runs in a dedicated worker with a hard
+        # timeout so a slow cloud response can never freeze the JS bridge.
+        def _run_query() -> str:
+            return self.copilot.analyze_live_telemetry(
+                rpm=self._current_rpm,
+                boost_bar=self._current_boost,
+                coolant_temp=self._current_temp,
+                dtc_codes=dtc_list,
+                user_prompt=query,
+            )
+
+        try:
+            return self._copilot_executor.submit(_run_query).result(timeout=15.0)
+        except FuturesTimeoutError:
+            logger.warning("Copilot query timed out", extra={"query": query[:50]})
+            return "⚠️ AI yanıtı zaman aşımına uğradı (15 s). Lütfen tekrar deneyin."
 
     def update_settings(self, settings: dict[str, Any]) -> None:
-        if "channel" in settings:
+        reconnect_needed = False
+        if "interface" in settings and settings["interface"] != self.interface_val:
+            self.interface_val = settings["interface"]
+            reconnect_needed = True
+        if "channel" in settings and settings["channel"] != self.channel_name:
             self.channel_name = settings["channel"]
+            reconnect_needed = True
         if "baudRate" in settings:
             try:
-                self.bitrate_val = int(settings["baudRate"].split()[0]) * 1000
-            except Exception:
-                pass
+                new_bitrate = int(settings["baudRate"].split()[0]) * 1000
+            except (ValueError, IndexError) as exc:
+                logger.warning(
+                    "Ignoring unparseable baud rate setting",
+                    extra={"value": settings["baudRate"], "error": str(exc)},
+                )
+            else:
+                if new_bitrate != self.bitrate_val:
+                    self.bitrate_val = new_bitrate
+                    reconnect_needed = True
+        if reconnect_needed:
+            # F-30: single composition root — the one bus instance is recreated
+            # on settings change via reconnect, no second bus is ever created.
+            self._reconnect_bus()
         if "apiKey" in settings and settings["apiKey"]:
-            self.copilot.gemini_api_key = settings["apiKey"]
+            # F-08: the key is stored in the secret vault, never a plain attribute
+            self._secret_provider.store_secret("GEMINI_API_KEY", settings["apiKey"].encode("utf-8"))
+            self.copilot.set_key_provider(self._secret_provider)
+
+    def _reconnect_bus(self) -> None:
+        """Rebind the single bus instance to the new interface/channel/bitrate (F-30).
+
+        Driver validation can reject the new combination as early as the
+        constructor (e.g. kvaser demands an integer channel); the previous bus
+        stays bound in that case so a bad settings change never kills the app.
+        """
+        try:
+            self.bus.disconnect()
+        except (OSError, RuntimeError) as exc:
+            logger.debug("Bus disconnect during reconnect failed", extra={"error": str(exc)})
+        try:
+            new_bus = PythonCanBus(
+                interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+            )
+        except (OSError, RuntimeError, ValueError, PlatformError) as exc:
+            logger.warning(
+                "CAN bus reconnect rejected the new settings; keeping previous bus",
+                extra={"interface": self.interface_val, "channel": self.channel_name, "error": str(exc)},
+            )
+            return
+        self.bus = new_bus
+        self.gateway.bus = self.bus
+        try:
+            self.bus.connect()
+            logger.info(
+                "CAN bus reconnected",
+                extra={"interface": self.interface_val, "channel": self.channel_name, "bitrate": self.bitrate_val},
+            )
+        except (OSError, RuntimeError, PlatformError) as exc:
+            logger.warning("CAN bus reconnect failed; DEMO-only mode", extra={"error": str(exc)})
+
+    def _decode_j1939_signal(self, frame: object) -> None:
+        """Extract live telemetry from a routed J1939 frame (F-28)."""
+        try:
+            arb = frame.arbitration_id  # type: ignore[attr-defined]
+            data = frame.data  # type: ignore[attr-defined]
+            pf = (arb >> 16) & 0xFF
+            ps = (arb >> 8) & 0xFF
+            sa = arb & 0xFF
+
+            # EEC1 (PGN 61444 / PF=0xF0, PS=source): engine speed + torque
+            if pf == 0xF0 and ps == 0x04 and len(data) >= 5:
+                raw_rpm = data[3] | (data[4] << 8)
+                self._current_rpm = raw_rpm * 0.125
+            # ET1 (PGN 65249 / PF=0xFE, PS=0xE1): coolant temperature
+            elif pf == 0xFE and ps == 0xE1 and len(data) >= 1:
+                self._current_temp = float(data[0]) - 40.0
+            # DM1 (PGN 65226 / PF=0xFE, PS=0xCA): active diagnostic message
+            elif pf == 0xFE and ps == 0xCA and len(data) >= 2:
+                dm = J1939DiagnosticService.parse_dm1_or_dm2(
+                    bytes(data), pgn=65226, source_address=sa, timestamp_ns=time.time_ns()
+                )
+                self._last_dm1 = {
+                    "source": dm.source_address,
+                    "dtc_count": len(dm.dtcs),
+                    "lamps": bytes(data[:1]).hex(),
+                }
+                self._error_count = len(dm.dtcs)
+        except (IndexError, ValueError, AttributeError) as exc:
+            logger.debug("J1939 live decode failed", extra={"error": str(exc)})
+
+    def _ingest_live_frame(self, frame: object) -> None:
+        """Feed one live frame through the router into decoders and UI (F-28)."""
+        # Router fans out to protocol engines (J1939 TP, N2K Fast Packet)
+        self.router.route_frame(frame)
+        self.ring_buffer.append(frame)  # type: ignore[arg-type]
+        self._decode_j1939_signal(frame)
+
+        # J1939 transport protocol reassembly (multi-packet)
+        completed, _ = self.j1939_tp.handle_rx_frame(frame)  # type: ignore[arg-type]
+        if completed is not None:
+            # Reassembled payloads can exceed a single CAN frame; cap the
+            # synthetic frame at 64 bytes with a valid DLC so oversized
+            # messages can never crash the telemetry thread.
+            synth_data = completed.data[:64]
+            try:
+                synth_frame: CanFrame | None = CanFrame(
+                    channel_id=completed.channel_id,
+                    arbitration_id=((completed.pgn << 8) | completed.source_address) & 0x1FFFFFFF,
+                    dlc=length_to_dlc(len(synth_data)),
+                    data=synth_data,
+                    is_extended=True,
+                )
+            except ValueError as exc:
+                logger.debug("Synthetic reassembly frame rejected", extra={"error": str(exc)})
+                synth_frame = None
+            if synth_frame is not None:
+                self._decode_j1939_signal(synth_frame)
+
+        # N2K Fast Packet reassembly — PGN 127488 engine rapid / 128267 depth
+        n2k_msg = self.n2k_fp.handle_rx_frame(frame)  # type: ignore[arg-type]
+        if n2k_msg is not None:
+            if n2k_msg.pgn == 127488 and len(n2k_msg.data) >= 3:
+                self._current_rpm = float(int.from_bytes(n2k_msg.data[1:3], "little")) * 0.25
+            elif n2k_msg.pgn == 128267 and len(n2k_msg.data) >= 5:
+                self._depth_meters = int.from_bytes(n2k_msg.data[1:5], "little") * 0.01
+
+        self._total_packets += 1
+
+    def _push_frame_to_ui(self, frame: object) -> None:
+        """Stream the live frame to the frontend sniffer view (F-28)."""
+        if self._window is None:
+            return
+        try:
+            data_hex = bytes(frame.data).hex()  # type: ignore[attr-defined]
+            # Serialize via json.dumps so externally sourced strings (channel
+            # names from traces/interfaces) are escaped and cannot inject
+            # script into the WebView2 context.
+            payload = json.dumps(
+                {
+                    "id": f"0x{frame.arbitration_id:03X}",  # type: ignore[attr-defined]
+                    "timestamp": round((frame.timestamp_ns or 0) / 1e9, 3),  # type: ignore[attr-defined]
+                    "channel": frame.channel_id,  # type: ignore[attr-defined]
+                    "dlc": frame.dlc,  # type: ignore[attr-defined]
+                    "data": data_hex,
+                    "isExtended": frame.is_extended,  # type: ignore[attr-defined]
+                    "isFd": frame.is_fd,  # type: ignore[attr-defined]
+                    "source": getattr(frame, "source", "physical"),
+                }
+            )
+            self._window.evaluate_js(f"if (window.onNewCanFrame) window.onNewCanFrame({payload});")
+        except (AttributeError, OSError, RuntimeError) as exc:
+            logger.debug("Live frame UI push failed", extra={"error": str(exc)})
 
     def _telemetry_loop(self) -> None:
-        """High-speed background telemetry loop feeding the frontend."""
+        """Background loop: live CAN ingestion when connected, synthetic values in DEMO mode.
+
+        Live path (F-28): bus -> FrameRouter -> decoders (J1939 / N2K) -> JS bridge.
+        The watchdog heartbeat is NOT driven from here (F-16/E-11): the UI
+        lease is only refreshed by the frontend render/rAF pulse.
+        """
         while self._running:
             time.sleep(0.05 / max(0.5, self._speed_mult))
-            self.watchdog.heartbeat()
 
-            if not self._is_simulating or self._is_estop:
+            if self._is_estop:
                 continue
 
+            # ── LIVE path: real frames off the bus (F-28) ──────────────
+            if not self._is_simulating:
+                drained = 0
+                while drained < 200:
+                    frame = self.bus.recv(timeout_s=0.01)
+                    if frame is None:
+                        break
+                    self._ingest_live_frame(frame)
+                    self._push_frame_to_ui(frame)
+                    drained += 1
+                if drained == 0:
+                    continue
+                # Live bus load estimate from routed frame rate
+                self._bus_load = min(100, int(drained / 2))
+                self._push_telemetry_tick()
+                continue
+
+            # ── DEMO path: synthetic scenario values (F-29: single module) ──
             self._sim_time += 0.05 * self._speed_mult
             t = self._sim_time
             self._total_packets += 1
@@ -246,20 +474,28 @@ class UniversalCanDesktopApp:
             self._depth_meters = depth
             self._propeller_slip = slip
 
-            # Push tick to JavaScript if window is active
-            if self._window is not None:
-                try:
-                    js_code = (
-                        f"if (window.onTelemetryTick) window.onTelemetryTick({{"
-                        f"timeSec: {t:.2f}, timeFormatted: '{t:.2f}s', rpm: {int(rpm)}, "
-                        f"turboBoostBar: {boost:.2f}, coolantTempC: {int(temp)}, "
-                        f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: {self._error_count}, "
-                        f"packVoltageV: {pack_volt:.1f}, batterySocPercent: {soc:.1f}, packCurrentA: {current:.1f}, "
-                        f"sogKnots: {sog:.1f}, depthMeters: {depth:.1f}, propellerSlipPct: {slip:.1f}}});"
-                    )
-                    self._window.evaluate_js(js_code)
-                except Exception:
-                    pass
+            self._push_telemetry_tick()
+
+    def _push_telemetry_tick(self) -> None:
+        """Push the current telemetry snapshot to the frontend (F-28)."""
+        if self._window is None:
+            return
+        t = self._sim_time
+        try:
+            js_code = (
+                f"if (window.onTelemetryTick) window.onTelemetryTick({{"
+                f"timeSec: {t:.2f}, timeFormatted: '{t:.2f}s', rpm: {int(self._current_rpm)}, "
+                f"turboBoostBar: {self._current_boost:.2f}, coolantTempC: {int(self._current_temp)}, "
+                f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: {self._error_count}, "
+                f"packVoltageV: {self._pack_voltage:.1f}, batterySocPercent: {self._battery_soc:.1f}, packCurrentA: {self._pack_current:.1f}, "
+                f"sogKnots: {self._sog_knots:.1f}, depthMeters: {self._depth_meters:.1f}, propellerSlipPct: {self._propeller_slip:.1f}}});"
+            )
+            self._window.evaluate_js(js_code)
+        except (AttributeError, OSError, RuntimeError) as exc:
+            logger.warning(
+                "Frontend telemetry push failed",
+                extra={"error": str(exc)},
+            )
 
     def _resolve_dist_html(self) -> Path:
         """Resolve frontend dist path supporting both raw Python and PyInstaller frozen .EXE bundle."""
@@ -282,6 +518,13 @@ class UniversalCanDesktopApp:
         api = DesktopApiBridge(self)
 
         self.watchdog.start()
+        # F-28: connect the real CAN bus before the ingestion loop starts
+        try:
+            self.bus.connect()
+            logger.info("CAN bus connected for live ingestion", extra={"channel": self.channel_name})
+        except (OSError, RuntimeError) as exc:
+            logger.warning("CAN bus connect failed; running in DEMO-only mode", extra={"error": str(exc)})
+
         self._thread = threading.Thread(target=self._telemetry_loop, daemon=True)
         self._thread.start()
 
