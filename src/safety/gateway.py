@@ -13,6 +13,7 @@ Enforces strict 6-stage policy evaluation order:
 from __future__ import annotations
 
 import collections
+import math
 import threading
 import time
 from collections.abc import Sequence
@@ -118,7 +119,7 @@ class TxSafetyGateway:
             name: TxBudget(capacity, refill) for name, (capacity, refill) in self.BUDGETS.items()
         }
         self._current_vehicle_speed_kmh: float = 0.0
-        self._last_speed_update_ns: int = time.monotonic_ns()
+        self._last_speed_update_ns: int = 0
         self._lock = threading.RLock()
 
         # Wire E-stop callback to halt bus TX and trigger fault state
@@ -157,11 +158,20 @@ class TxSafetyGateway:
             with self._lock:
                 self._tx_timestamps.clear()
 
-    def update_vehicle_speed(self, speed_kmh: float, timestamp_ns: int | None = None) -> None:
-        """Update live vehicle speed for dynamic interlock enforcement."""
+    def update_vehicle_speed(self, speed_kmh: float) -> None:
+        """Update live vehicle speed for dynamic interlock enforcement.
+
+        Always timestamps with time.monotonic_ns() on reception to prevent
+        clock domain skew. NaN, negative or non-finite values are treated as
+        corrupted telemetry and invalidate freshness to 0 (fail-closed).
+        """
         with self._lock:
-            self._current_vehicle_speed_kmh = max(0.0, speed_kmh)
-            self._last_speed_update_ns = timestamp_ns if timestamp_ns is not None else time.monotonic_ns()
+            if not math.isfinite(speed_kmh) or speed_kmh < 0.0:
+                self._current_vehicle_speed_kmh = float("nan")
+                self._last_speed_update_ns = 0
+                return
+            self._current_vehicle_speed_kmh = float(speed_kmh)
+            self._last_speed_update_ns = time.monotonic_ns()
 
     def validate_and_transmit(
         self,

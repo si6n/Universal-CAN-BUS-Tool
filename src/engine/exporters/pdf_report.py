@@ -68,8 +68,45 @@ class DiagnosticReportGenerator:
         else:
             dtc_rows_html = "\n".join(dtc_rows)
 
-        # Compute tamper-evident hash of report content
-        raw_to_hash = f"{metadata.vin_or_hin}|{metadata.technician_name}|{now_str}|{len(dtc_rows)}"
+        # Render summary stats table if provided (E14)
+        stats_html = ""
+        if summary_stats:
+            stats_rows = []
+            for k, v in sorted(summary_stats.items()):
+                stats_rows.append(
+                    f"<tr><td><strong>{html_mod.escape(str(k))}</strong></td><td>{html_mod.escape(str(v))}</td></tr>"
+                )
+            stats_html = f"""
+  <h2>📊 Seans Telemetri Özeti (Summary Statistics)</h2>
+  <table>
+    <thead><tr><th>Metrik / Parametre</th><th>Değer</th></tr></thead>
+    <tbody>{''.join(stats_rows)}</tbody>
+  </table>
+"""
+
+        # Compute tamper-evident hash of full canonical report content (E1)
+        canonical_dtcs = []
+        for dm in dm_messages:
+            for dtc in dm.dtcs:
+                canonical_dtcs.append(
+                    f"{dm.source_address}:{dtc.spn}:{dtc.fmi}:{dtc.occurrence_count}:{dtc.is_critical}"
+                )
+        canonical_dtcs.sort()
+
+        canonical_stats = []
+        if summary_stats:
+            for k, v in sorted(summary_stats.items()):
+                canonical_stats.append(f"{k}={v}")
+
+        raw_to_hash = (
+            f"VIN={metadata.vin_or_hin}|"
+            f"TECH={metadata.technician_name}|"
+            f"SHOP={metadata.workshop_name}|"
+            f"NOTES={metadata.notes}|"
+            f"DATE={now_str}|"
+            f"DTCS={','.join(canonical_dtcs)}|"
+            f"STATS={','.join(canonical_stats)}"
+        )
         report_sha256 = hashlib.sha256(raw_to_hash.encode("utf-8")).hexdigest().upper()
 
         html_content = f"""<!DOCTYPE html>
@@ -113,7 +150,7 @@ class DiagnosticReportGenerator:
       {dtc_rows_html}
     </tbody>
   </table>
-
+  {stats_html}
   <div class="signature">
     <p>🔒 <strong>Cryptographic Session SHA-256:</strong> {report_sha256}</p>
     <p>Platform: Universal CAN-Bus Diagnostic & Telemetry System v13.0 (SAE J1939 / NMEA 2000 / ISO 14229)</p>
@@ -126,3 +163,36 @@ class DiagnosticReportGenerator:
 
         logger.info("Generated Diagnostic Service HTML Report", extra={"file": str(path), "hash": report_sha256})
         return path
+
+    @classmethod
+    def calculate_canonical_hash(
+        cls,
+        metadata: ServiceReportMetadata,
+        dm_messages: list[DMMessage],
+        summary_stats: dict[str, str | int | float],
+        date_str: str,
+    ) -> str:
+        """Calculate canonical SHA-256 integrity hash for verification."""
+        canonical_dtcs = []
+        for dm in dm_messages:
+            for dtc in dm.dtcs:
+                canonical_dtcs.append(
+                    f"{dm.source_address}:{dtc.spn}:{dtc.fmi}:{dtc.occurrence_count}:{dtc.is_critical}"
+                )
+        canonical_dtcs.sort()
+
+        canonical_stats = []
+        if summary_stats:
+            for k, v in sorted(summary_stats.items()):
+                canonical_stats.append(f"{k}={v}")
+
+        raw_to_hash = (
+            f"VIN={metadata.vin_or_hin}|"
+            f"TECH={metadata.technician_name}|"
+            f"SHOP={metadata.workshop_name}|"
+            f"NOTES={metadata.notes}|"
+            f"DATE={date_str}|"
+            f"DTCS={','.join(canonical_dtcs)}|"
+            f"STATS={','.join(canonical_stats)}"
+        )
+        return hashlib.sha256(raw_to_hash.encode("utf-8")).hexdigest().upper()

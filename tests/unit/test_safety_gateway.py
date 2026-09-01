@@ -126,7 +126,14 @@ def test_safety_gateway_speed_interlock_and_dual_confirmation() -> None:
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x31\x01\x02\x01")
 
+    # Critical command without any speed telemetry at boot fails immediately (fail-closed)
+    with pytest.raises(SpeedDataStaleError) as exc_boot:
+        gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True)
+    assert exc_boot.value.code == "SPEED_DATA_STALE"
+    estop.reset(estop.create_reset_token())
+
     # Critical command without user confirmation fails when stationary
+    gateway.update_vehicle_speed(0.0)
     with pytest.raises(DualConfirmationRequiredError, match="Operator dual-confirmation missing") as exc_info:
         gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=False)
     assert exc_info.value.code == "CONFIRMATION_REQUIRED"
@@ -184,8 +191,7 @@ def test_safety_gateway_speed_staleness_rejection() -> None:
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x11\x01")
 
     # Set speed update timestamp to 2 seconds in the past
-    stale_ts_ns = time.monotonic_ns() - 2_000_000_000
-    gateway.update_vehicle_speed(0.0, timestamp_ns=stale_ts_ns)
+    gateway._last_speed_update_ns = time.monotonic_ns() - 2_000_000_000
 
     with pytest.raises(SpeedDataStaleError) as exc_info:
         gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True)
@@ -194,6 +200,39 @@ def test_safety_gateway_speed_staleness_rejection() -> None:
     assert estop.is_engaged is True
     assert estop.last_event is not None
     assert estop.last_event.trigger == EStopTriggerSource.SPEED_INTERLOCK_BREACH
+    bus.disconnect()
+
+
+def test_safety_gateway_nan_and_negative_speed_fail_closed() -> None:
+    """Verify that NaN or negative speeds immediately invalidate telemetry (fail-closed)."""
+    bus = VirtualBus(channel_id="safety_vbus_nan")
+    bus.connect()
+    estop = EmergencyStopSystem()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x31\x01")
+
+    # Valid initial speed
+    gateway.update_vehicle_speed(0.0)
+    assert gateway._last_speed_update_ns > 0
+
+    # Corrupt with NaN
+    gateway.update_vehicle_speed(float("nan"))
+    assert gateway._last_speed_update_ns == 0
+
+    with pytest.raises(SpeedDataStaleError):
+        gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True)
+
+    estop.reset(estop.create_reset_token())
+
+    # Corrupt with negative speed
+    gateway.update_vehicle_speed(0.0)
+    gateway.update_vehicle_speed(-15.0)
+    assert gateway._last_speed_update_ns == 0
+
+    with pytest.raises(SpeedDataStaleError):
+        gateway.validate_and_transmit(frame, is_critical_command=True, user_confirmed=True)
+
     bus.disconnect()
 
 

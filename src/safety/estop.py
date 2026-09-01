@@ -220,13 +220,35 @@ class EmergencyStopSystem:
         with self._lock:
             return self._active_challenge
 
+    def reissue_challenge(self) -> EStopChallenge:
+        """Reissue a fresh cryptographic challenge if the previous one expired or was cleared."""
+        with self._lock:
+            if not self._is_engaged:
+                raise SafetyError("Cannot issue E-Stop challenge when not engaged", code="ESTOP_NOT_ENGAGED")
+            self._active_challenge = EStopChallenge(
+                epoch=self._epoch,
+                nonce=os.urandom(16),
+                timestamp_monotonic_ns=time.monotonic_ns(),
+                timestamp_wall_ns=time.time_ns(),
+                action="ESTOP_RESET",
+                max_age_ns=self._max_token_age_ns,
+            )
+            return self._active_challenge
+
     def create_reset_token(self) -> EmergencyStopToken | None:
         """Generate a valid, signed EmergencyStopToken for the currently active challenge."""
         with self._lock:
-            if not self._is_engaged or self._active_challenge is None:
+            if not self._is_engaged:
                 return None
 
+            now_ns = time.monotonic_ns()
+            if self._active_challenge is None or (now_ns - self._active_challenge.timestamp_monotonic_ns) > self._active_challenge.max_age_ns:
+                self.reissue_challenge()
+
             challenge = self._active_challenge
+            if challenge is None:
+                return None
+
             secret = self._get_secret()
             sig = hmac.new(secret, challenge.serialize_for_signature(), hashlib.sha256).hexdigest()
 
@@ -420,13 +442,8 @@ class EmergencyStopSystem:
             secret = self._get_secret()
             structured_payload = challenge.serialize_for_signature()
             expected_sig_structured = hmac.new(secret, structured_payload, hashlib.sha256).hexdigest()
-            expected_sig_legacy = hmac.new(secret, challenge.nonce, hashlib.sha256).hexdigest()
 
-            is_valid = hmac.compare_digest(
-                sig.lower(), expected_sig_structured.lower()
-            ) or hmac.compare_digest(
-                sig.lower(), expected_sig_legacy.lower()
-            )
+            is_valid = hmac.compare_digest(sig.lower(), expected_sig_structured.lower())
 
             if not is_valid:
                 raise SafetyError("Invalid E-Stop reset token", code="ESTOP_RESET_DENIED")

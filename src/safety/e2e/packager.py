@@ -55,8 +55,11 @@ class E2ESafetyPackager:
             # Inject rolling counter
             inject_counter(payload, counter_to_use, profile)
 
-            # Compute CRC over payload containing updated counter
-            effective_dlc = frame.dlc if frame.dlc is not None else len(payload)
+            # Determine final payload length & DLC before checksum calculation
+            final_len = len(payload)
+            effective_dlc = length_to_dlc(final_len) if final_len > dlc_to_length(frame.dlc) else frame.dlc
+
+            # Compute CRC over payload containing updated counter and accurate DLC
             crc_val = compute_checksum(
                 data=payload,
                 config=profile,
@@ -66,12 +69,7 @@ class E2ESafetyPackager:
 
             # Inject computed CRC
             inject_crc(payload, crc_val, profile)
-
             sealed_data = bytes(payload)
-
-            effective_dlc = frame.dlc
-            if effective_dlc is not None and len(sealed_data) > dlc_to_length(effective_dlc):
-                effective_dlc = length_to_dlc(len(sealed_data))
 
             return CanFrame.create(
                 channel_id=frame.channel_id,

@@ -88,3 +88,42 @@ def test_report_generator_html_and_hash() -> None:
         assert "SPN 100" in content
         assert "Ali Usta" in content
         assert "Cryptographic Session SHA-256" in content
+
+
+def test_report_generator_tamper_detection() -> None:
+    meta = ServiceReportMetadata(
+        vin_or_hin="WVWZZZ3CZWE123456",
+        technician_name="Master Tech",
+        workshop_name="Bosch Car Service",
+    )
+    dtc1 = DiagnosticTroubleCode(spn=100, fmi=1, occurrence_count=2, source_address=0)
+    dm1 = DMMessage(
+        pgn=65226,
+        source_address=0,
+        malfunction_indicator_lamp=LampStatus.ON,
+        red_stop_lamp=LampStatus.OFF,
+        amber_warning_lamp=LampStatus.OFF,
+        protect_lamp=LampStatus.OFF,
+        dtcs=[dtc1],
+        timestamp_ns=1000,
+    )
+    date_str = "2026-09-01 12:00:00 UTC"
+    stats = {"Total Frames": 1000}
+
+    hash1 = DiagnosticReportGenerator.calculate_canonical_hash(meta, [dm1], stats, date_str)
+
+    # Tamper with DTC SPN
+    dtc_tampered = DiagnosticTroubleCode(spn=102, fmi=1, occurrence_count=2, source_address=0)
+    dm_tampered = DMMessage(
+        pgn=65226,
+        source_address=0,
+        malfunction_indicator_lamp=LampStatus.ON,
+        red_stop_lamp=LampStatus.OFF,
+        amber_warning_lamp=LampStatus.OFF,
+        protect_lamp=LampStatus.OFF,
+        dtcs=[dtc_tampered],
+        timestamp_ns=1000,
+    )
+    hash_tampered = DiagnosticReportGenerator.calculate_canonical_hash(meta, [dm_tampered], stats, date_str)
+
+    assert hash1 != hash_tampered, "SHA-256 must change when DTC content is modified!"

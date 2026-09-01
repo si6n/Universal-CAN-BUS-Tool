@@ -38,9 +38,20 @@ class SafeMultiplexedBus(AbstractBus):
         if self.rx_queue is None:
             raise RuntimeError("SafeMultiplexedBus failed to obtain an RX queue from FrameRouter")
 
+    @property
+    def is_connected(self) -> bool:
+        """Live connection state reflected directly from the underlying physical bus."""
+        return bool(self.physical_bus and self.physical_bus.is_connected)
+
+    @is_connected.setter
+    def is_connected(self, value: bool) -> None:
+        """Compatibility setter for base class."""
+        self._is_connected = bool(value)
+
     def connect(self) -> None:
         """Physical bus connection is managed externally (e.g. by main UI)."""
-        self.is_connected = self.physical_bus.is_connected
+        if not self.physical_bus.is_connected:
+            self.physical_bus.connect()
 
     def disconnect(self) -> None:
         """Unsubscribe from router upon teardown."""
@@ -53,16 +64,20 @@ class SafeMultiplexedBus(AbstractBus):
         is_critical_command: bool = False,
         user_confirmed: bool = False,
     ) -> None:
-        """Enforce CORE_SAFETY_FLOOR on every transmission.
-
-        Critical-command status and operator dual confirmation are decided
-        per transmission; neither can be granted once at construction time.
-        """
+        """Enforce CORE_SAFETY_FLOOR on every transmission."""
         self.gateway.validate_and_transmit(
             frame,
             is_critical_command=is_critical_command,
             user_confirmed=user_confirmed,
         )
+
+    def send_sync(self, frame: CanFrame) -> None:
+        """Synchronously transmit frame conforming to TxPort protocol."""
+        self.gateway.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False)
+
+    async def send_async(self, frame: CanFrame) -> None:
+        """Asynchronously transmit frame conforming to TxPort protocol."""
+        await self.gateway.send(frame)
 
     DEFAULT_RECV_TIMEOUT_S: ClassVar[float] = 1.0
 

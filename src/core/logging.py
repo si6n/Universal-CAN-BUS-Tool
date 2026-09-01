@@ -12,6 +12,34 @@ import time
 from typing import Any
 
 
+_RESERVED_LOG_ATTRS: frozenset[str] = frozenset({
+    "name",
+    "msg",
+    "args",
+    "levelname",
+    "levelno",
+    "pathname",
+    "filename",
+    "module",
+    "exc_info",
+    "exc_text",
+    "stack_info",
+    "lineno",
+    "funcName",
+    "created",
+    "msecs",
+    "relativeCreated",
+    "thread",
+    "threadName",
+    "processName",
+    "process",
+    "taskName",
+    "message",
+    "timestamp_ns",
+    "extra",
+})
+
+
 class JsonFormatter(logging.Formatter):
     """Custom JSON formatter producing structured log entries with nanosecond timestamps."""
 
@@ -23,7 +51,11 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
         }
 
-        # Include custom extra fields
+        # Include custom extra fields passed via logger.log(..., extra={...})
+        for key, val in record.__dict__.items():
+            if key not in _RESERVED_LOG_ATTRS and not key.startswith("_"):
+                log_data[key] = val
+
         if hasattr(record, "extra") and isinstance(record.extra, dict):
             log_data.update(record.extra)
 
