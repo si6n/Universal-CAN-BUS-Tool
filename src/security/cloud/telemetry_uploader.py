@@ -105,9 +105,15 @@ class TelemetryUploader:
         progress.uploaded_chunks = session.get("received_chunks", 0)
         self._emit(progress)
 
-        # 2. Upload chunks; skip ones already acked (resume support).
+        # 2. Upload chunks. The server's chunk PUT is idempotent (re-PUT acks),
+        #    so after an interrupted run the caller may re-upload everything.
+        #    `received_chunks` here reflects THIS session's server-side counter
+        #    (0 for a fresh session) — never treated as a contiguous prefix of
+        #    an unknown prior session (that assumption was fragile: a gap in
+        #    the middle would silently skip the wrong chunks).
+        first_unsent = progress.uploaded_chunks
         for index in range(total_chunks):
-            if index < progress.uploaded_chunks:
+            if index < first_unsent:
                 continue
 
             start = index * self.chunk_size
@@ -158,7 +164,13 @@ class TelemetryUploader:
 
     # ------------------------------------------------------------------
     def resume(self, session_id: str) -> UploadProgress:
-        """Query a session's current state to resync progress after reconnect."""
+        """Query a session's current state (status report, not a resume driver).
+
+        NOTE: this reports server-side counters for display/monitoring. To
+        continue an interrupted session, re-run upload_file — chunk PUTs are
+        idempotent, so re-sent chunks are safe; a per-chunk state query would be
+        needed for true gap-aware resume (not part of the current contract).
+        """
         resp = self.client.request("GET", f"/telematics/sessions/{session_id}")
         if resp.status != 200:
             raise LicenseError(f"Session not found: {session_id}", code="SESSION_NOT_FOUND")
