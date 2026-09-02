@@ -21,6 +21,7 @@ from src.protocols.uds.services import (
 )
 
 if TYPE_CHECKING:
+    from src.core.models.can_frame import CanFrame
     from src.hal.base import AbstractBus
 
 logger = get_logger("protocols.uds.client")

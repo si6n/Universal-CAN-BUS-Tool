@@ -400,7 +400,7 @@ base hex  timestamps absolute
     try:
         frames = VectorAscParser.parse_file(tmp_path)
         # The DLC=8/3-byte frame is rejected by the CanFrame invariant,
-        # but the DLC=2 frame survives — parse continues past the bad line.
+        # but the DLC=2 frame survives â€” parse continues past the bad line.
         assert len(frames) == 1
         assert frames[0].arbitration_id == 0x456
         assert frames[0].data == b"\xAA\xBB"
