@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.protocols.obd.models import UdsDidDefinition
 from src.protocols.uds.did_database import (
     UDS_DID_REGISTRY,
@@ -290,3 +292,24 @@ def test_uds_did_custom_registration_and_range_check() -> None:
     res_invalid = reg.decode(0x9999, bytes([0x07, 0xD0]))
     assert res_invalid.is_valid is False
     assert "above maximum 150.0" in (res_invalid.error_message or "")
+
+
+def test_parse_response_rejects_bare_sid_below_0x40() -> None:
+    """Y-08 regression: a response echoing a bare SID (< 0x40) is malformed
+    per ISO 14229 and must fail closed, never be labelled positive."""
+    from src.protocols.uds.services import UdsServiceBuilder
+
+    with pytest.raises(ValueError, match="SID"):
+        UdsServiceBuilder.parse_response(b"\x10\x00")  # bare echo, no +0x40
+
+    with pytest.raises(ValueError, match="SID"):
+        UdsServiceBuilder.parse_response(b"\x00")
+
+
+def test_parse_response_accepts_canonical_positive_echo() -> None:
+    """Y-08: the canonical SID+0x40 echo still parses as positive."""
+    from src.protocols.uds.services import UdsServiceBuilder
+
+    resp = UdsServiceBuilder.parse_response(b"\x50\x03\x00\x32")
+    assert resp.is_positive is True
+    assert resp.service_id == 0x10

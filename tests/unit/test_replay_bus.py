@@ -383,3 +383,49 @@ def test_blf_parser_nonexistent_file_raises_filenotfound() -> None:
     with pytest.raises(FileNotFoundError, match="Trace file not found"):
         VectorBlfParser.parse_file("nonexistent_path_test_blf.blf")
 
+
+
+def test_vector_asc_parser_skips_malformed_lines() -> None:
+    """Y-06 regression: a single malformed ASC line must not abort the load."""
+    content = """date Mon Aug 24 12:00:00 2026
+base hex  timestamps absolute
+// Good frame followed by a DLC/payload-mismatched frame, then a good one
+   0.000000 1  123       Rx   d 8 01 02 03
+   0.050000 1  456       Rx   d 2 AA BB
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".asc", delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    try:
+        frames = VectorAscParser.parse_file(tmp_path)
+        # The DLC=8/3-byte frame is rejected by the CanFrame invariant,
+        # but the DLC=2 frame survives — parse continues past the bad line.
+        assert len(frames) == 1
+        assert frames[0].arbitration_id == 0x456
+        assert frames[0].data == b"\xAA\xBB"
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def test_vector_asc_parser_iter_streams_lazily() -> None:
+    """Y-06: the iterator variant never materializes the whole trace."""
+    content = """date Mon Aug 24 12:00:00 2026
+base hex  timestamps absolute
+   0.000000 1  123       Rx   d 2 AA BB
+   0.050000 1  456       Rx   d 2 CC DD
+"""
+    with tempfile.NamedTemporaryFile("w", suffix=".asc", delete=False) as tmp:
+        tmp.write(content)
+        tmp_path = Path(tmp.name)
+
+    try:
+        it = VectorAscParser.parse_file_iter(tmp_path)
+        first = next(it)
+        assert first.arbitration_id == 0x123
+        second = next(it)
+        assert second.arbitration_id == 0x456
+        with pytest.raises(StopIteration):
+            next(it)
+    finally:
+        tmp_path.unlink(missing_ok=True)

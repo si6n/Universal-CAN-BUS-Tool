@@ -186,7 +186,15 @@ class UdsServiceBuilder:
             )
 
         # Positive Response (SID + 0x40)
-        orig_sid = sid - 0x40 if sid >= 0x40 else sid
+        # Y-08: ISO 14229 requires the response echo to carry SID + 0x40 —
+        # a bare SID below 0x40 is a malformed/hostile payload and must
+        # fail closed instead of being silently labelled "positive".
+        if sid < 0x40:
+            raise ValueError(
+                f"Invalid UDS positive response SID 0x{sid:02X} "
+                "(expected SID + 0x40 >= 0x40 for a positive response)"
+            )
+        orig_sid = sid - 0x40
         return UdsResponse(
             service_id=orig_sid,
             is_positive=True,

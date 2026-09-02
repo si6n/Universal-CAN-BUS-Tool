@@ -8,8 +8,10 @@ Bundles the React+Tailwind UI bundle and 133 curated DBCs into the standalone di
 from __future__ import annotations
 
 import argparse
+import hashlib
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -41,11 +43,17 @@ def run_nuitka_build(onefile: bool = False, console: bool = False) -> int:
     mode_flag = "--onefile" if onefile else "--standalone"
     console_mode = "force" if console else "disable"
 
+    # Y-13 (REVIEW-QWEN): build cache lives in a throwaway temp dir, never
+    # inside the repository — a committed/poisoned cache cannot influence
+    # the produced binary, and no stale artifacts leak into the repo.
+    cache_dir = Path(tempfile.mkdtemp(prefix="nuitka_cache_"))
+
     cmd = [
         sys.executable,
         "-m",
         "nuitka",
         mode_flag,
+        f"--cache-dir={cache_dir}",
         "--lto=yes",
         "--msvc=latest",
         "--jobs=8",
@@ -79,7 +87,27 @@ def run_nuitka_build(onefile: bool = False, console: bool = False) -> int:
     print("=" * 70)
     print(f"Command: {' '.join(cmd)}\n")
 
-    return subprocess.call(cmd)
+    exit_code = subprocess.call(cmd)
+
+    # Emit a SHA-256 manifest next to the artifact for tamper-evident
+    # distribution (also covers the PyInstaller path via dist/ contents).
+    try:
+        exe_path = output_dir / "Universal-CAN-Tool.exe"
+        if exe_path.is_file():
+            digest = hashlib.sha256(exe_path.read_bytes()).hexdigest()
+            (output_dir / "SHA256SUMS").write_text(f"{digest}  {exe_path.name}\n", encoding="utf-8")
+            print(f"SHA-256: {digest}  ({exe_path.name})")
+    except OSError as exc:
+        print(f"[WARN] Could not write SHA256SUMS: {exc}")
+
+    try:
+        import shutil
+
+        shutil.rmtree(cache_dir, ignore_errors=True)
+    except Exception:
+        pass
+
+    return exit_code
 
 
 def main() -> int:

@@ -31,6 +31,11 @@ class RP1210Client:
         # H-H-002: send/disconnect/connect race guard — client_id is read
         # and mutated from multiple threads (bus RX loop vs teardown).
         self._lifecycle_lock = threading.Lock()
+        # K-06: one pre-allocated RX scratch buffer shared by read_message
+        # calls — at 5000 msg/s a per-call create_string_buffer would hammer
+        # the allocator. Single-consumer under _lifecycle_lock.
+        self._rx_scratch = ctypes.create_string_buffer(4096)
+        self._rx_scratch_size = 4096
 
         self._load_dll()
 
@@ -121,16 +126,22 @@ class RP1210Client:
             self._dll.RP1210_GetErrorMsg.restype = ctypes.c_short
 
     def connect(self, tx_buffer_size: int = 8000, rx_buffer_size: int = 8000) -> int:
-        """Establish client connection to the RP1210 adapter."""
+        """Establish client connection to the RP1210 adapter.
+
+        Y-07: the protocol string travels as an explicitly NUL-terminated
+        C buffer — never rely on CPython's incidental bytes termination.
+        """
         if not self._dll:
             raise HardwareError("DLL not loaded")
 
-        proto_bytes = self.protocol.encode("ascii")
+        proto_buf = ctypes.create_string_buffer(
+            self.protocol.encode("ascii") + b"\x00"
+        )
         with self._lifecycle_lock:
             client_id = self._dll.RP1210_ClientConnect(
                 0,
                 ctypes.c_short(self.device_id),
-                proto_bytes,
+                proto_buf,
                 ctypes.c_long(tx_buffer_size),
                 ctypes.c_long(rx_buffer_size),
                 0,
@@ -202,6 +213,9 @@ class RP1210Client:
 
         H-C-002/H-H-003: the buffer size is validated against the c_short
         ABI (1..32767) so a misconfigured size can never corrupt memory.
+        K-06: uses the pre-allocated scratch buffer (sized 4096) instead of
+        a per-call heap allocation; requested sizes above the scratch
+        capacity allocate a temporary buffer as before.
         """
         if not (1 <= buffer_size <= 32767):
             raise HardwareError(
@@ -213,7 +227,10 @@ class RP1210Client:
             if self.client_id is None or not self._dll:
                 raise HardwareError("RP1210 client is not connected")
             client_id = self.client_id
-            rx_buffer = ctypes.create_string_buffer(buffer_size)
+            if buffer_size <= self._rx_scratch_size:
+                rx_buffer = self._rx_scratch
+            else:
+                rx_buffer = ctypes.create_string_buffer(buffer_size)
             ret = self._dll.RP1210_ReadMessage(
                 ctypes.c_short(client_id),
                 rx_buffer,

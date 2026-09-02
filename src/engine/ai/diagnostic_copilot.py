@@ -1124,7 +1124,13 @@ class AiDiagnosticCopilot:
             try:
                 return self._analyze_with_gemini(active_dtcs, telemetry_snapshot, active_ecus)
             except (urllib.error.URLError, json.JSONDecodeError, KeyError, TimeoutError, OSError) as exc:
-                logger.warning("Gemini API call failed, falling back to local expert engine", extra={"error": str(exc)})
+                # M-02: never log raw exception strings from the API path —
+                # urllib errors can echo the full request URL (which may carry
+                # the API key). Log the type + safe code only.
+                logger.warning(
+                    "Gemini API call failed, falling back to local expert engine",
+                    extra={"error_type": type(exc).__name__, "detail": getattr(exc, "reason", None)},
+                )
 
         return self._analyze_local_expert(active_dtcs, telemetry_snapshot, active_ecus)
 
@@ -1362,7 +1368,12 @@ class AiDiagnosticCopilot:
                     if answer:
                         return f"✨ **Google Gemini 2.0 Flash (Bulut Zekası):**\n\n{answer}"
             except Exception as e:
-                logger.warning(f"Live Gemini prompt failed: {e}, falling back to deterministic local expert engine")
+                # M-02: sanitized — the raw exception text may include the
+                # request URL carrying the API key (CWE-532).
+                logger.warning(
+                    "Live Gemini prompt failed, falling back to deterministic local expert engine",
+                    extra={"error_type": type(e).__name__},
+                )
 
         # 2. Fully Offline Deterministic Causal Bayesian Inference
         telemetry = {"EngineSpeed": rpm, "BoostPressure": boost_bar, "CoolantTemp": coolant_temp}

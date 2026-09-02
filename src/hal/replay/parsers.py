@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import csv
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -42,19 +43,35 @@ class VectorAscParser:
 
     @classmethod
     def parse_file(cls, file_path: str | Path, channel_prefix: str = "ch") -> list[CanFrame]:
-        """Parse complete .asc file into chronological CanFrame list."""
+        """Parse complete .asc file into chronological CanFrame list.
+
+        Y-06: a single malformed line (bad hex, DLC/payload mismatch, giant
+        timestamp) must never abort the whole load — the line is logged and
+        skipped, matching the CSV parser's resilience contract.
+        """
+        return list(cls.parse_file_iter(file_path, channel_prefix=channel_prefix))
+
+    @classmethod
+    def parse_file_iter(
+        cls, file_path: str | Path, channel_prefix: str = "ch"
+    ) -> Iterator[CanFrame]:
+        """Stream-parse .asc frames lazily (memory-friendly for huge traces)."""
         path = Path(file_path)
         if not path.exists():
             raise FileNotFoundError(f"Trace file not found: {path}")
 
-        frames: list[CanFrame] = []
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             for line_no, line in enumerate(f, 1):
-                frame = cls.parse_line(line, line_no, channel_prefix)
-                if frame:
-                    frames.append(frame)
-
-        return frames
+                try:
+                    frame = cls.parse_line(line, line_no, channel_prefix)
+                except ValueError as exc:
+                    logger.warning(
+                        "Skipping malformed ASC line",
+                        extra={"line_no": line_no, "error": str(exc)},
+                    )
+                    continue
+                if frame is not None:
+                    yield frame
 
     @classmethod
     def parse_line(cls, line: str, line_no: int = 1, channel_prefix: str = "ch") -> CanFrame | None:

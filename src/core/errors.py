@@ -24,6 +24,11 @@ class PlatformError(Exception):
         self.code = code
         self.details = details or {}
         self.cause = cause
+        # M-09: also bind Python's built-in exception chaining so the root
+        # cause surfaces in tracebacks ("The above exception was the direct
+        # cause...") instead of being visible only via to_dict().
+        if cause is not None:
+            self.__cause__ = cause
         self.timestamp_ns = time.time_ns()
 
     def to_dict(self) -> dict[str, Any]:

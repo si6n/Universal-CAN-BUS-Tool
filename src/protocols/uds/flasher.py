@@ -302,20 +302,27 @@ class EcuFlashingEngine:
             self.current_step = FlashingStep.FAILED
             self._log(f"❌ Flashing Hatası: {exc}", "error")
             if recovery_needed:
-                self._best_effort_recovery()
+                self._best_effort_recovery(config)
             raise
 
-    def _best_effort_recovery(self) -> None:
+    def _best_effort_recovery(self, config: FlashingConfig) -> None:
         """Attempt to return the ECU to a safe state after a failed flash.
 
         The incomplete transfer is deliberately NOT finalized (no 0x37); a hard
         reset (0x11 0x01) lets the bootloader validate/discard the uncommitted
         image on its own. Recovery failures are logged and swallowed so they
         never mask the original error.
+
+        K-08: the operator confirmation flows from the flashing config —
+        recovery never grants dual-confirmation on its own. (Recovery is only
+        reachable from an already operator-confirmed flashing sequence, but
+        the gateway must see the original confirmation, not a synthetic one.)
         """
         self._log("Kurtarma: ECU güvenli duruma döndürülmeye çalışılıyor (Hard Reset)...", "warning")
         try:
-            resp = self.uds_client.ecu_reset(reset_type=0x01, user_confirmed=True)
+            resp = self.uds_client.ecu_reset(
+                reset_type=0x01, user_confirmed=config.user_confirmed
+            )
             if resp.is_positive:
                 self._log("Kurtarma: ECU Hard Reset kabul edildi.", "info")
             else:

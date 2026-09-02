@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -84,6 +85,9 @@ class LicenseValidator:
         # HWM HMAC key comes from the SecretProvider vault, never hardcoded (F-04)
         self._secret_provider = secret_provider or get_default_secret_provider()
         self._hwm_key = self._load_hwm_key()
+        # M-03: serializes the rollback check + HWM anchor update so
+        # concurrent verify_token() calls cannot interleave (TOCTOU).
+        self._clock_lock = threading.Lock()
 
         # Load persisted High-Water Mark from disk if present — fail closed on
         # anything that is not a valid HMAC'd timestamp (F-04).
@@ -175,51 +179,61 @@ class LicenseValidator:
         """
         now = self.clock.now_wall_ns() // 1_000_000_000
 
-        # Anti-Clock Rollback Check
-        if now < self.last_known_clock_ts:
-            logger.critical("System clock rollback detected!", extra={"now": now, "last": self.last_known_clock_ts})
-            raise LicenseError(
-                "System clock manipulation detected. License validation halted.",
-                code="CLOCK_ROLLBACK_DETECTED",
-            )
-
-        # Monotonic counter drift / freeze cross-check (two-way, F-04)
-        if self.boot_realtime is not None and self.boot_monotonic is not None:
-            curr_mono = time.monotonic()
-            mono_elapsed = curr_mono - self.boot_monotonic
-            real_elapsed = now - self.boot_realtime
-            if abs(mono_elapsed - real_elapsed) > 60.0:
+        # M-03: rollback check, drift cross-check, HWM persist, and the
+        # in-memory anchor advance form ONE atomic critical section —
+        # concurrent verify_token() calls must never interleave a stale
+        # anchor write between the check and the update.
+        with self._clock_lock:
+            # Anti-Clock Rollback Check
+            if now < self.last_known_clock_ts:
                 logger.critical(
-                    "Monotonic counter mismatch detected!",
-                    extra={"mono_elapsed": mono_elapsed, "real_elapsed": real_elapsed},
+                    "System clock rollback detected!",
+                    extra={"now": now, "last": self.last_known_clock_ts},
                 )
                 raise LicenseError(
-                    "System clock manipulation detected (monotonic counter mismatch).",
-                    code="CLOCK_MONOTONIC_MISMATCH",
+                    "System clock manipulation detected. License validation halted.",
+                    code="CLOCK_ROLLBACK_DETECTED",
                 )
 
-        # Persist high water mark to disk (G2: two-field format keeps the
-        # grace-period anchor stable across restarts; HMAC covers both fields;
-        # G6: temp+replace so a crash mid-write never truncates the HWM).
-        # SEC-C-005: the in-memory anchor is only advanced AFTER a successful
-        # persist — otherwise a failed write would silently roll the anchor
-        # forward and mask a real clock-rollback on the next restart.
-        if self.high_water_mark_path:
-            try:
-                self.high_water_mark_path.parent.mkdir(parents=True, exist_ok=True)
-                ts_part = f"{now}:{self.last_online_sync_ts}"
-                mac = hmac.new(self._hwm_key, ts_part.encode("utf-8"), hashlib.sha256).hexdigest()
-                tmp_path = self.high_water_mark_path.with_suffix(
-                    self.high_water_mark_path.suffix + ".tmp"
-                )
-                tmp_path.write_text(f"{ts_part}.{mac}", encoding="utf-8")
-                tmp_path.replace(self.high_water_mark_path)
+            # Monotonic counter drift / freeze cross-check (two-way, F-04)
+            if self.boot_realtime is not None and self.boot_monotonic is not None:
+                curr_mono = time.monotonic()
+                mono_elapsed = curr_mono - self.boot_monotonic
+                real_elapsed = now - self.boot_realtime
+                if abs(mono_elapsed - real_elapsed) > 60.0:
+                    logger.critical(
+                        "Monotonic counter mismatch detected!",
+                        extra={"mono_elapsed": mono_elapsed, "real_elapsed": real_elapsed},
+                    )
+                    raise LicenseError(
+                        "System clock manipulation detected (monotonic counter mismatch).",
+                        code="CLOCK_MONOTONIC_MISMATCH",
+                    )
+
+            # Persist high water mark to disk (G2: two-field format keeps the
+            # grace-period anchor stable across restarts; HMAC covers both fields;
+            # G6: temp+replace so a crash mid-write never truncates the HWM).
+            # SEC-C-005: the in-memory anchor is only advanced AFTER a successful
+            # persist — otherwise a failed write would silently roll the anchor
+            # forward and mask a real clock-rollback on the next restart.
+            if self.high_water_mark_path:
+                try:
+                    self.high_water_mark_path.parent.mkdir(parents=True, exist_ok=True)
+                    ts_part = f"{now}:{self.last_online_sync_ts}"
+                    mac = hmac.new(self._hwm_key, ts_part.encode("utf-8"), hashlib.sha256).hexdigest()
+                    tmp_path = self.high_water_mark_path.with_suffix(
+                        self.high_water_mark_path.suffix + ".tmp"
+                    )
+                    tmp_path.write_text(f"{ts_part}.{mac}", encoding="utf-8")
+                    tmp_path.replace(self.high_water_mark_path)
+                    self.last_known_clock_ts = now
+                except OSError as exc:
+                    logger.warning(
+                        "Failed to persist high water mark to disk", extra={"error": str(exc)}
+                    )
+            else:
+                # No persistence configured: in-memory anchor advances directly.
                 self.last_known_clock_ts = now
-            except OSError as exc:
-                logger.warning("Failed to persist high water mark to disk", extra={"error": str(exc)})
-        else:
-            # No persistence configured: in-memory anchor advances directly.
-            self.last_known_clock_ts = now
 
         # Parse token: <payload_b64>.<sig_b64>
         parts = token_str.strip().split(".")

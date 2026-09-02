@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import threading
 import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -74,6 +75,10 @@ class UdsClient:
         self.channel_id = channel_id
         self.transport = IsoTpTransport(tx_id=tx_id, rx_id=rx_id, channel_id=channel_id)
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="uds_client")
+        # M-07: UDS exchanges are stateful (session type, security seed/key
+        # ladder) — async operations are serialized so a concurrent
+        # change_session cannot corrupt another exchange's request/response.
+        self._operation_lock = threading.Lock()
 
     def execute_async(
         self,
@@ -83,11 +88,17 @@ class UdsClient:
         error_callback: Callable[[Exception], None] | None = None,
         **kwargs: Any,
     ) -> concurrent.futures.Future[Any]:
-        """Execute a diagnostic routine asynchronously in the background thread pool."""
+        """Execute a diagnostic routine asynchronously in the background thread pool.
+
+        M-7: the wrapped routine runs under the client-wide operation lock —
+        the UDS request/response dialogue (including any multi-frame FC
+        handshakes) is a single serialized conversation with the ECU.
+        """
 
         def _worker() -> Any:
             try:
-                result = fn(*args, **kwargs)
+                with self._operation_lock:
+                    result = fn(*args, **kwargs)
                 if callback is not None:
                     try:
                         callback(result)

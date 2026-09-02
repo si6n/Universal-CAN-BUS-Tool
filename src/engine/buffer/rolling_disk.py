@@ -409,7 +409,14 @@ class RollingDiskBuffer:
         return compressed_bytes
 
     def _flush_worker_loop(self) -> None:
-        """Worker loop: drain the flush queue, compress, and write to disk (F-34)."""
+        """Worker loop: drain the flush queue, compress, and write to disk (F-34).
+
+        K-04: the loop must survive ANY exception — a dead worker silently
+        strands every queued chunk (data loss + unbounded queue growth).
+        IO/compression failures quarantine the chunk as ``.failed``; truly
+        unexpected errors are logged with traceback and the worker keeps
+        running after a short backoff.
+        """
         while True:
             item = self._flush_queue.get()
             if item is None:
@@ -422,6 +429,27 @@ class RollingDiskBuffer:
                     "Async rolling disk chunk write failed",
                     extra={"file": str(chunk_file), "error": str(exc)},
                 )
+                self._quarantine_failed_chunk(chunk_file)
+            except Exception as exc:  # noqa: BLE001 — worker must never die
+                logger.critical(
+                    "Unexpected error in rolling disk flush worker; continuing",
+                    extra={"file": str(chunk_file), "error": str(exc)},
+                    exc_info=True,
+                )
+                self._quarantine_failed_chunk(chunk_file)
+                time.sleep(1.0)
+
+    @staticmethod
+    def _quarantine_failed_chunk(chunk_file: Path) -> None:
+        """Move an unwritable chunk aside so retention cannot re-select it."""
+        try:
+            quarantine_path = chunk_file.with_suffix(chunk_file.suffix + ".failed")
+            if chunk_file.exists():
+                chunk_file.replace(quarantine_path)
+        except OSError:
+            # Even quarantine failed (disk full?): leave the file in place —
+            # retention and human operators will deal with it.
+            pass
 
     def _drain_flush_queue(self, timeout_s: float) -> None:
         """Block until the worker catches up (used by read paths for consistency)."""

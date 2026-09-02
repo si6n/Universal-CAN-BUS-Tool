@@ -74,11 +74,20 @@ def test_can_benchmark_vector_conformance(vector_name: str) -> None:
 
 
 def test_j1708_vector_rejected_by_design() -> None:
-    """Volvo MID128 (J1708/J1587 on RS-485 with payload > 8 bytes) is rejected by CAN parser."""
+    """Volvo MID128 (J1708/J1587 on RS-485 with payload > 8 bytes) is
+    rejected by the CAN parser — DLC>8 lines skipped, only the few
+    short CAN-valid lines survive.
+
+    Y-06 semantics: malformed lines are logged-and-skipped (never a hard
+    abort), so "rejected by design" means no J1708 frame is loaded.
+    """
     asc_path = VECTORS_DIR / "volvo_mid128_pid100.asc"
     assert asc_path.exists()
-    with pytest.raises(ValueError, match="Invalid DLC|DLC"):
-        VectorAscParser.parse_file(asc_path)
+    frames = VectorAscParser.parse_file(asc_path)
+    # Every loaded frame must satisfy the classic CAN DLC bound; the
+    # J1708 19-byte lines never materialize as frames.
+    assert all(f.dlc <= 8 for f in frames), "J1708 DLC>8 payloads must never parse as CAN frames"
+    assert len(frames) > 0, "The few short CAN-valid lines should still load"
 
 
 def test_replay_safety_filter_on_benchmark_vectors() -> None:

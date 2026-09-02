@@ -39,15 +39,18 @@ class _FakeRP1210Dll:
 
 
 def _make_client_with_fake_dll(read_return_value: int) -> RP1210Client:
+    import ctypes
+    import threading
+
     client = RP1210Client.__new__(RP1210Client)
     client.dll_name = "FAKE.DLL"
     client.device_id = 1
     client.protocol = "J1939"
     client.client_id = 1
     client._dll = _FakeRP1210Dll(read_return_value)  # type: ignore[assignment]
-    import threading
-
     client._lifecycle_lock = threading.Lock()  # H-H-002 lifecycle guard
+    client._rx_scratch = ctypes.create_string_buffer(4096)  # K-06 pre-allocated RX buffer
+    client._rx_scratch_size = 4096
     return client
 
 
