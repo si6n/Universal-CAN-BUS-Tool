@@ -1,0 +1,71 @@
+VERSION "Mercedes_Benz_J1939_Proprietary_v2.0"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: ECM_MB
+
+BO_ 2566892032 Mercedes_Benz_PGN_65450: 8 ECM_MB
+ SG_ Mercedes_DPF_Soot_Load_Index : 0|16@1+ (0.1,0) [0|6553.5] "%" Vector__XXX
+ SG_ Mercedes_BlueTec_Regeneration_Mode : 16|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ Mercedes_AdBlue_Dosierrate_Istwert : 24|16@1+ (0.01,0) [0|655.35] "g/s" Vector__XXX
+ SG_ Mercedes_AdBlue_Fuellstand_Kombi : 40|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Mercedes_AdBlue_Qualitaet_Konzentration : 48|8@1+ (0.1,0) [0|25.5] "%" Vector__XXX
+ SG_ Mercedes_SCR_Katalysator_Wirkungsgrad : 56|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+
+BO_ 2566893312 Mercedes_Benz_PGN_65455: 8 ECM_MB
+ SG_ Mercedes_HPEB_Motorbremse_Stufe : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ Mercedes_Retarder_Bremsmomentanforderung : 8|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Mercedes_Retarder_Kuehlmitteltemperatur : 16|16@1+ (0.03125,-273) [-273|1774.97] "°C" Vector__XXX
+ SG_ Mercedes_Dauerbremse_Statuswort : 32|32@1+ (1,0) [0|4.29497e+09] "" Vector__XXX
+
+BO_ 2566894592 Mercedes_Benz_PGN_65460: 8 ECM_MB
+ SG_ Zylinder_Mengenkorrektur_1 : 0|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Zylinder_Mengenkorrektur_2 : 8|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Zylinder_Mengenkorrektur_3 : 16|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Zylinder_Mengenkorrektur_4 : 24|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Zylinder_Mengenkorrektur_5 : 32|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Zylinder_Mengenkorrektur_6 : 40|8@1+ (0.1,-12.8) [-12.8|12.7] "mm³/Hub" Vector__XXX
+ SG_ Common_Rail_Raildruck_Istwert : 48|16@1+ (0.1,0) [0|6553.5] "bar" Vector__XXX
+
+
+BA_DEF_ BO_  "J1939PGN" INT 0 262143;
+BA_DEF_DEF_  "J1939PGN" 0;
+CM_ SG_ 2566892032 Mercedes_BlueTec_Regeneration_Mode "enum values: see Mercedes-Benz decoder MAP in project source";
+CM_ BO_ 2566892032 "PGN 65450 (0xFFAA): Mercedes-Benz proprietary layout derived from project OEM decoder";
+CM_ SG_ 2566893312 Mercedes_HPEB_Motorbremse_Stufe "enum values: see Mercedes-Benz decoder MAP in project source";
+CM_ SG_ 2566893312 Mercedes_Dauerbremse_Statuswort "enum values: see Mercedes-Benz decoder MAP in project source";
+CM_ BO_ 2566893312 "PGN 65455 (0xFFAF): Mercedes-Benz proprietary layout derived from project OEM decoder";
+CM_ BO_ 2566894592 "PGN 65460 (0xFFB4): Mercedes-Benz proprietary layout derived from project OEM decoder";
+BA_ "J1939PGN" BO_ 2566892032 65450;
+BA_ "J1939PGN" BO_ 2566893312 65455;
+BA_ "J1939PGN" BO_ 2566894592 65460;

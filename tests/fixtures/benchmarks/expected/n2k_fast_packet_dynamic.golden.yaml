@@ -1,0 +1,30 @@
+trace: "n2k_fast_packet_dynamic.asc"
+source: "converted/n2k/kees.asc"
+filter: fast_packet
+description: "NMEA2000 Fast Packet (PGN 129029 GNSS, 129025 Position) akışı. Kees N2K verisinden tipik fast-packet mesajları."
+generated: 2026-09-01
+note: "Kaynak: kees (N2K). 129029 GNSS 25,116 kare, 129025 Position 38,249 kare."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 500
+duration_s: 27.515
+dlc_distribution: {8: 500}
+unique_ids: 3
+all_extended: true
+hash_sha256_prefix: 1d29b635062513c4
+
+pg_rates:
+  - {pgn: 129025, frames: 304, rate_hz: ~11.0}
+  - {pgn: 129029, frames: 196, rate_hz: ~7.1}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 500 kare, 27.515s, 18.2 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (fast_packet) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

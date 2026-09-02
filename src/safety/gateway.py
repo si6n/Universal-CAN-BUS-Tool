@@ -1,0 +1,394 @@
+"""Dual-Confirmation TX Safety Gateway enforcing CORE_SAFETY_FLOOR and Speed Interlocks.
+
+Matches MASTER_PLAN.md Section 7, ISO 26262 ASIL-B/D, and Saha Risk Kataloğu v1.2 Sections 4, 19, 20.
+Enforces strict 6-stage policy evaluation order:
+1. Frame Sanity & Range Validation
+2. Safety State & E-Stop Status
+3. Whitelist Authorization (Fail-Closed)
+4. Speed Interlock (Stationary & Freshness)
+5. Dual Confirmation Check
+6. Rate Budget (Sliding Window in monotonic nanoseconds)
+"""
+
+from __future__ import annotations
+
+import collections
+import math
+import threading
+import time
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, ClassVar
+
+from src.core.errors import SafetyError
+from src.core.logging import get_logger
+from src.core.models.can_frame import CanFrame
+from src.safety.estop import EmergencyStopSystem, EStopTriggerSource
+from src.safety.exceptions import (
+    DualConfirmationRequiredError,
+    FrameSanityError,
+    RateLimitExceededError,
+    SpeedDataStaleError,
+    SpeedInterlockError,
+    WhitelistFailClosedError,
+    WhitelistViolationError,
+)
+
+if TYPE_CHECKING:
+    from src.hal.base import AbstractBus
+    from src.safety.state_machine import SafetySupervisor
+    from src.safety.watchdog import TxWatchdogSupervisor
+
+logger = get_logger("safety.gateway")
+
+
+class TxBudget:
+    """Monotonic token bucket: `capacity` burst tokens refilled at `refill_per_sec`."""
+
+    __slots__ = ("capacity", "refill_per_sec", "_tokens", "_last_refill_ns", "_lock")
+
+    def __init__(self, capacity: int, refill_per_sec: float) -> None:
+        self.capacity = capacity
+        self.refill_per_sec = refill_per_sec
+        self._tokens = float(capacity)
+        self._last_refill_ns = time.monotonic_ns()
+        self._lock = threading.Lock()
+
+    def try_consume(self, n: int = 1) -> bool:
+        """Consume `n` tokens if available; returns False when the bucket is dry."""
+        with self._lock:
+            now_ns = time.monotonic_ns()
+            elapsed_s = (now_ns - self._last_refill_ns) / 1e9
+            if elapsed_s > 0:
+                self._tokens = min(float(self.capacity), self._tokens + elapsed_s * self.refill_per_sec)
+                self._last_refill_ns = now_ns
+            if self._tokens >= n:
+                self._tokens -= n
+                return True
+            return False
+
+    def refund(self, n: int = 1) -> None:
+        """Refund `n` previously consumed tokens back to the bucket (capped at capacity)."""
+        with self._lock:
+            self._tokens = min(float(self.capacity), self._tokens + n)
+
+
+class TxSafetyGateway:
+    """Security and Functional Safety Gateway filtering all outgoing CAN transmissions."""
+
+    MAX_TX_RATE_PER_SEC: ClassVar[int] = 100  # Max 100 msg/s to prevent bus starvation
+    SPEED_NOISE_THRESHOLD_KMH: ClassVar[float] = 0.5  # Permitted sensor jitter / noise threshold
+    SPEED_VALIDITY_TIMEOUT_NS: ClassVar[int] = 1_000_000_000  # 1.0 second speed freshness timeout
+    RATE_LIMIT_WINDOW_NS: ClassVar[int] = 1_000_000_000  # 1.0 second sliding window (nanoseconds)
+
+    # Per-category token buckets (F-18): protocol bursts such as a J1939 BAM
+    # transfer (<=255 packets) must fit inside a single burst budget.
+    BUDGETS: ClassVar[dict[str, tuple[int, float]]] = {
+        "diagnostic": (10, 10.0),
+        "calibration": (5, 5.0),
+        "protocol_burst": (255, 100.0),
+        "default": (100, 100.0),
+    }
+
+    def __init__(
+        self,
+        bus: AbstractBus,
+        estop: EmergencyStopSystem | None = None,
+        supervisor: SafetySupervisor | None = None,
+        watchdog: TxWatchdogSupervisor | None = None,
+        whitelist_ids: set[int] | None = None,
+        whitelist_masks: Sequence[tuple[int, int]] | None = None,
+    ) -> None:
+        self.bus = bus
+        self.estop = estop or EmergencyStopSystem()
+        self.supervisor = supervisor
+        self.watchdog = watchdog
+        self.whitelist_ids: set[int] = set(whitelist_ids) if whitelist_ids is not None else set()
+        # (value, mask) pairs: an ID passes when (id & mask) == value. Used to
+        # authorize whole protocol-response families (e.g. TP.CM frames sourced
+        # from our J1939 address) without enumerating every peer address.
+        self.whitelist_masks: tuple[tuple[int, int], ...] = (
+            tuple(whitelist_masks) if whitelist_masks is not None else ()
+        )
+        # Fail-closed whitelist stage can only be bypassed through the
+        # explicit for_testing() factory — never via a constructor flag
+        # that production wiring could set by accident.
+        self._whitelist_bypass_for_testing: bool = False
+
+        self._tx_timestamps: collections.deque[int] = collections.deque()
+        self._budgets: dict[str, TxBudget] = {
+            name: TxBudget(capacity, refill) for name, (capacity, refill) in self.BUDGETS.items()
+        }
+        self._current_vehicle_speed_kmh: float = 0.0
+        self._last_speed_update_ns: int = 0
+        self._lock = threading.RLock()
+
+        # Wire E-stop callback to halt bus TX and trigger fault state
+        self.estop.register_callback(self._on_estop_triggered)
+
+        if self.supervisor:
+            self.supervisor.register_callback(self._on_safety_state_changed)
+
+    @classmethod
+    def for_testing(
+        cls,
+        bus: AbstractBus,
+        estop: EmergencyStopSystem | None = None,
+        whitelist_ids: set[int] | None = None,
+    ) -> TxSafetyGateway:
+        """Test/demo-only factory that bypasses the fail-closed whitelist stage.
+
+        Kept out of the production constructor signature on purpose: the
+        bypass is only reachable through this explicitly named factory.
+        All other policy stages (E-Stop, speed interlock, dual confirmation,
+        rate budget) remain fully enforced.
+        """
+        instance = cls(bus=bus, estop=estop, whitelist_ids=whitelist_ids)
+        instance._whitelist_bypass_for_testing = True
+        return instance
+
+    def _on_estop_triggered(self, event: object) -> None:
+        logger.warning("TX Gateway notified of E-Stop engagement. All TX halted.")
+        if self.supervisor and not self.supervisor.is_fault:
+            self.supervisor.trigger_fault("E-Stop engagement triggered from hardware/software event")
+        with self._lock:
+            self._tx_timestamps.clear()
+
+    def _on_safety_state_changed(self, old_state: object, new_state: object, reason: str) -> None:
+        if getattr(new_state, "value", str(new_state)) == "FAULT":
+            with self._lock:
+                self._tx_timestamps.clear()
+
+    def update_vehicle_speed(self, speed_kmh: float) -> None:
+        """Update live vehicle speed for dynamic interlock enforcement.
+
+        Always timestamps with time.monotonic_ns() on reception to prevent
+        clock domain skew. NaN, negative or non-finite values are treated as
+        corrupted telemetry and invalidate freshness to 0 (fail-closed).
+        """
+        with self._lock:
+            if not math.isfinite(speed_kmh) or speed_kmh < 0.0:
+                self._current_vehicle_speed_kmh = float("nan")
+                self._last_speed_update_ns = 0
+                return
+            self._current_vehicle_speed_kmh = float(speed_kmh)
+            self._last_speed_update_ns = time.monotonic_ns()
+
+    def validate_and_transmit(
+        self,
+        frame: CanFrame,
+        is_critical_command: bool = False,
+        user_confirmed: bool = False,
+        budget_category: str = "default",
+    ) -> bool:
+        """Enforce strict 6-stage policy evaluation order before transmitting onto HAL.
+
+        Lock structure: validation + token consumption under lock → snapshot estop
+        state → release lock → final estop guard with rollback → transmit outside lock.
+        This ensures watchdog/estop callbacks never block on driver I/O.
+        """
+        # -----------------------------------------------------------------
+        # PHASE 1: VALIDATION + STATE MUTATION (under gateway lock)
+        # -----------------------------------------------------------------
+        timestamp_consumed = False
+        budget_consumed = False
+
+        with self._lock:
+            now_ns = time.monotonic_ns()
+
+            # -----------------------------------------------------------------
+            # Stage 1: Frame Sanity & Range Validation
+            # -----------------------------------------------------------------
+            if not isinstance(frame, CanFrame):
+                raise FrameSanityError("Transmission rejected: Invalid frame object")
+
+            max_id = 0x1FFFFFFF if frame.is_extended else 0x7FF
+            if not (0 <= frame.arbitration_id <= max_id):
+                raise FrameSanityError(
+                    f"Frame sanity violation: ID 0x{frame.arbitration_id:X} out of range (max 0x{max_id:X})",
+                    details={"arbitration_id": frame.arbitration_id, "max_id": max_id},
+                )
+
+            if not frame.is_fd and len(frame.data) > 8:
+                raise FrameSanityError(
+                    f"Frame sanity violation: Classic CAN payload > 8 bytes (len={len(frame.data)})",
+                    details={"length": len(frame.data)},
+                )
+
+            if frame.is_fd and len(frame.data) > 64:
+                raise FrameSanityError(
+                    f"Frame sanity violation: CAN-FD payload > 64 bytes (len={len(frame.data)})",
+                    details={"length": len(frame.data)},
+                )
+
+            # -----------------------------------------------------------------
+            # Stage 2: Safety State & E-Stop Status
+            # -----------------------------------------------------------------
+            if self.supervisor is not None and not self.supervisor.is_tx_permitted:
+                raise SafetyError(
+                    f"Transmission blocked: Safety State is '{self.supervisor.current_state.value}' (TX not permitted)",
+                    code="SAFETY_STATE_BLOCKED",
+                )
+
+            if self.watchdog is not None and not self.watchdog.is_lease_valid:
+                raise SafetyError(
+                    "Transmission blocked: Watchdog lease has expired",
+                    code="WATCHDOG_LEASE_EXPIRED",
+                )
+
+            if self.estop.is_engaged:
+                raise SafetyError(
+                    "Transmission blocked: Emergency Stop is currently ENGAGED",
+                    code="ESTOP_ACTIVE",
+                )
+
+            # -----------------------------------------------------------------
+            # Stage 3: Whitelist Authorization (Fail-Closed)
+            # -----------------------------------------------------------------
+            if not self._whitelist_bypass_for_testing:
+                if not self.whitelist_ids and not self.whitelist_masks:
+                    raise WhitelistFailClosedError(
+                        "Transmission blocked: Dynamic whitelist is empty or unconfigured (Fail-Closed)",
+                    )
+                id_allowed = frame.arbitration_id in self.whitelist_ids or any(
+                    (frame.arbitration_id & mask) == value for value, mask in self.whitelist_masks
+                )
+                if not id_allowed:
+                    logger.warning(
+                        "TX Frame rejected by Whitelist filter",
+                        extra={"arbitration_id": hex(frame.arbitration_id)},
+                    )
+                    self.estop.trigger(
+                        EStopTriggerSource.UNAUTHORIZED_PAYLOAD,
+                        f"Attempted TX to non-whitelisted ID: 0x{frame.arbitration_id:08X}",
+                    )
+                    raise WhitelistViolationError(
+                        f"Transmission blocked: ID 0x{frame.arbitration_id:08X} not in whitelist",
+                        details={"arbitration_id": frame.arbitration_id},
+                    )
+
+            # -----------------------------------------------------------------
+            # Stage 4: Speed Interlock (Evaluated STRICTLY BEFORE Dual Confirmation)
+            # -----------------------------------------------------------------
+            if is_critical_command:
+                # Speed telemetry freshness check
+                if self._last_speed_update_ns == 0 or (now_ns - self._last_speed_update_ns) > self.SPEED_VALIDITY_TIMEOUT_NS:
+                    self.estop.trigger(
+                        EStopTriggerSource.SPEED_INTERLOCK_BREACH,
+                        "Critical command attempted with stale or missing vehicle speed telemetry",
+                        vehicle_speed_kmh=self._current_vehicle_speed_kmh,
+                    )
+                    raise SpeedDataStaleError(
+                        "Safety Interlock: Critical command blocked due to stale vehicle speed telemetry",
+                    )
+
+                # Speed threshold check
+                if self._current_vehicle_speed_kmh > self.SPEED_NOISE_THRESHOLD_KMH:
+                    logger.critical(
+                        "Speed interlock triggered on critical command",
+                        extra={"speed": self._current_vehicle_speed_kmh},
+                    )
+                    self.estop.trigger(
+                        EStopTriggerSource.SPEED_INTERLOCK_BREACH,
+                        f"Critical command attempted while moving ({self._current_vehicle_speed_kmh} km/h)",
+                        vehicle_speed_kmh=self._current_vehicle_speed_kmh,
+                    )
+                    raise SpeedInterlockError(
+                        f"Safety Interlock: Critical command blocked while vehicle is moving ({self._current_vehicle_speed_kmh} km/h)",
+                    )
+
+            # -----------------------------------------------------------------
+            # Stage 5: Dual Confirmation Check
+            # -----------------------------------------------------------------
+            if is_critical_command and not user_confirmed:
+                raise DualConfirmationRequiredError(
+                    "Critical command rejected: Operator dual-confirmation missing",
+                )
+
+            # -----------------------------------------------------------------
+            # Stage 6: Rate Budget Enforcement
+            # The sliding window (Stage 6a) throttles the general traffic lane.
+            # Categorised bursts are governed by their own token bucket (Stage
+            # 6b) — e.g. a J1939 BAM transfer legitimately sends up to 255
+            # packets well above MAX_TX_RATE_PER_SEC, so it is exempt from the
+            # default-lane window and bounded by its bucket instead.
+            # -----------------------------------------------------------------
+            if budget_category == "default":
+                while self._tx_timestamps:
+                    first_ts_ns = self._tx_timestamps[0]
+                    if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
+                        self._tx_timestamps.popleft()
+                    else:
+                        break
+
+                if len(self._tx_timestamps) >= self.MAX_TX_RATE_PER_SEC:
+                    logger.error("TX Rate limit exceeded! Triggering E-Stop.")
+                    self.estop.trigger(
+                        EStopTriggerSource.RATE_LIMIT_OVERFLOW,
+                        f"Exceeded max TX rate ({self.MAX_TX_RATE_PER_SEC} msg/s)",
+                    )
+                    raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
+
+                self._tx_timestamps.append(now_ns)
+                timestamp_consumed = True
+
+            # Stage 6b: per-category token bucket (F-18) — bursts like a J1939
+            # BAM transfer (<=255 packets) fit the protocol_burst budget.
+            budget = self._budgets.get(budget_category)
+            if budget is None:
+                raise FrameSanityError(
+                    f"Unknown TX budget category '{budget_category}'",
+                    details={"category": budget_category},
+                )
+            if not budget.try_consume():
+                logger.error(
+                    "TX budget exhausted",
+                    extra={"category": budget_category},
+                )
+                raise RateLimitExceededError(
+                    f"TX budget '{budget_category}' exhausted (capacity {budget.capacity})",
+                )
+            budget_consumed = True
+
+            # Snapshot estop state at the moment of lock release
+            estop_snapshot = self.estop.is_engaged
+
+        # -----------------------------------------------------------------
+        # PHASE 2: FINAL E-STOP GUARD (lock-free)
+        # estop.is_engaged acquires estop's own RLock (leaf lock), which does
+        # not enter the gateway lock ordering — no deadlock risk.
+        # -----------------------------------------------------------------
+        if estop_snapshot or self.estop.is_engaged:
+            # E-Stop was engaged either during Stage 2 validation or in the
+            # window between lock release and this check. Rollback consumed tokens.
+            with self._lock:
+                if timestamp_consumed and self._tx_timestamps:
+                    self._tx_timestamps.pop()
+                if budget_consumed:
+                    budget.refund()
+            raise SafetyError(
+                "Transmission blocked: Emergency Stop is currently ENGAGED",
+                code="ESTOP_ACTIVE",
+            )
+
+        # -----------------------------------------------------------------
+        # PHASE 3: TRANSMIT (outside lock, no rollback after this point)
+        # D8: privileged dispatch through the explicit gateway port — no
+        # more duck-typed reach into the driver's private _send_raw
+        # -----------------------------------------------------------------
+        self.bus.privileged_send(frame)
+        return True
+
+    def send_sync(self, frame: CanFrame) -> None:
+        """Synchronously transmit frame conforming to TxPort protocol."""
+        self.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False)
+
+    async def send(self, frame: CanFrame) -> None:
+        """Asynchronously transmit without blocking the running event loop (F-26/E-12).
+
+        The synchronous validation pipeline may perform blocking work (driver TX,
+        E-Stop state checks) — offloading it keeps ISO-TP CF bursts responsive.
+        """
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self.send_sync, frame)

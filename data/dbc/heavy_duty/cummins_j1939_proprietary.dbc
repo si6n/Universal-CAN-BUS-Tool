@@ -1,0 +1,66 @@
+VERSION "Cummins_J1939_Proprietary_v2.0"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: ECM_Cummins
+
+BO_ 2566853632 Cummins_PGN_65300: 8 ECM_Cummins
+ SG_ DPF_Soot_Mass_Load : 0|16@1+ (0.1,0) [0|6553.5] "g" Vector__XXX
+ SG_ DPF_Active_Regeneration_Status : 16|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ DPF_Regeneration_Inhibit_Switch : 18|2@1+ (1,0) [0|3] "" Vector__XXX
+ SG_ DPF_Warning_Lamp_State : 20|4@1+ (1,0) [0|15] "" Vector__XXX
+ SG_ DPF_Ash_Mass_Load_Index : 24|8@1+ (1,0) [0|255] "g" Vector__XXX
+ SG_ DPF_Differential_Pressure_High_Res : 32|16@1+ (0.01,0) [0|655.35] "kPa" Vector__XXX
+ SG_ DEF_Actual_Dosing_Rate : 48|16@1+ (0.01,0) [0|655.35] "g/s" Vector__XXX
+
+BO_ 2566854400 Cummins_PGN_65303: 8 ECM_Cummins
+ SG_ Cylinder_Fuel_Trim_Offset_1 : 0|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Fuel_Trim_Offset_2 : 8|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Fuel_Trim_Offset_3 : 16|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Fuel_Trim_Offset_4 : 24|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Fuel_Trim_Offset_5 : 32|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Cylinder_Fuel_Trim_Offset_6 : 40|8@1+ (0.1,-12.8) [-12.8|12.7] "mg/stroke" Vector__XXX
+ SG_ Engine_Balancing_Quality_Score : 48|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Checksum_Parity : 56|8@1+ (1,0) [0|255] "" Vector__XXX
+
+
+BA_DEF_ BO_  "J1939PGN" INT 0 262143;
+BA_DEF_DEF_  "J1939PGN" 0;
+CM_ SG_ 2566853632 DPF_Active_Regeneration_Status "enum values: see Cummins decoder MAP in project source";
+CM_ SG_ 2566853632 DPF_Regeneration_Inhibit_Switch "enum values: see Cummins decoder MAP in project source";
+CM_ SG_ 2566853632 DPF_Warning_Lamp_State "enum values: see Cummins decoder MAP in project source";
+CM_ BO_ 2566853632 "PGN 65300 (0xFF14): Cummins proprietary layout derived from project OEM decoder";
+CM_ SG_ 2566854400 Checksum_Parity "enum values: see Cummins decoder MAP in project source";
+CM_ BO_ 2566854400 "PGN 65303 (0xFF17): Cummins proprietary layout derived from project OEM decoder";
+BA_ "J1939PGN" BO_ 2566853632 65300;
+BA_ "J1939PGN" BO_ 2566854400 65303;

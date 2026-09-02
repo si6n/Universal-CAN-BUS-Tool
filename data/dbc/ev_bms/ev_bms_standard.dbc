@@ -1,0 +1,82 @@
+VERSION ""
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: BMS INVERTER
+
+BO_ 849 BMS_Limits: 8 BMS
+ SG_ ChargeVoltageLimit : 0|16@1+ (0.1,0) [0|1000] "V" INVERTER
+ SG_ MaxChargeCurrentLimit : 16|16@1+ (0.1,0) [0|1000] "A" INVERTER
+ SG_ MaxDischargeCurrentLimit : 32|16@1+ (0.1,0) [0|1000] "A" INVERTER
+ SG_ DischargeVoltageLimit : 48|16@1+ (0.1,0) [0|1000] "V" INVERTER
+
+BO_ 853 BMS_SOC_SOH: 8 BMS
+ SG_ StateOfCharge : 0|16@1+ (1,0) [0|100] "%" INVERTER
+ SG_ StateOfHealth : 16|16@1+ (1,0) [0|100] "%" INVERTER
+ SG_ StateOfChargeHighRes : 32|16@1+ (0.01,0) [0|100] "%" INVERTER
+
+BO_ 854 BMS_Telemetry: 8 BMS
+ SG_ BatteryVoltage : 0|16@1+ (0.01,0) [0|1000] "V" INVERTER
+ SG_ BatteryCurrent : 16|16@1- (0.1,0) [-1000|1000] "A" INVERTER
+ SG_ BatteryTemperature : 32|16@1- (0.1,0) [-50|150] "degC" INVERTER
+
+BO_ 858 BMS_Alarms: 8 BMS
+ SG_ GeneralAlarm : 0|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ HighVoltageAlarm : 1|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ LowVoltageAlarm : 2|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ HighTempAlarm : 3|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ LowTempAlarm : 4|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ HighChargeCurrentAlarm : 5|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ HighDischargeCurrentAlarm : 6|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ CellImbalanceWarning : 7|1@1+ (1,0) [0|1] "" INVERTER
+ SG_ InternalBmsError : 8|1@1+ (1,0) [0|1] "" INVERTER
+
+BO_ 862 BMS_Manufacturer: 8 BMS
+ SG_ ManufacturerNamePart : 0|64@1+ (1,0) [0|18446744073709551615] "" INVERTER
+
+BO_ 880 BMS_CellExtremes: 8 BMS
+ SG_ MinCellVoltage : 0|16@1+ (0.001,0) [0|6.5] "V" INVERTER
+ SG_ MaxCellVoltage : 16|16@1+ (0.001,0) [0|6.5] "V" INVERTER
+ SG_ MinCellTemp : 32|16@1- (0.1,0) [-50|150] "degC" INVERTER
+ SG_ MaxCellTemp : 48|16@1- (0.1,0) [-50|150] "degC" INVERTER
+
+CM_ "Open ESS / Marine Battery Management System (BMS-Can) CAN Database. Standard compatible with Victron Energy GX, Pylontech, BYD, SMA, Sol-Ark, and Deye inverters (500 kbps / 250 kbps).";
+CM_ BO_ 849 "0x351: BMS Battery Charge and Discharge Operating Limits";
+CM_ BO_ 853 "0x355: BMS State of Charge (SOC) and State of Health (SOH)";
+CM_ BO_ 854 "0x356: BMS Instantaneous Battery Voltage, Current, and Average Temperature";
+CM_ BO_ 858 "0x35A: BMS Protection Alarms and Warnings Bitfield";
+CM_ BO_ 862 "0x35E: BMS Manufacturer Identifier string (ASCII encoded)";
+CM_ BO_ 880 "0x370: BMS Minimum and Maximum Cell Voltage and Temperature Telemetry";
+
+BA_DEF_ "BusType" STRING;
+BA_ "BusType" "CAN";

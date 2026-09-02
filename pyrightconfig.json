@@ -1,0 +1,10 @@
+{
+  "include": [
+    "src",
+    "tests",
+    "main.py"
+  ],
+  "extraPaths": [
+    "."
+  ]
+}

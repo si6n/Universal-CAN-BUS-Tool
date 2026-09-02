@@ -1,0 +1,71 @@
+VERSION "Scania_J1939_Proprietary_v2.0"
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: EMS_Scania
+
+BO_ 2566879232 Scania_PGN_65400: 8 EMS_Scania
+ SG_ Scania_DPF_Calculated_Soot_Mass : 0|16@1+ (0.05,0) [0|3276.75] "g" Vector__XXX
+ SG_ Scania_DPF_Regeneration_State : 16|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ Scania_AdBlue_Dosing_Command : 24|8@1+ (0.1,0) [0|25.5] "g/min" Vector__XXX
+ SG_ Scania_AdBlue_Tank_Level_High_Res : 32|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Scania_AdBlue_Refractometer_Quality : 40|8@1+ (0.1,0) [0|25.5] "%" Vector__XXX
+ SG_ Scania_SCR_Catalyst_Bed_Temperature : 48|16@1+ (0.1,-40) [-40|6513.5] "°C" Vector__XXX
+
+BO_ 2566881792 Scania_PGN_65410: 8 EMS_Scania
+ SG_ Scania_Retarder_Lever_Stage_Request : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+ SG_ Scania_Retarder_Braking_Torque_Demand : 8|8@1+ (0.4,0) [0|102] "%" Vector__XXX
+ SG_ Scania_Retarder_Oil_Temperature : 16|16@1+ (0.03125,-273) [-273|1774.97] "°C" Vector__XXX
+ SG_ Scania_Retarder_Actuator_Air_Pressure : 32|8@1+ (0.05,0) [0|12.75] "bar" Vector__XXX
+
+BO_ 2566884352 Scania_PGN_65420: 8 EMS_Scania
+ SG_ Cyl_Smooth_Running_Correction_1 : 0|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_2 : 8|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_3 : 16|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_4 : 24|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_5 : 32|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_6 : 40|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_7 : 48|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+ SG_ Cyl_Smooth_Running_Correction_8 : 56|8@1+ (0.25,-32) [-32|31.75] "mm³/stroke" Vector__XXX
+
+
+BA_DEF_ BO_  "J1939PGN" INT 0 262143;
+BA_DEF_DEF_  "J1939PGN" 0;
+CM_ SG_ 2566879232 Scania_DPF_Regeneration_State "enum values: see Scania decoder MAP in project source";
+CM_ BO_ 2566879232 "PGN 65400 (0xFF78): Scania proprietary layout derived from project OEM decoder";
+CM_ SG_ 2566881792 Scania_Retarder_Lever_Stage_Request "enum values: see Scania decoder MAP in project source";
+CM_ BO_ 2566881792 "PGN 65410 (0xFF82): Scania proprietary layout derived from project OEM decoder";
+CM_ BO_ 2566884352 "PGN 65420 (0xFF8C): Scania proprietary layout derived from project OEM decoder";
+BA_ "J1939PGN" BO_ 2566879232 65400;
+BA_ "J1939PGN" BO_ 2566881792 65410;
+BA_ "J1939PGN" BO_ 2566884352 65420;

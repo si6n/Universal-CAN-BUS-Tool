@@ -1,0 +1,30 @@
+trace: "j1939_dm1_bam_multiframe.asc"
+source: "converted/j1939/j1939-hcrl_attack4.asc"
+filter: bam_dm1
+description: "J1939 DM1 BAM (Broadcast Announce Message) multiframe oturumu. HCRL attack4: TP.CM (PGN 60416) + TP.DT (PGN 60160)."
+generated: 2026-09-01
+note: "Kaynak: HCRL attack4. TP.CM 6,743 kare, TP.DT 7,117 kare."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 11140
+duration_s: 1338.643
+dlc_distribution: {8: 11140}
+unique_ids: 5
+all_extended: true
+hash_sha256_prefix: 5e632ac2c399fe12
+
+pg_rates:
+  - {pgn: 60160, frames: 7117, rate_hz: ~5.3}
+  - {pgn: 65226, frames: 4023, rate_hz: ~3.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 11140 kare, 1338.643s, 8.3 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (bam_dm1) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"

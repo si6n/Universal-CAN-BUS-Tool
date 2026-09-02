@@ -1,0 +1,28 @@
+trace: "volvo_mid128_pid100.asc"
+source: "converted/j1708/vspy_Bus Traffic DD15 post crash DDEC Reports and DDDL with time stamp Tennessee 2014 5-28-2014 1-36-06 pm_j1708.asc"
+filter: mid=0x80 pid=0x64
+description: "J1708/J1587 MID 128 PID 100 (Engine Oil Pressure) akışı. Detroit Diesel DD15 (Freightliner Cascadia) teşhis kaydından MID 128 PID 100 mesajları."
+generated: 2026-09-01
+note: "Kaynak: Cascadia DD15 post-crash DDEC Reports. MID 0x80=Engine #1, PID 0x64=Engine Oil Pressure. 1,061 kare içinden ilk 500 (gerçek araç J1587 verisi, geçerli checksum)."
+
+# Yapisal dogruluk (inspect_trace.py ile deterministik):
+frames: 500
+duration_s: 496.988
+dlc_distribution: {5: 2, 19: 498}
+unique_mids: 1
+hash_sha256_prefix: 41c893e6ad837493
+
+pid_rates:
+  - {pid: 0x64 (100), frames: 500, rate_hz: ~1.0}
+
+# HARICI DOGRULAMA:
+external_checklist:
+  - title: "Kare sayisi ve sure tutarliligi"
+    expectation: "DOGRULANDI: 500 kare, 496.988s, 1.0 Hz ort."
+    status: "confirmed"
+  - title: "Filtre dogrulugu"
+    expectation: "DOGRULANDI: tum kareler filtre (mid=0x80 pid=0x64) ile eslesiyor"
+    status: "confirmed"
+  - title: "Zaman monotonlugu"
+    expectation: "DOGRULANDI: kareler artan zaman damgasiyla siralidir."
+    status: "confirmed"
