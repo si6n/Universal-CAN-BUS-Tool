@@ -5,7 +5,7 @@ from __future__ import annotations
 import concurrent.futures
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from src.core.contracts.ports import RxSubscription, TxPort
 from src.core.errors import ProtocolError
@@ -214,16 +214,122 @@ class UdsClient:
         is_critical_command: bool = False,
         user_confirmed: bool = False,
     ) -> None:
+        """Transmit a UDS payload through the TxPort.
+
+        P-C-001 fix: multi-frame payloads are sent Flow-Control aware —
+        the First Frame goes out, then the sender waits (N_Bs) for the
+        ECU's FC(CTS) before transmitting Consecutive Frames, honouring
+        BS windowing and STmin pacing as ISO 15765-2 requires. Single
+        frames go out unchanged.
+        """
         frames = self.transport.segment_message(payload)
-        for frame in frames:
-            if hasattr(self.tx_port, "validate_and_transmit"):
-                self.tx_port.validate_and_transmit(
-                    frame,
-                    is_critical_command=is_critical_command,
-                    user_confirmed=user_confirmed,
+
+        if len(frames) <= 1:
+            for frame in frames:
+                self._tx_frame(frame, is_critical_command, user_confirmed)
+            return
+
+        # Multi-frame: FF first, then FC-gated CF transmission.
+        self._tx_frame(frames[0], is_critical_command, user_confirmed)
+        self._send_consecutive_frames_flow_controlled(
+            frames[1:], payload, is_critical_command, user_confirmed
+        )
+
+    def _tx_frame(
+        self,
+        frame: CanFrame,
+        is_critical_command: bool,
+        user_confirmed: bool,
+    ) -> None:
+        """Send one frame through the gateway TxPort choke-point."""
+        if hasattr(self.tx_port, "validate_and_transmit"):
+            self.tx_port.validate_and_transmit(
+                frame,
+                is_critical_command=is_critical_command,
+                user_confirmed=user_confirmed,
+            )
+        else:
+            self.tx_port.send_sync(frame)
+
+    # N_Bs (ISO 15765-2 §4.6.2): max wait for FC after FF/before next CF
+    N_BS_TIMEOUT_S: ClassVar[float] = 1.0
+
+    def _await_flow_control_sync(self, timeout_s: float | None = None) -> CanFrame | None:
+        """Block until a Flow Control frame from the ECU arrives (N_Bs bound)."""
+        deadline_budget = self.N_BS_TIMEOUT_S if timeout_s is None else timeout_s
+        start = time.monotonic()
+        while (time.monotonic() - start) < deadline_budget:
+            rx_frame = None
+            if self.bus is not None:
+                remaining = deadline_budget - (time.monotonic() - start)
+                rx_frame = self.bus.recv(timeout_s=min(0.05, max(0.001, remaining)))
+            if rx_frame is None:
+                continue
+
+            if rx_frame.arbitration_id != self.rx_id or len(rx_frame.data) < 3:
+                continue
+            if (rx_frame.data[0] >> 4) == 0x3:  # PCI_FLOW_CONTROL
+                return rx_frame
+        return None
+
+    def _send_consecutive_frames_flow_controlled(
+        self,
+        cf_frames: list[CanFrame],
+        payload: bytes,
+        is_critical_command: bool,
+        user_confirmed: bool,
+    ) -> None:
+        """Send CFs after FC(CTS), honouring BS windowing and STmin pacing."""
+        total = len(cf_frames)
+        idx = 0
+        wft_count = 0
+        WFT_MAX = 16
+
+        while idx < total:
+            fc = self._await_flow_control_sync()
+            if fc is None:
+                raise ProtocolError(
+                    "ISO-TP N_Bs timeout waiting for Flow Control after First Frame",
+                    code="UDS_TIMEOUT",
+                    details={"tx_id": hex(self.tx_id), "rx_id": hex(self.rx_id)},
                 )
-            else:
-                self.tx_port.send_sync(frame)
+
+            fs = fc.data[0] & 0x0F
+            if fs == 0x1:  # FS_WAIT
+                wft_count += 1
+                if wft_count > WFT_MAX:
+                    raise ProtocolError(
+                        f"ISO-TP WFTmax exceeded ({wft_count} consecutive WAIT frames)",
+                        code="UDS_TIMEOUT",
+                        details={"wft_count": wft_count},
+                    )
+                continue
+            if fs == 0x2:  # FS_OVERFLOW
+                raise ProtocolError(
+                    "ECU reported ISO-TP buffer overflow (FlowStatus.OVERFLOW)",
+                    code="UDS_BUFFER_OVERFLOW",
+                    details={"requested_length": len(payload)},
+                )
+            if fs != 0x0:  # must be CTS
+                raise ProtocolError(
+                    f"Invalid ISO-TP FlowStatus 0x{fs:X}",
+                    code="UDS_PROTOCOL_ERROR",
+                    details={"flow_status": fs},
+                )
+
+            wft_count = 0
+            bs = fc.data[1]
+            st_min = fc.data[2]
+
+            block_sent = 0
+            while idx < total:
+                if bs > 0 and block_sent >= bs:
+                    break  # block exhausted — wait for the next FC
+                if st_min > 0:
+                    time.sleep(st_min / 1000.0 if st_min <= 0x7F else 0.127)
+                self._tx_frame(cf_frames[idx], is_critical_command, user_confirmed)
+                idx += 1
+                block_sent += 1
 
     def _send_and_receive(
         self,

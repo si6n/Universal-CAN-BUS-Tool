@@ -311,8 +311,20 @@ class TxSafetyGateway:
             # 6b) — e.g. a J1939 BAM transfer legitimately sends up to 255
             # packets well above MAX_TX_RATE_PER_SEC, so it is exempt from the
             # default-lane window and bounded by its bucket instead.
+            # S-C-007 fix: the default lane is metered EXACTLY ONCE — by the
+            # sliding window — and never also through the default token
+            # bucket. The 'default' bucket exists only as the fallback for
+            # lanes that do not use the window.
             # -----------------------------------------------------------------
+            budget = self._budgets.get(budget_category)
+            if budget is None:
+                raise FrameSanityError(
+                    f"Unknown TX budget category '{budget_category}'",
+                    details={"category": budget_category},
+                )
+
             if budget_category == "default":
+                # Default lane: sliding window only (single meter)
                 while self._tx_timestamps:
                     first_ts_ns = self._tx_timestamps[0]
                     if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
@@ -330,24 +342,17 @@ class TxSafetyGateway:
 
                 self._tx_timestamps.append(now_ns)
                 timestamp_consumed = True
-
-            # Stage 6b: per-category token bucket (F-18) — bursts like a J1939
-            # BAM transfer (<=255 packets) fit the protocol_burst budget.
-            budget = self._budgets.get(budget_category)
-            if budget is None:
-                raise FrameSanityError(
-                    f"Unknown TX budget category '{budget_category}'",
-                    details={"category": budget_category},
-                )
-            if not budget.try_consume():
-                logger.error(
-                    "TX budget exhausted",
-                    extra={"category": budget_category},
-                )
-                raise RateLimitExceededError(
-                    f"TX budget '{budget_category}' exhausted (capacity {budget.capacity})",
-                )
-            budget_consumed = True
+            else:
+                # Categorised lane: token bucket only (single meter)
+                if not budget.try_consume():
+                    logger.error(
+                        "TX budget exhausted",
+                        extra={"category": budget_category},
+                    )
+                    raise RateLimitExceededError(
+                        f"TX budget '{budget_category}' exhausted (capacity {budget.capacity})",
+                    )
+                budget_consumed = True
 
             # Snapshot estop state at the moment of lock release
             estop_snapshot = self.estop.is_engaged

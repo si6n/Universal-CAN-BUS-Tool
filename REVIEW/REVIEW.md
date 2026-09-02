@@ -1121,3 +1121,62 @@ Bu rapor, **191 benzersiz bulgu** içeren ve **5 bağımsız AI motorunun çapra
 ---
 
 *Rapor Sonu. Bu belge, si6n/Universal-CAN-BUS-Tool projesi için Single Source of Truth kabul edilmelidir.*
+
+---
+
+## 🔬 DOĞRULAMA VE DÜZELTME GÜNLÜĞÜ (2026-09-02, Kanıt Temelli Denetim)
+
+> Bu bölüm, yukarıdaki raporun **gerçek kod tabanıyla tek tek doğrulanmasının** sonucudur.
+> Önemli tespit: rapordaki bulguların önemli bir kısmı **bu repoda var olmayan dosyaları** referans alıyordu
+> (muhtemelen farklı/paralel bir sürüm incelemesi). Aşağıdaki tablo durumu netleştirir.
+
+### ✅ Doğrulanan ve DÜZELTİLEN bulgular (fixler uygulandı + regression testleri eklendi)
+
+| Bulgu | Fix özeti |
+|-------|-----------|
+| **S-C-001** `reissue_challenge` TypeError | `EStopChallenge`'a `timestamp_wall_ns: int = 0` alanı eklendi (`src/safety/estop.py`) |
+| **P-C-005** `LampStatus.OTHER` AttributeError | `diagnostics.py:125` → `LampStatus.NOT_AVAILABLE` |
+| **H-C-001** RP1210 29-bit truncate | `rp1210/bus.py` tamamen yeniden yazıldı: 29-bit ID → `<id:LE32><dlc:1><payload>`; 11-bit → eski 2-byte header; protokol bazlı layout seçimi. Roundtrip testleri eklendi |
+| **P-C-001** UDS multi-frame FC yok | `UdsClient._send_payload` FC-aware: FF → FC bekle (N_Bs) → BS/STmin'e göre CF gönder; WAIT/OVERFLOW işleme alındı (`uds/client.py`) |
+| **CORE-C-001** DLC invariant | `can_frame.py`: classic CAN'da `len(data) == DLC` kesin eşitliği; FD DLC 9-15 kapasite üst sınırı |
+| **P-C-002** J1939 TP.DT lock dışı mutation | `_handle_tp_dt` gövdesi komple `_sessions_lock` (RLock) altına alındı |
+| **S-C-007** Gateway çift sayma | Default lane yalnızca sliding window ile, kategorize lane'ler yalnızca token bucket ile ölçülür — tek ölçer modeli |
+| **S-H-001** Watchdog exception isolation | `_monitor_loop` try/except ile sarıldı; thread ölürse `finally` bloğu TX yetkisini düşürür |
+| **SEC-C-001** Cloud HTTP default | `CloudConfig`: yalnızca HTTPS veya loopback HTTP; aksi halde kurulumda `SecurityError` (fail-closed) |
+| **SEC-C-004** Fingerprint log sızıntısı | `validator.py` artık yalnızca 8 karakterlik prefix loglar |
+| **SEC-C-005** HWM persist sırası | `last_known_clock_ts` yalnızca başarılı persist sonrası güncellenir |
+| **SEC-C-006** Key rotation yok | `LicenseFlow`: `kid` bazlı trusted key ring (`TRUSTED_CLOUD_PUBLIC_KEYS_B64`), bilinmeyen kid fail-closed |
+| **SEC-H-002** Tahmin edilebilir HWID fallback | Fallback'lere birincil MAC dahil edildi (klon/tahmin direnci) |
+| **L-C-001** `--launch` bypass | Production'da preflight başarısızsa exit 1; `--launch` yalnız `UCAN_LAUNCHER_DEV_OVERRIDE` env ile çalışır |
+| **L-C-002** SHA-256 opsiyonel | Hash'siz paket reddedilir (fail-closed) |
+| **L-H-001** HTTP download URL | Yalnız `https://` kabul edilir |
+| **L-H-004** License key echo | `--activate` değeri artık konsola/log'a basılmaz |
+| **UI-C-005** Mock fallback prod sızıntısı | `bridge.ts`: `requireNativeOrDev()` guard — prod build'de native bridge yoksa throw; E-Stop ve tüm cloud mock'ları kapalı |
+| **UI-C-003** Sahte flash başarısı | `EcuFlashingView.tsx`: başlıkta "DEMO/Simülasyon" rozeti, loglarda `[DEMO]` uyarıları |
+| **UI-C-004** Pseudo SHA-256 | Gerçek `crypto.subtle.digest("SHA-256", ...)` ile içerik bazlı checksum |
+| **AI-C-001** Sahte canlı telemetri | 4 EV BMS bloğu yeniden yazıldı: ölçüm varsa `telemetry` map'inden gösterilir, yoksa "Canlı ölçüm yok" uyarısı; uydurma değer üretimi kaldırıldı |
+| **H-C-004** DLL bitness | `default_rp1210_dll_name()`: process 64-bit → `RP121064.DLL`, 32-bit → `RP121032.DLL` |
+| **H-C-002/H-H-003** Buffer/c_short doğrulama | `read_message`: `1 <= buffer_size <= 32767` zorunlu; `send_message`: bytes tipi + `1..2048` uzunluk kontrolü |
+| **H-H-001/002** Lifecycle race | `PythonCanBus` ve `RP1210Client`: `_lifecycle_lock` + handle snapshot; `recv` lock dışında bekler |
+| **H-H-004** 1ms busy-poll | RP1210 `recv`: adaptif backoff (1ms → 10ms) |
+| **E-C-001** Ring buffer TOCTOU | `get_latest_view(copy=True)` varsayılan; zero-copy açık `copy=False` opt-in |
+| **E-C-003** fsync yok | `_write_chunk`: `write → flush → fsync → replace` dayanıklılık zinciri |
+
+### ❌ ÇÜRÜTÜLEN bulgular (false positive — dosyalar bu repoda YOK veya iddia geçersiz)
+
+- **UI-C-001** (WebView `nodeIntegration`): kod tabanında Electron/WebView2 yok; `desktop_app.py` **pywebview** kullanır (`webview.create_window`, `debug=False`). `nodeIntegration` hiçbir dosyada geçmiyor.
+- **P-C-003** (`eval()` RCE): hiçbir `.py` dosyasında `eval(` yok; `obd/pids.py` sabit kodlu formüller kullanır.
+- **S-C-004/S-C-005/S-M-001** (`emergency_stop.py`), **S-H-004/005** (`tx_gateway.py`), **S-M-006** (`e2e_validator.py`), **E-C-002** (`binary_ring_buffer.py`), **P-C-004** (`dm1_decoder.py` — gerçek kod `diagnostics.py` içinde ve SPN 19-bit parse **doğru**), **P-C-006** (`_bam_sessions` — gerçek kod `_reap_stale_sessions` ile temizlik yapıyor), **SEC-C-002/003**, **UI-C-002'nin dosya yolu**, **OPS-C-001/002** ve **OPS-H/M serisi**: referans verilen dosyalar/deployment dizinleri bu repoda mevcut DEĞİL.
+- **S-M-007** (NaN speed): `update_vehicle_speed` NaN'ı yakalar → `_last_speed_update_ns = 0` → stale-check bloklar; NaN critical command'i **geçemez**.
+- **S-C-002** (deadlock): `_lock` bir `RLock` — reentrant, deadlock mümkün değil.
+- Çapraz doğrulama matrisindeki "5/5", "3/5" güven skorları bu nedenle **yanıtlayıcı dosya varlığına göre yeniden yorumlanmalıdır**.
+
+### ⚠️ Kısmen doğrulanan bulgular (düzeltildi veya belgelendi)
+
+- **S-H-002** (TOCTOU pencere): `gateway.py` zaten ikinci (lock-dışı) E-Stop guard + rollback içeriyordu; kalan pencere mimari olarak belgelendi.
+- **E-C-004** (senkron callback): `router.py` callback'lerde exception isolation içeriyor; async dispatch roadmap'te bırakıldı.
+
+### 📊 Test doğrulaması
+
+Tüm suite fix'lerden sonra koşuldu: **unit 66 dosya / 1039 test ✅, integration+e2e 225 test ✅, frontend `tsc --noEmit` ✅.**
+Her P0/P1 fix için regression testi eklendi (RP1210 29-bit roundtrip, UDS FC bekleme, DLC invariant, TP.DT atomiklik, tek ölçer gateway, HTTPS zorunluluğu, hash'siz paket reddi, kid fail-closed, detached buffer view, DLL bitness).

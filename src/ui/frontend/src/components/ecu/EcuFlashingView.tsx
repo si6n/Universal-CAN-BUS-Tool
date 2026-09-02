@@ -35,6 +35,7 @@ export const EcuFlashingView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [logs, setLogs] = useState<string[]>([
+    '[DEMO] ⚠️ BU GÖRÜNÜM ŞİMDİLİK SİMÜLASYONDUR — GERÇEK CAN TRAFİĞİ GÖNDERİLMEZ.',
     '[INIT] ISO 14229 (UDS) / ISO 15765-2 (DoCAN) Flashing Altyapısı Hazırlandı.',
     '[INFO] Hedef ECU: ECM Bosch EDC17 (CAN ID: 0x7E0 / 0x7E8) @ 500 kbps',
     '[WAIT] Flash işlemine başlamak için lütfen geçerli bir firmware dosyası (.bin, .hex, .s19) seçiniz.'
@@ -158,17 +159,25 @@ export const EcuFlashingView: React.FC = () => {
     if (ext === 'hex') arch = 'Intel Hex Linear 32-bit';
     else if (ext === 's19' || ext === 's28' || ext === 's37') arch = 'Motorola S-Record 32-bit';
 
-    // Deterministic pseudo SHA-256
-    const pseudoHash = Array.from(file.name + file.size + file.lastModified)
-      .reduce((acc, char, idx) => ((acc << 5) - acc + char.charCodeAt(0) * (idx + 1)) | 0, 0)
-      .toString(16)
-      .replace('-', 'A')
-      .padStart(16, '9E3B7A1C8F4D2E0B')
-      .toUpperCase();
+    // UI-C-004: real content-derived SHA-256 via WebCrypto (the previous
+    // deterministic pseudo-hash was derived from file metadata only and
+    // masqueraded as an integrity guarantee).
+    let digestHex = '';
+    try {
+      const digestBuffer = await crypto.subtle.digest('SHA-256', bytes);
+      digestHex = Array.from(new Uint8Array(digestBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    } catch {
+      digestHex = 'UNAVAILABLE';
+    }
+    const checksum = digestHex === 'UNAVAILABLE'
+      ? 'SHA256: (hesaplanamadı — WebCrypto kullanılamıyor)'
+      : `SHA256:${digestHex.substring(0, 16)}...${digestHex.substring(digestHex.length - 8)}`;
 
     return {
       isValid: true,
-      checksum: `SHA256:${pseudoHash.substring(0, 16)}...${pseudoHash.substring(pseudoHash.length - 8)}`,
+      checksum,
       arch
     };
   };
@@ -276,6 +285,7 @@ export const EcuFlashingView: React.FC = () => {
     const initialFlashLogs = [
       ...logs,
       '------------------------------------------------------------',
+      '[DEMO] ⚠️ Simülasyon modu: aşağıdaki adımlar örnek amaçlıdır, gerçek ECU\'ya veri yazılmaz.',
       '[FLASH_START] ECU Yeniden Programlama Dizisi Başlatıldı...',
       '[SAFETY] Hız Kilidi Kontrolü: Araç Hızı == 0 km/h (Doğrulandı)',
       '[SESSION] UDS 0x10 0x03 Genişletilmiş Diyagnostik Oturumu Başlatıldı (Positive Response 0x50 0x03 OK)',
@@ -309,7 +319,8 @@ export const EcuFlashingView: React.FC = () => {
           '[EXIT] UDS 0x37 RequestTransferExit Başarılı (0x77 OK)',
           '[CHECKSUM] UDS 0x31 RoutineControl CRC32: 0x9B4C2A (Donanımsal Sağlama Eşleşti)',
           '[RESET] UDS 0x11 0x01 ECU Hard Reset Başarılı (ECU Yeniden Başlatıldı)',
-          `[SUCCESS] ✅ ${selectedFile.name} Firmware Güncellemesi %100 Başarıyla Tamamlandı!`
+          `[DEMO] ✅ ${selectedFile.name} simülasyonu tamamlandı (%100).`,
+          '[DEMO] ⚠️ Bu bir SİMÜLASYON sonucudur — gerçek bir araçta flash işlemi yapılmadı.'
         ]);
       }
     }, 100);
@@ -345,8 +356,16 @@ export const EcuFlashingView: React.FC = () => {
             <Cpu className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900">ECU Flashing & Bootloader Yöneticisi</h2>
-            <p className="text-xs text-slate-500">ISO 14229 (UDS) & ISO 15765-2 (DoCAN) Protokolü ile Güvenli Firmware Yükleme</p>
+            <h2 className="text-sm font-bold text-slate-900">
+              ECU Flashing & Bootloader Yöneticisi{' '}
+              <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-300 text-[10px] font-bold uppercase tracking-wide">
+                Demo / Simülasyon
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              ISO 14229 (UDS) & ISO 15765-2 (DoCAN) Protokolü ile Güvenli Firmware Yükleme —{' '}
+              <span className="font-semibold text-amber-600">bu görünüm CAN veriyoluyla gerçek TX yapmaz</span>
+            </p>
           </div>
         </div>
 

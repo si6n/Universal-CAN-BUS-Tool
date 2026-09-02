@@ -392,10 +392,18 @@ class RollingDiskBuffer:
         return chunk_file
 
     def _write_chunk(self, chunk_file: Path, raw_bytes: bytes) -> bytes:
-        """Compress and atomically persist one serialized chunk; returns bytes written."""
+        """Compress and atomically persist one serialized chunk; returns bytes written.
+
+        E-C-003: durability sequence write -> flush -> fsync -> replace, so
+        a power cut after the rename can never leave a truncated chunk
+        shadowing the kara kutu (black-box) recording.
+        """
         compressed_bytes = self._cctx.compress(raw_bytes)
         temporary_file = chunk_file.with_suffix(chunk_file.suffix + ".tmp")
-        temporary_file.write_bytes(compressed_bytes)
+        with open(temporary_file, "wb") as f:
+            f.write(compressed_bytes)
+            f.flush()
+            os.fsync(f.fileno())
         temporary_file.replace(chunk_file)
         self._enforce_retention()
         return compressed_bytes

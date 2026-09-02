@@ -198,11 +198,12 @@ class LicenseValidator:
                     code="CLOCK_MONOTONIC_MISMATCH",
                 )
 
-        self.last_known_clock_ts = now
-
         # Persist high water mark to disk (G2: two-field format keeps the
         # grace-period anchor stable across restarts; HMAC covers both fields;
-        # G6: temp+replace so a crash mid-write never truncates the HWM)
+        # G6: temp+replace so a crash mid-write never truncates the HWM).
+        # SEC-C-005: the in-memory anchor is only advanced AFTER a successful
+        # persist — otherwise a failed write would silently roll the anchor
+        # forward and mask a real clock-rollback on the next restart.
         if self.high_water_mark_path:
             try:
                 self.high_water_mark_path.parent.mkdir(parents=True, exist_ok=True)
@@ -213,8 +214,12 @@ class LicenseValidator:
                 )
                 tmp_path.write_text(f"{ts_part}.{mac}", encoding="utf-8")
                 tmp_path.replace(self.high_water_mark_path)
+                self.last_known_clock_ts = now
             except OSError as exc:
                 logger.warning("Failed to persist high water mark to disk", extra={"error": str(exc)})
+        else:
+            # No persistence configured: in-memory anchor advances directly.
+            self.last_known_clock_ts = now
 
         # Parse token: <payload_b64>.<sig_b64>
         parts = token_str.strip().split(".")
@@ -278,7 +283,13 @@ class LicenseValidator:
         else:
             logger.warning(
                 "Hardware fingerprint mismatch",
-                extra={"expected": self.hardware_fingerprint, "token": payload.hardware_fingerprint},
+                extra={
+                    # SEC-C-004: only a truncated prefix is logged — the full
+                    # fingerprint is a secret-grade device identity and must
+                    # not be recoverable from log files.
+                    "expected_prefix": self.hardware_fingerprint[:8],
+                    "token_prefix": payload.hardware_fingerprint[:8],
+                },
             )
             raise LicenseError(
                 "License is locked to a different machine hardware ID.",

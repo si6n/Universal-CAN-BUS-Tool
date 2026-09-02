@@ -1,8 +1,8 @@
-"""Universal CAN Cloud client integration tests (Tasks 5.3/5.4 — desktop side).
+﻿"""Universal CAN Cloud client integration tests (Tasks 5.3/5.4 â€” desktop side).
 
  Uses a local mock cloud server (in-process, real HTTP on 127.0.0.1) that
- mirrors the Universal-CAN-Cloud API contract, so the full flow — device
- registration -> license activation -> resumable telemetry upload — is
+ mirrors the Universal-CAN-Cloud API contract, so the full flow â€” device
+ registration -> license activation -> resumable telemetry upload â€” is
  exercised end-to-end without the production backend.
 """
 
@@ -70,7 +70,7 @@ class MockCloudHandler(BaseHTTPRequestHandler):
         if self.path == "/health":
             self._json(200, {"status": "ok"})
             return
-        # GET /api/v1/telematics/sessions/{sid} — resume state query
+        # GET /api/v1/telematics/sessions/{sid} â€” resume state query
         parts = self.path.split("/")
         if len(parts) == 6 and parts[4] == "sessions":
             session = STATE.sessions.get(parts[5])
@@ -109,7 +109,7 @@ class MockCloudHandler(BaseHTTPRequestHandler):
                 {
                     "iss": "universal-can-cloud",
                     "aud": "diagnostic-desktop-app",
-                    "kid": "key-2026-v1",
+                    "kid": "v1",
                     "license_id": "lic_test123",
                     "organization_id": "org_test",
                     "device_id": STATE.device_id,
@@ -240,20 +240,78 @@ def test_license_activation_full_flow(flow) -> None:
     assert claims.tier == "marine_pro"
     assert claims.features == ("j1939", "nmea2000")
     assert claims.device_id == STATE.device_id
-    assert claims.key_id == "key-2026-v1"
+    assert claims.key_id == "v1"
     assert STATE.activated
 
 
 def test_ticket_verification_rejects_forged_signature(flow) -> None:
+    import time
+
     from src.core.errors import LicenseError
 
+    # Full canonical schema signed by a hostile key — the signature check
+    # (SEC-C-006: through the kid-named trusted key) must reject it.
+    now = int(time.time())
     evil_key = Ed25519PrivateKey.generate()
-    body = json.dumps({"iss": "universal-can-cloud", "aud": "diagnostic-desktop-app"}).encode()
+    body = json.dumps(
+        {
+            "iss": "universal-can-cloud",
+            "aud": "diagnostic-desktop-app",
+            "kid": "v1",
+            "license_id": "lic_fake",
+            "organization_id": "org_x",
+            "device_id": "dev_x",
+            "tier": "marine_pro",
+            "features": ["j1939"],
+            "iat": now,
+            "exp": now + 3600,
+            "offline_until": now + 86400,
+            "schema_version": 1,
+            "nonce": "n" * 12,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
     sig = evil_key.sign(body)
     forged = base64.urlsafe_b64encode(body).decode() + "." + base64.urlsafe_b64encode(sig).decode()
 
     with pytest.raises(LicenseError, match="signature"):
         flow.verify_cloud_ticket(forged)
+
+
+def test_ticket_verification_rejects_unknown_key_id(flow) -> None:
+    """SEC-C-006 regression: a kid not in the trusted ring fails closed —
+    even when the signature itself verifies with a known key."""
+    import time
+
+    from src.core.errors import LicenseError
+
+    now = int(time.time())
+    body = json.dumps(
+        {
+            "iss": "universal-can-cloud",
+            "aud": "diagnostic-desktop-app",
+            "kid": "hostile-key-42",
+            "license_id": "lic_fake",
+            "organization_id": "org_x",
+            "device_id": "dev_x",
+            "tier": "marine_pro",
+            "features": ["j1939"],
+            "iat": now,
+            "exp": now + 3600,
+            "offline_until": now + 86400,
+            "schema_version": 1,
+            "nonce": "n" * 12,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    # Correctly signed by the REAL key — but claiming an unknown kid.
+    sig = STATE.private_key.sign(body)
+    token = base64.urlsafe_b64encode(body).decode() + "." + base64.urlsafe_b64encode(sig).decode()
+
+    with pytest.raises(LicenseError, match="unknown signing key id"):
+        flow.verify_cloud_ticket(token)
 
 
 def test_ticket_verification_rejects_wrong_issuer(flow) -> None:
@@ -262,12 +320,12 @@ def test_ticket_verification_rejects_wrong_issuer(flow) -> None:
     from src.core.errors import LicenseError
 
     now = int(time.time())
-    # Full canonical schema but a hostile issuer — must be rejected on iss/aud.
+    # Full canonical schema but a hostile issuer â€” must be rejected on iss/aud.
     body = json.dumps(
         {
             "iss": "evil-cloud",
             "aud": "diagnostic-desktop-app",
-            "kid": "key-2026-v1",
+            "kid": "v1",
             "license_id": "lic_fake",
             "organization_id": "org_x",
             "device_id": "dev_x",
@@ -299,7 +357,7 @@ def test_ticket_verification_rejects_device_mismatch(flow) -> None:
         {
             "iss": "universal-can-cloud",
             "aud": "diagnostic-desktop-app",
-            "kid": "key-2026-v1",
+            "kid": "v1",
             "license_id": "lic_valid",
             "organization_id": "org_x",
             "device_id": "alien-device-999",
@@ -327,7 +385,7 @@ def test_ticket_verification_rejects_device_mismatch(flow) -> None:
 # ---------------------------------------------------------------------------
 
 def test_telemetry_upload_end_to_end(client, tmp_path: Path) -> None:
-    # Force small chunks for the test (backend minimum is 1 MB — mock accepts any).
+    # Force small chunks for the test (backend minimum is 1 MB â€” mock accepts any).
     payload = bytes(range(256)) * 4096  # 1 MB
     session_file = tmp_path / "session.mdf4"
     session_file.write_bytes(payload)
@@ -359,7 +417,7 @@ def test_upload_rejects_missing_file(client) -> None:
 
     uploader = TelemetryUploader(client)
     with pytest.raises(LicenseError, match="not found"):
-        uploader.upload_file("Z:/yok/böyle.mf4")
+        uploader.upload_file("Z:/yok/bÃ¶yle.mf4")
 
 
 def test_resume_queries_session_state(client, tmp_path: Path) -> None:

@@ -30,6 +30,16 @@ logger = get_logger("security.cloud.license_flow")
 
 DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64 = "eX3vJQWpo/pKrkpi5Y+f7m5ooUCRbCyY201DTnAjz/Q="
 
+# SEC-C-006: trusted key ring — the ticket's `kid` selects the verification
+# key so the cloud can rotate its signing key without rebuilding clients.
+# New keys are appended here (never remove an old one until all tickets
+# carrying it have expired).
+TRUSTED_CLOUD_PUBLIC_KEYS_B64: dict[str, str] = {
+    "v1": DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64,
+}
+# Tickets issued before the `kid` scheme carry no recognizable key id.
+LEGACY_KEY_ID: str = "v1"
+
 
 @dataclass(slots=True, frozen=True)
 class CloudLicenseClaims:
@@ -64,10 +74,30 @@ class LicenseFlow:
         client: CloudClient,
         public_key: ed25519.Ed25519PublicKey,
         app_version: str = "13.0.0",
+        trusted_keys: dict[str, ed25519.Ed25519PublicKey] | None = None,
     ) -> None:
         self.client = client
         self.public_key = public_key
         self.app_version = app_version
+        # SEC-C-006: verification keys resolve through the key ring by the
+        # ticket's `kid`; the constructor key remains the default/fallback
+        # so existing wiring keeps working.
+        self._trusted_keys: dict[str, ed25519.Ed25519PublicKey] = dict(trusted_keys) if trusted_keys else {"v1": public_key}
+
+    def _resolve_key(self, kid: str) -> ed25519.Ed25519PublicKey:
+        """Select the verification key for a ticket's key id (kid).
+
+        An unknown kid fails closed — a ticket signed by an untrusted key
+        must never fall back to another key in the ring.
+        """
+        key = self._trusted_keys.get(kid)
+        if key is None:
+            raise LicenseError(
+                f"Cloud ticket references unknown signing key id '{kid}' — "
+                "update the application to trust this key.",
+                code="UNKNOWN_KEY_ID",
+            )
+        return key
 
     # ------------------------------------------------------------------
     # POST /api/v1/devices/register
@@ -166,16 +196,8 @@ class LicenseFlow:
             raise LicenseError("Cloud ticket base64 decode failed", code="TICKET_DECODE_ERROR", cause=exc) from exc
 
         try:
-            self.public_key.verify(sig_bytes, payload_bytes)
-        except InvalidSignature as exc:
-            logger.error("Cloud ticket Ed25519 signature verification FAILED")
-            raise LicenseError(
-                "Cloud license ticket signature is invalid.",
-                code="INVALID_SIGNATURE",
-                cause=exc,
-            ) from exc
-
-        try:
+            # SEC-C-006: verify with the key the ticket names (kid), not
+            # blindly with whatever single key was wired at construction.
             data: dict[str, Any] = json.loads(payload_bytes.decode("utf-8"))
         except (ValueError, UnicodeDecodeError) as exc:
             raise LicenseError("Malformed ticket payload", code="MALFORMED_PAYLOAD", cause=exc) from exc
@@ -188,6 +210,21 @@ class LicenseFlow:
             raise LicenseError("Incomplete cloud ticket schema", code="INCOMPLETE_SCHEMA")
         if data["iss"] != "universal-can-cloud" or data["aud"] != "diagnostic-desktop-app":
             raise LicenseError("Ticket issuer/audience mismatch", code="ISSUER_MISMATCH")
+
+        kid = data["kid"]
+        verification_key = self._resolve_key(kid)
+        try:
+            verification_key.verify(sig_bytes, payload_bytes)
+        except InvalidSignature as exc:
+            logger.error(
+                "Cloud ticket Ed25519 signature verification FAILED",
+                extra={"kid": kid},
+            )
+            raise LicenseError(
+                "Cloud license ticket signature is invalid.",
+                code="INVALID_SIGNATURE",
+                cause=exc,
+            ) from exc
 
         # Enforce H1 device binding check
         target_device_id = expected_device_id or self.client.get_device_id()

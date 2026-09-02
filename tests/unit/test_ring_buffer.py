@@ -210,12 +210,13 @@ def test_ring_buffer_hypothesis_property_invariants(capacity: int, append_count:
 
 
 def test_get_latest_view_is_true_zero_copy() -> None:
-    """F-33 DoD: both returned parts must share memory with the buffer storage."""
+    """F-33 DoD: with copy=False both returned parts must share memory with
+    the buffer storage (explicit zero-copy opt-in for lock-disciplined readers)."""
     buf = BinaryRingBuffer(capacity=8)
     for i in range(20):
         buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=bytes([i & 0xFF] * 4)))
 
-    old_part, new_part = buf.get_latest_view(8)
+    old_part, new_part = buf.get_latest_view(8, copy=False)
     assert len(old_part) + len(new_part) == 8
     # E-13: genuine views — no concatenate, no copy
     assert np.shares_memory(old_part, buf._buffer)
@@ -224,13 +225,31 @@ def test_get_latest_view_is_true_zero_copy() -> None:
     assert ids == list(range(12, 20))
 
 
+def test_get_latest_view_default_returns_detached_copy() -> None:
+    """E-C-001 regression: the default return is a detached copy, so a
+    concurrent writer cannot mutate data a reader still holds."""
+    buf = BinaryRingBuffer(capacity=8)
+    for i in range(8):
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=bytes([i & 0xFF] * 4)))
+
+    old_part, new_part = buf.get_latest_view(8)
+    assert not np.shares_memory(old_part, buf._buffer) or old_part.size == 0
+    snapshot_ids = list(old_part["arbitration_id"]) + list(new_part["arbitration_id"])
+
+    # Overwrite the buffer with new frames — the held copy must be unaffected
+    for i in range(100, 108):
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=bytes([i & 0xFF] * 4)))
+
+    assert snapshot_ids == list(range(0, 8))
+
+
 def test_get_latest_view_wraparound_ordering() -> None:
     """F-33: wrapped ranges return (oldest_segment, newest_segment) in order."""
     buf = BinaryRingBuffer(capacity=4)
     for i in range(10):
-        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=b""))
+        buf.append(CanFrame.create(channel_id="ch0", arbitration_id=i, data=b""))
 
-    old_part, new_part = buf.get_latest_view(3)
+    old_part, new_part = buf.get_latest_view(3, copy=False)
     # total_written=10, cap=4: last 3 frames are 7,8,9; wrap index = 10%4 = 2
     ids = list(old_part["arbitration_id"]) + list(new_part["arbitration_id"])
     assert ids == [7, 8, 9]

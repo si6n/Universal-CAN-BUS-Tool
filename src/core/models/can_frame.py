@@ -160,10 +160,24 @@ class CanFrame:
         if not self.is_fd and self.dlc > 8:
             raise ValueError(f"Classic CAN DLC cannot exceed 8, got {self.dlc}")
 
-        # Validate data byte length against DLC
+        # Validate data byte length against DLC (CORE-C-001: exact invariant).
+        # Classic CAN (DLC 0..8): len(data) must equal the DLC exactly — a
+        # frame claiming DLC=8 with 2 payload bytes is ambiguous downstream
+        # (len(data) vs dlc disagree; pad via CanFrame.create()/padded_data).
+        # CAN-FD DLC 9..15 encode capacities 12..64; the payload must fit
+        # within the DLC's capacity (padding covers the remainder on wire).
         expected_len = DLC_TO_LENGTH[self.dlc]
-        if len(self.data) > expected_len:
-            raise ValueError(f"Data length ({len(self.data)}) exceeds DLC {self.dlc} max length ({expected_len})")
+        if self.is_fd and self.dlc >= 9:
+            if not (0 < len(self.data) <= expected_len):
+                raise ValueError(
+                    f"CAN-FD data length ({len(self.data)}) exceeds DLC {self.dlc} capacity ({expected_len} bytes)"
+                )
+        elif len(self.data) != expected_len:
+            raise ValueError(
+                f"Data length ({len(self.data)}) does not match DLC {self.dlc} "
+                f"(expected exactly {expected_len} bytes; use CanFrame.create() "
+                "or padded_data for canonical construction)"
+            )
 
         # Validate enumerated attributes
         if self.direction not in self.VALID_DIRECTIONS:

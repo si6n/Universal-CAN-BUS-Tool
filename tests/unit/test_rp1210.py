@@ -45,6 +45,9 @@ def _make_client_with_fake_dll(read_return_value: int) -> RP1210Client:
     client.protocol = "J1939"
     client.client_id = 1
     client._dll = _FakeRP1210Dll(read_return_value)  # type: ignore[assignment]
+    import threading
+
+    client._lifecycle_lock = threading.Lock()  # H-H-002 lifecycle guard
     return client
 
 
@@ -110,8 +113,8 @@ class _MockRP1210Client:
         return None
 
 
-def _make_bus(mock: _MockRP1210Client | None = None) -> RP1210Bus:
-    return RP1210Bus(device_id=1, protocol="J1939", client=mock or _MockRP1210Client())
+def _make_bus(mock: _MockRP1210Client | None = None, protocol: str = "J1939") -> RP1210Bus:
+    return RP1210Bus(device_id=1, protocol=protocol, client=mock or _MockRP1210Client())
 
 
 def test_rp1210_bus_lifecycle() -> None:
@@ -134,7 +137,7 @@ def test_rp1210_bus_lifecycle() -> None:
 
 def test_rp1210_bus_send_wire_format() -> None:
     mock = _MockRP1210Client()
-    bus = _make_bus(mock)
+    bus = _make_bus(mock, protocol="CAN")  # classic 11-bit stack
     bus.connect()
 
     frame = CanFrame.create(
@@ -146,9 +149,109 @@ def test_rp1210_bus_send_wire_format() -> None:
     packet = mock.sent[0]
     header = int.from_bytes(packet[:2], "little")
     assert header & 0x0F == 4  # DLC nibble
-    assert (header >> 4) & 0x0FFF == 0x123  # 12-bit ID
+    assert (header >> 4) & 0x7FF == 0x123  # 11-bit ID
     assert packet[2:] == b"\xDE\xAD\xBE\xEF"
     assert bus.metrics.tx_frames == 1
+
+
+def test_rp1210_bus_send_29bit_j1939_wire_format() -> None:
+    """H-C-001 regression: a 29-bit J1939 ID must not be truncated to 12 bits.
+
+    0x18DAF110 is a PDU1 diagnostic request (priority 6, PGN 0xDA00,
+    destination 0xF1, source 0x10) — the old wire packing collapsed it
+    to 0x110, retargeting the frame at the wrong ECU.
+    """
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    frame = CanFrame.create(
+        channel_id=bus.channel_id, arbitration_id=0x18DAF110, data=b"\x02\x10\x00", is_extended=True
+    )
+    bus.send(frame)
+
+    assert len(mock.sent) == 1
+    packet = mock.sent[0]
+    # 4-byte LE identifier, 1-byte DLC, payload
+    assert int.from_bytes(packet[0:4], "little") == 0x18DAF110
+    assert packet[4] == 3
+    assert packet[5:] == b"\x02\x10\x00"
+
+
+def test_rp1210_bus_recv_29bit_j1939_roundtrip() -> None:
+    """H-C-001 regression: decode must round-trip a 29-bit J1939 identifier."""
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    wire = 0x18DAF110 .to_bytes(4, "little") + bytes([3]) + b"\x02\x10\x00"
+    mock.rx_queue.append(wire)
+
+    frame = bus.recv(timeout_s=0.1)
+    assert frame is not None
+    assert frame.arbitration_id == 0x18DAF110
+    assert frame.is_extended
+    assert frame.data == b"\x02\x10\x00"
+    assert frame.dlc == 3
+    assert bus.metrics.rx_frames == 1
+
+
+def test_rp1210_bus_send_rejects_11bit_on_29bit_stack() -> None:
+    """An 11-bit frame on a J1939 stack is a wiring error — fail closed."""
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    frame = CanFrame.create(
+        channel_id=bus.channel_id, arbitration_id=0x123, data=b"\x01", is_extended=False
+    )
+    with pytest.raises(HardwareError, match="29-bit"):
+        bus.send(frame)
+
+
+def test_rp1210_bus_recv_rejects_truncated_29bit_packet() -> None:
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock)
+    bus.connect()
+
+    # Header promises DLC=6 but only 2 payload bytes follow
+    wire = 0x18EBFF10 .to_bytes(4, "little") + bytes([6]) + b"\x01\x02"
+    mock.rx_queue.append(wire)
+
+    assert bus.recv(timeout_s=0.05) is None
+    assert bus.is_connected
+
+
+def test_default_rp1210_dll_matches_process_bitness() -> None:
+    """H-C-004 regression: 64-bit processes must pick RP121064.DLL."""
+    import struct
+
+    from src.hal.rp1210.bus import default_rp1210_dll_name
+
+    expected = "RP121064.DLL" if struct.calcsize("P") * 8 == 64 else "RP121032.DLL"
+    assert default_rp1210_dll_name() == expected
+
+
+def test_rp1210_client_send_message_validates_payload() -> None:
+    """H-H-005 regression: non-bytes and out-of-range payloads fail closed."""
+    client = _make_client_with_fake_dll(0)
+    client.client_id = None  # not connected
+
+    with pytest.raises(HardwareError, match="bytes"):
+        client.send_message("not-bytes")  # type: ignore[arg-type]
+
+    # Buffer-range guard fires before the connection check for valid bytes
+    client2 = _make_client_with_fake_dll(0)
+    with pytest.raises(HardwareError, match="length out of range"):
+        client2.send_message(b"\x00" * 5000)
+
+
+def test_rp1210_client_read_message_validates_buffer_size() -> None:
+    """H-H-003 regression: buffer_size above the c_short ABI is rejected."""
+    client = _make_client_with_fake_dll(0)
+
+    with pytest.raises(HardwareError, match="buffer_size out of range"):
+        client.read_message(buffer_size=40000)
 
 
 def test_rp1210_bus_send_requires_connection_and_classic_frames() -> None:
@@ -170,7 +273,7 @@ def test_rp1210_bus_send_requires_connection_and_classic_frames() -> None:
 
 def test_rp1210_bus_recv_decodes_and_times_out() -> None:
     mock = _MockRP1210Client()
-    bus = _make_bus(mock)
+    bus = _make_bus(mock, protocol="CAN")  # classic 11-bit stack
     bus.connect()
 
     # Queue a wire packet: header DLC=3, ID=0x1F5, payload

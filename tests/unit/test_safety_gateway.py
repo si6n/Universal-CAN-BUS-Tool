@@ -378,7 +378,7 @@ def _budget_gateway(channel: str) -> tuple[VirtualBus, TxSafetyGateway]:
 def test_protocol_burst_budget_allows_full_bam_transfer() -> None:
     """F-18 DoD: a full J1939 BAM transfer (255 packets) must NOT trip E-Stop."""
     bus, gateway = _budget_gateway("safety_vbus_bam")
-    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
 
     # 255 CF packets — exactly the BAM maximum; must all pass without E-Stop
     for _ in range(255):
@@ -386,6 +386,34 @@ def test_protocol_burst_budget_allows_full_bam_transfer() -> None:
 
     assert gateway.estop.is_engaged is False
     assert len(bus.sent_frames) == 255
+    bus.disconnect()
+
+
+def test_default_lane_metered_exactly_once() -> None:
+    """S-C-007 regression: the default lane is metered by the sliding window
+    ONLY — the default token bucket must never double-count it and reject
+    traffic that is well under the 100 msg/s window limit."""
+
+    class _NoSendVirtualBus(VirtualBus):
+        def privileged_send(self, frame) -> None:  # type: ignore[override]
+            pass
+
+    bus = _NoSendVirtualBus(channel_id="safety_vbus_single_meter")
+    bus.connect()
+    estop = EmergencyStopSystem()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
+
+    # Simulate the old double-metering hazard: drain the default bucket as if
+    # another consumer had used it (capacity 100). With single-metering the
+    # window — not the bucket — governs the default lane, so 100 frames pass.
+    gateway._budgets["default"]._tokens = 0.0
+    for _ in range(gateway.MAX_TX_RATE_PER_SEC):
+        assert gateway.validate_and_transmit(frame) is True
+
+    # The 101st frame within one second trips the window, as designed
+    with pytest.raises(RateLimitExceededError):
+        gateway.validate_and_transmit(frame)
     bus.disconnect()
 
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 import ctypes
 import os
 import sys
+import threading
 from types import TracebackType
 from typing import Self
 
@@ -27,6 +28,9 @@ class RP1210Client:
         self.protocol = protocol
         self.client_id: int | None = None
         self._dll: ctypes.CDLL | None = None
+        # H-H-002: send/disconnect/connect race guard — client_id is read
+        # and mutated from multiple threads (bus RX loop vs teardown).
+        self._lifecycle_lock = threading.Lock()
 
         self._load_dll()
 
@@ -122,47 +126,68 @@ class RP1210Client:
             raise HardwareError("DLL not loaded")
 
         proto_bytes = self.protocol.encode("ascii")
-        client_id = self._dll.RP1210_ClientConnect(
-            0,
-            ctypes.c_short(self.device_id),
-            proto_bytes,
-            ctypes.c_long(tx_buffer_size),
-            ctypes.c_long(rx_buffer_size),
-            0,
-        )
-
-        if client_id < 0 or client_id > 127:
-            err_desc = self.get_error_message(client_id)
-            raise HardwareError(
-                f"RP1210_ClientConnect failed with error code {client_id}: {err_desc}",
-                code="HARDWARE_CONNECT_FAILED",
-                details={"error_code": client_id, "description": err_desc},
+        with self._lifecycle_lock:
+            client_id = self._dll.RP1210_ClientConnect(
+                0,
+                ctypes.c_short(self.device_id),
+                proto_bytes,
+                ctypes.c_long(tx_buffer_size),
+                ctypes.c_long(rx_buffer_size),
+                0,
             )
 
-        self.client_id = int(client_id)
+            if client_id < 0 or client_id > 127:
+                err_desc = self.get_error_message(client_id)
+                raise HardwareError(
+                    f"RP1210_ClientConnect failed with error code {client_id}: {err_desc}",
+                    code="HARDWARE_CONNECT_FAILED",
+                    details={"error_code": client_id, "description": err_desc},
+                )
+
+            self.client_id = int(client_id)
         logger.info("Connected to RP1210 adapter", extra={"client_id": client_id, "device_id": self.device_id})
         return int(client_id)
 
     def disconnect(self) -> None:
         """Gracefully disconnect from the RP1210 adapter."""
-        if self.client_id is not None and self._dll:
-            ret = self._dll.RP1210_ClientDisconnect(ctypes.c_short(self.client_id))
-            if ret != RP1210ErrorCode.NO_ERRORS:
-                logger.warning("RP1210_ClientDisconnect returned error", extra={"error_code": ret})
-            self.client_id = None
+        with self._lifecycle_lock:
+            if self.client_id is not None and self._dll:
+                ret = self._dll.RP1210_ClientDisconnect(ctypes.c_short(self.client_id))
+                if ret != RP1210ErrorCode.NO_ERRORS:
+                    logger.warning("RP1210_ClientDisconnect returned error", extra={"error_code": ret})
+                self.client_id = None
 
     def send_message(self, message_bytes: bytes, block: bool = False) -> None:
-        """Transmit raw frame through RP1210 bus."""
-        if self.client_id is None or not self._dll:
-            raise HardwareError("RP1210 client is not connected")
+        """Transmit raw frame through RP1210 bus.
 
-        ret = self._dll.RP1210_SendMessage(
-            ctypes.c_short(self.client_id),
-            message_bytes,
-            ctypes.c_short(len(message_bytes)),
-            0,
-            1 if block else 0,
-        )
+        H-H-005: the message must be genuine bytes of sane length — a stray
+        None or oversized buffer would crash the vendor DLL.
+        """
+        if not isinstance(message_bytes, (bytes, bytearray)):
+            raise HardwareError(
+                f"RP1210_SendMessage requires bytes, got {type(message_bytes).__name__}",
+                code="HARDWARE_FRAME_REJECTED",
+            )
+        message_bytes = bytes(message_bytes)
+        if not (1 <= len(message_bytes) <= 2048):
+            raise HardwareError(
+                f"RP1210_SendMessage message length out of range (1..2048): {len(message_bytes)}",
+                code="HARDWARE_FRAME_REJECTED",
+            )
+
+        with self._lifecycle_lock:
+            # H-H-002: snapshot the handle under the lock so a concurrent
+            # disconnect cannot swap it mid-call (TOCTOU).
+            if self.client_id is None or not self._dll:
+                raise HardwareError("RP1210 client is not connected")
+            client_id = self.client_id
+            ret = self._dll.RP1210_SendMessage(
+                ctypes.c_short(client_id),
+                message_bytes,
+                ctypes.c_short(len(message_bytes)),
+                0,
+                1 if block else 0,
+            )
 
         if ret != RP1210ErrorCode.NO_ERRORS:
             err_desc = self.get_error_message(ret)
@@ -173,37 +198,48 @@ class RP1210Client:
             )
 
     def read_message(self, buffer_size: int = 2048, block: bool = False) -> bytes | None:
-        """Read received packet from RP1210 queue. Returns None if queue is empty."""
-        if self.client_id is None or not self._dll:
-            raise HardwareError("RP1210 client is not connected")
+        """Read received packet from RP1210 queue. Returns None if queue is empty.
 
-        rx_buffer = ctypes.create_string_buffer(buffer_size)
-        ret = self._dll.RP1210_ReadMessage(
-            ctypes.c_short(self.client_id),
-            rx_buffer,
-            ctypes.c_short(buffer_size),
-            1 if block else 0,
-        )
+        H-C-002/H-H-003: the buffer size is validated against the c_short
+        ABI (1..32767) so a misconfigured size can never corrupt memory.
+        """
+        if not (1 <= buffer_size <= 32767):
+            raise HardwareError(
+                f"RP1210_ReadMessage buffer_size out of range (1..32767): {buffer_size}",
+                code="HARDWARE_CONFIG_INVALID",
+            )
 
-        # RP1210 error codes start at 128, so only 1..127 can be a genuine
-        # byte count; ret >= 128 is an error code, not data length.
-        if 0 < ret < 128:
-            return bytes(rx_buffer.raw[:ret])
-        if ret == 0:
-            return None  # Queue empty
+        with self._lifecycle_lock:
+            if self.client_id is None or not self._dll:
+                raise HardwareError("RP1210 client is not connected")
+            client_id = self.client_id
+            rx_buffer = ctypes.create_string_buffer(buffer_size)
+            ret = self._dll.RP1210_ReadMessage(
+                ctypes.c_short(client_id),
+                rx_buffer,
+                ctypes.c_short(buffer_size),
+                1 if block else 0,
+            )
 
-        # Error code returned (ret < 0 or ret >= 128)
-        err_code = abs(ret)
-        if err_code == RP1210ErrorCode.ERR_RX_QUEUE_FULL:
-            logger.warning("RP1210 RX Queue is full; frame drops may occur")
-            return None
+            # RP1210 error codes start at 128, so only 1..127 can be a genuine
+            # byte count; ret >= 128 is an error code, not data length.
+            if 0 < ret < 128:
+                return bytes(rx_buffer.raw[:ret])
+            if ret == 0:
+                return None  # Queue empty
 
-        err_desc = self.get_error_message(err_code)
-        raise HardwareError(
-            f"RP1210_ReadMessage failed: {err_desc}",
-            code="HARDWARE_READ_FAILED",
-            details={"error_code": err_code, "description": err_desc},
-        )
+            # Error code returned (ret < 0 or ret >= 128)
+            err_code = abs(ret)
+            if err_code == RP1210ErrorCode.ERR_RX_QUEUE_FULL:
+                logger.warning("RP1210 RX Queue is full; frame drops may occur")
+                return None
+
+            err_desc = self.get_error_message(err_code)
+            raise HardwareError(
+                f"RP1210_ReadMessage failed: {err_desc}",
+                code="HARDWARE_READ_FAILED",
+                details={"error_code": err_code, "description": err_desc},
+            )
 
     def get_error_message(self, error_code: int) -> str:
         """Fetch descriptive error string from RP1210 DLL or fallback dictionary."""

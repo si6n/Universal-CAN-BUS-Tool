@@ -1,10 +1,15 @@
 """RP1210Bus — AbstractBus adapter for the TMC RP1210 client.
 
-RP1210 wire format (J1708/J1939 raw CAN framing): a 2-byte little-endian
-header (bits 0-3: DLC, bits 4-15: 12-bit CAN identifier) followed by the
-payload bytes. For 29-bit extended IDs used by J1939 the RP1210 protocol
-stack handles PDU1/PDU2 layout natively; the adapter only marshals between
-that wire form and the platform CanFrame model.
+Wire formats marshalled by the adapter (H-C-001 fix):
+
+* 29-bit extended IDs (J1939 and ISO 15765-4 on RP1210): 4-byte
+  little-endian 29-bit CAN identifier, 1 byte DLC, then the payload.
+* 11-bit classic IDs: 2-byte little-endian header (bits 0-3: DLC,
+  bits 4-15: 11-bit CAN identifier) followed by the payload.
+
+Reception selects the layout from the negotiated client protocol: the
+"J1939" protocol stack always delivers 29-bit frames in the 4+1 form,
+while classic CAN protocols use the compact 2-byte header.
 """
 
 from __future__ import annotations
@@ -20,6 +25,20 @@ from src.hal.rp1210.client import RP1210Client
 
 logger = get_logger("hal.rp1210.bus")
 
+# 29-bit extended identifier mask (J1939 / ISO 15765-4 addressing)
+_EXT_ID_MASK: int = 0x1FFFFFFF
+
+
+def default_rp1210_dll_name() -> str:
+    """Select the RP1210 DLL matching the running process bitness (H-C-004).
+
+    A 64-bit interpreter cannot load the 32-bit RP121032.DLL (and vice
+    versa); the vendor ships both entry points per the TMC RP1210 spec.
+    """
+    import struct
+
+    return "RP121064.DLL" if struct.calcsize("P") * 8 == 64 else "RP121032.DLL"
+
 
 class RP1210Bus(AbstractBus):
     """AbstractBus implementation over a TMC RP1210 vendor adapter (K4-a)."""
@@ -27,13 +46,18 @@ class RP1210Bus(AbstractBus):
     DEFAULT_TX_BUFFER: ClassVar[int] = 8000
     DEFAULT_RX_BUFFER: ClassVar[int] = 8000
     MAX_CLASSIC_PAYLOAD: ClassVar[int] = 8
+    # Protocols whose RP1210 stacks deliver 29-bit frames in the
+    # 4-byte-ID + 1-byte-DLC layout (case-insensitive).
+    _EXTENDED_ID_PROTOCOLS: ClassVar[frozenset[str]] = frozenset(
+        {"j1939", "j1939t", "iso15765", "iso_tp"}
+    )
 
     def __init__(
         self,
         device_id: int = 1,
         protocol: str = "J1939",
         bitrate: int = 250000,
-        dll_name: str = "RP121032.DLL",
+        dll_name: str | None = None,
         client: RP1210Client | None = None,
     ) -> None:
         super().__init__(channel_id=f"rp1210_dev{device_id}", bitrate=bitrate, is_fd=False)
@@ -41,11 +65,18 @@ class RP1210Bus(AbstractBus):
         self.protocol = protocol
         # Client may be injected for testing (a pre-mocked RP1210Client);
         # otherwise the real vendor DLL is loaded from System32 (D7 order).
+        # H-C-004: the DLL entry point must match the process bitness.
+        effective_dll = dll_name or default_rp1210_dll_name()
         self._client = client or RP1210Client(
-            dll_name=dll_name, device_id=device_id, protocol=protocol
+            dll_name=effective_dll, device_id=device_id, protocol=protocol
         )
         self.metrics = BusMetrics(channel_id=self.channel_id, bitrate=bitrate)
         self.metrics.state = BusState.DISCONNECTED
+
+    @property
+    def _uses_extended_id_layout(self) -> bool:
+        """True when the negotiated protocol speaks the 29-bit 4+1 layout."""
+        return self.protocol.strip().lower() in self._EXTENDED_ID_PROTOCOLS
 
     # ------------------------------------------------------------------
     # AbstractBus contract
@@ -84,7 +115,12 @@ class RP1210Bus(AbstractBus):
             self.metrics.state = BusState.DISCONNECTED
 
     def send(self, frame: CanFrame) -> None:
-        """Transmit a frame via the RP1210 adapter (canonical TX, D8)."""
+        """Transmit a frame via the RP1210 adapter (canonical TX, D8).
+
+        Wire layout (H-C-001):
+          - extended (29-bit) IDs: ``<id:LE32><dlc:1><payload>``
+          - classic (11-bit) IDs:  ``<(id<<4 | dlc):LE16><payload>``
+        """
         if not self.is_connected:
             raise HardwareError("Cannot send: RP1210 bus is not connected")
         if frame.is_fd:
@@ -93,18 +129,36 @@ class RP1210Bus(AbstractBus):
                 code="HARDWARE_FRAME_REJECTED",
             )
         data = bytes(frame.data[: self.MAX_CLASSIC_PAYLOAD])
-        header = (frame.arbitration_id & 0x0FFF) << 4 | (len(data) & 0x0F)
-        self._client.send_message(
-            header.to_bytes(2, "little") + data,
-        )
+
+        if frame.is_extended or self._uses_extended_id_layout:
+            # 29-bit identifier path — J1939 PDU1/PDU2 and ISO 15765-4.
+            # Reject 11-bit frames on a 29-bit protocol stack rather than
+            # silently re-labelling them extended.
+            if not frame.is_extended:
+                raise HardwareError(
+                    "11-bit frame sent on a 29-bit (J1939/ISO 15765) protocol stack",
+                    code="HARDWARE_FRAME_REJECTED",
+                )
+            wire = (frame.arbitration_id & _EXT_ID_MASK).to_bytes(4, "little") + bytes([len(data)]) + data
+        else:
+            header = (frame.arbitration_id & 0x7FF) << 4 | (len(data) & 0x0F)
+            wire = header.to_bytes(2, "little") + data
+
+        self._client.send_message(wire)
         self.metrics.tx_frames += 1
 
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
-        """Poll one frame from the RP1210 RX queue within the timeout."""
+        """Poll one frame from the RP1210 RX queue within the timeout.
+
+        H-H-004: adaptive backoff — the first empty polls stay at 1 ms
+        latency for burst traffic, then relax toward 10 ms so an idle bus
+        no longer burns a full CPU core per channel in busy-polling.
+        """
         if not self.is_connected:
             raise HardwareError("Cannot receive: RP1210 bus is not connected")
 
         deadline = time.monotonic() + (timeout_s if timeout_s is not None else 0.1)
+        poll_interval = 0.001
         while True:
             try:
                 raw = self._client.read_message(block=False)
@@ -114,7 +168,7 @@ class RP1210Bus(AbstractBus):
                 logger.warning("RP1210 read error; skipping", extra={"error": str(exc)})
                 return None
 
-            if raw is not None and len(raw) >= 2:
+            if raw is not None and (len(raw) >= 5 if self._uses_extended_id_layout else len(raw) >= 2):
                 frame = self._decode_rp1210_packet(raw)
                 if frame is not None:
                     self.metrics.rx_frames += 1
@@ -122,17 +176,54 @@ class RP1210Bus(AbstractBus):
 
             if time.monotonic() >= deadline:
                 return None
-            time.sleep(0.001)
+            time.sleep(poll_interval)
+            # Exponential-ish backoff capped at 10 ms while idle
+            poll_interval = min(poll_interval * 2.0, 0.010)
 
     # ------------------------------------------------------------------
     # RP1210 wire format marshalling
     # ------------------------------------------------------------------
 
     def _decode_rp1210_packet(self, raw: bytes) -> CanFrame | None:
-        """Decode a 2-byte-header RP1210 packet into a CanFrame."""
+        """Decode an RP1210 packet into a CanFrame (layout by protocol)."""
+        # 29-bit extended layout: 4-byte LE identifier + 1-byte DLC.
+        if self._uses_extended_id_layout:
+            if len(raw) < 5:
+                logger.warning(
+                    "RP1210 extended packet shorter than 4+1 header; dropped",
+                    extra={"length": len(raw)},
+                )
+                return None
+            arb_id = int.from_bytes(raw[0:4], "little") & _EXT_ID_MASK
+            dlc = raw[4] & 0x0F
+            payload = raw[5 : 5 + dlc]
+
+            if len(payload) < dlc:
+                logger.warning(
+                    "RP1210 packet shorter than declared DLC; dropped",
+                    extra={"declared_dlc": dlc, "actual": len(payload)},
+                )
+                return None
+
+            return CanFrame(
+                channel_id=self.channel_id,
+                arbitration_id=arb_id,
+                dlc=dlc,
+                data=bytes(payload),
+                is_extended=True,
+                is_fd=False,
+                direction="rx",
+                timestamp_ns=time.time_ns(),
+            )
+
+        # Classic 11-bit layout: 2-byte header (DLC low nibble, ID in bits 4-15).
+        if len(raw) < 2:
+            logger.warning("RP1210 packet shorter than 2-byte header; dropped", extra={"length": len(raw)})
+            return None
+
         header = int.from_bytes(raw[:2], "little")
         dlc = header & 0x0F
-        arb_id = (header >> 4) & 0x0FFF
+        arb_id = (header >> 4) & 0x7FF
         payload = raw[2 : 2 + dlc]
 
         if len(payload) < dlc:

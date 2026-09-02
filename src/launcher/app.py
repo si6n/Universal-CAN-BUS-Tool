@@ -21,6 +21,17 @@ from src.launcher.updater import UpdateInfo, UpdateManager
 logger = get_logger("launcher.app")
 
 
+def _dev_override_enabled() -> bool:
+    """True only in a development/test environment (L-C-001).
+
+    Production builds must never honor --launch past a failed preflight;
+    the override requires an explicit opt-in environment variable.
+    """
+    import os
+
+    return bool(os.environ.get("UCAN_LAUNCHER_DEV_OVERRIDE") or os.environ.get("PYTEST_CURRENT_TEST"))
+
+
 @dataclass(slots=True, frozen=True)
 class LauncherPreflightReport:
     """Consolidated preflight readiness report."""
@@ -101,7 +112,8 @@ def main() -> int:
     launcher = UniversalCanLauncher()
 
     if args.activate:
-        print(f"Activating license key: {args.activate}...")
+        # L-H-004: never echo the license key itself to the console/logs
+        print("Activating license key...")
         try:
             claims = launcher.auth_manager.activate_with_key(args.activate, device_name=args.device_name)
             print(f"License Activated Successfully! Tier: {claims.tier}, Features: {list(claims.features)}")
@@ -131,10 +143,17 @@ def main() -> int:
     if args.check_only:
         return 0 if report.can_launch else 1
 
-    if report.can_launch or args.launch:
+    # L-C-001: --launch must never bypass preflight DRM/auth gating in
+    # production builds. It stays a developer convenience only.
+    if report.can_launch:
         return launcher.launch_main_app(extra_args=unknown)
 
-    return 0
+    if args.launch and _dev_override_enabled():
+        print("WARNING: --launch dev override active — bypassing preflight gate.")
+        return launcher.launch_main_app(extra_args=unknown)
+
+    print("Preflight FAILED: launch aborted. Use --check-only for diagnostics.")
+    return 1
 
 
 if __name__ == "__main__":

@@ -121,11 +121,32 @@ class UpdateManager:
         destination_path: Path | str,
         progress_callback: Callable[[int, int, float], None] | None = None,
     ) -> bool:
-        """Download update file and verify SHA-256 hash."""
+        """Download update file and verify SHA-256 hash.
+
+        L-C-002: an update without a SHA-256 hash is rejected — an unsigned
+        package must never execute on the operator's machine.
+        L-H-001: download URLs must be HTTPS.
+        """
         dest = Path(destination_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         if not update_info.download_url:
+            return False
+
+        # L-H-001: only HTTPS transport for update binaries
+        if not update_info.download_url.lower().startswith("https://"):
+            logger.error(
+                "Update download rejected: URL is not HTTPS",
+                extra={"download_url": update_info.download_url},
+            )
+            return False
+
+        # L-C-002: hash-less packages fail closed (supply-chain guard)
+        if not update_info.sha256_hash:
+            logger.error(
+                "Update rejected: manifest provides no SHA-256 hash",
+                extra={"version": update_info.latest_version},
+            )
             return False
 
         try:
@@ -141,11 +162,10 @@ class UpdateManager:
                         pct = round((bytes_downloaded / total_size) * 100, 1)
                         progress_callback(bytes_downloaded, total_size, pct)
 
-            if update_info.sha256_hash:
-                if not self.verify_file_sha256(temp_dest, update_info.sha256_hash):
-                    temp_dest.unlink(missing_ok=True)
-                    logger.error("Downloaded update SHA-256 hash mismatch. File discarded.")
-                    return False
+            if not self.verify_file_sha256(temp_dest, update_info.sha256_hash):
+                temp_dest.unlink(missing_ok=True)
+                logger.error("Downloaded update SHA-256 hash mismatch. File discarded.")
+                return False
 
             temp_dest.replace(dest)
             logger.info("Update downloaded and verified successfully", extra={"path": str(dest)})

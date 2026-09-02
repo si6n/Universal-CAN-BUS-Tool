@@ -122,7 +122,7 @@ class J1939DiagnosticService:
             return DMMessage(
                 pgn=pgn,
                 source_address=source_address,
-                malfunction_indicator_lamp=LampStatus.OTHER,
+                malfunction_indicator_lamp=LampStatus.NOT_AVAILABLE,
                 red_stop_lamp=LampStatus.OFF,
                 amber_warning_lamp=LampStatus.OFF,
                 protect_lamp=LampStatus.OFF,

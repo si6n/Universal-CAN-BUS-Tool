@@ -68,6 +68,9 @@ class EStopChallenge:
     timestamp_monotonic_ns: int
     action: str = "ESTOP_RESET"
     max_age_ns: int = DEFAULT_TOKEN_MAX_AGE_NS
+    # Wall-clock capture for audit correlation only — never used in TTL or
+    # signature math (monotonic clock is authoritative there).
+    timestamp_wall_ns: int = 0
 
     def serialize_for_signature(self) -> bytes:
         """Deterministic serialization for HMAC computation."""

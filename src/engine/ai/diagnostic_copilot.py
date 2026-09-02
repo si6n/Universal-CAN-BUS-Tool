@@ -831,47 +831,88 @@ class CausalBayesianInferenceEngine:
         can_id_hex = can_id_match.group(1).upper() if can_id_match else ""
 
         # EV BMS Specific Frames
+        # AI-C-001 fix: these frames describe WHAT the ID carries, not live
+        # measurements. Fabricated voltage/SOC/isolation numbers previously
+        # looked like real telemetry; real values flow through the
+        # frame -> decoder -> signal pipeline (the `telemetry` mapping) and
+        # are injected below when available.
         if "1808E5" in can_id_hex or "0x1808E5F4" in user_query:
-            return (
-                "⚡ **EV BMS Batarya Hücre Voltajları & Dengeleme (0x1808E5F4 - PGN 61447):**\n\n"
-                "• **Protokol:** ISO 11898-2 (EV Yüksek Voltaj BMS Ağı)\n"
-                "• **Kaynak Düğüm:** Batarya Yönetim Sistemi (BMS ECU - 0xF4)\n"
-                "• **Min Hücre Voltajı:** 3.78 V\n"
-                "• **Max Hücre Voltajı:** 3.80 V\n"
-                "• **Hücre Voltaj Farkı (Delta V):** 20 mV (<30 mV Nominal Denge Aralığında)\n\n"
-                "📊 **Sistem Durumu:**\n"
-                "Batarya hücreleri arasındaki voltaj farkı (cell delta) güvenli sınırlar içerisindedir. Hücre içi aşırı şarj veya derin deşarj riski tespit edilmedi; CSC denetleyicileri aktif pasif dengeleme (balancing) modundadır."
-            )
+            cell_min = telemetry.get("bms_cell_voltage_min_v")
+            cell_max = telemetry.get("bms_cell_voltage_max_v")
+            lines = [
+                "⚡ **EV BMS Batarya Hücre Voltajları & Dengeleme (0x1808E5F4 - PGN 61447):**\n\n",
+                "• **Protokol:** ISO 11898-2 (EV Yüksek Voltaj BMS Ağı)\n",
+                "• **Kaynak Düğüm:** Batarya Yönetim Sistemi (BMS ECU - 0xF4)\n",
+            ]
+            if cell_min is not None and cell_max is not None:
+                delta_mv = (cell_max - cell_min) * 1000.0
+                lines.append(f"• **Min Hücre Voltajı:** {cell_min:.3f} V (ölçüm)\n")
+                lines.append(f"• **Max Hücre Voltajı:** {cell_max:.3f} V (ölçüm)\n")
+                lines.append(f"• **Hücre Voltaj Farkı (Delta V):** {delta_mv:.0f} mV\n\n")
+                lines.append(
+                    "📊 **Sistem Durumu:** Yukarıdaki değerler canlı telemetri süzgecinden "
+                    "okunmuştur; hücre dengesi nominal aralıkta (<30 mV) tutulmalıdır.\n"
+                )
+            else:
+                lines.append(
+                    "\n⚠️ **Canlı ölçüm yok:** Bu oturumda bu kare için çözülmüş sinyal bulunamadı. "
+                    "Gerçek hücre voltajları için aracı CAN ağına bağlayın ve BMS süzgecini etkinleştirin.\n"
+                )
+            return "".join(lines)
 
         if "1807E5" in can_id_hex or "0x1807E5F4" in user_query:
-            return (
-                "⚡ **EV BMS Şarj & Sağlık Durumu (0x1807E5F4 - PGN 61446):**\n\n"
-                "• **Protokol:** ISO 11898-2 (EV Yüksek Voltaj BMS)\n"
-                "• **Batarya Şarj Seviyesi (SOC):** %78.4\n"
-                "• **Batarya Sağlık Durumu (SOH):** %98.0\n"
-                "• **Maksimum Şarj Kabul Limiti:** 120 kW (DC Hızlı Şarj Hazır)\n\n"
-                "✅ Batarya kapasite sağlığı ve hücre ömrü nominal aralıkta."
-            )
+            soc = telemetry.get("bms_soc_percent")
+            soh = telemetry.get("bms_soh_percent")
+            lines = [
+                "⚡ **EV BMS Şarj & Sağlık Durumu (0x1807E5F4 - PGN 61446):**\n\n",
+                "• **Protokol:** ISO 11898-2 (EV Yüksek Voltaj BMS)\n",
+            ]
+            if soc is not None:
+                lines.append(f"• **Batarya Şarj Seviyesi (SOC):** %{soc:.1f} (ölçüm)\n")
+            else:
+                lines.append("• **Batarya Şarj Seviyesi (SOC):** canlı ölçüm bekleniyor\n")
+            if soh is not None:
+                lines.append(f"• **Batarya Sağlık Durumu (SOH):** %{soh:.1f} (ölçüm)\n\n")
+                lines.append("✅ Değerler canlı telemetri süzgecinden okunmuştur.\n")
+            else:
+                lines.append(
+                    "\n⚠️ **Canlı ölçüm yok:** SOH/SOC değerleri bu oturumda çözülmedi. "
+                    "Bu kare, batarya şarj ve sağlık sinyallerini taşır; gerçek değerler için BMS telemetrisini etkinleştirin.\n"
+                )
+            return "".join(lines)
 
         if "1809E5" in can_id_hex or "0x1809E5F4" in user_query:
-            return (
-                "⚡ **EV BMS & İnverter Termal Yönetimi (0x1809E5F4 - PGN 61448):**\n\n"
-                "• **Batarya Paketi Ortalama Sıcaklığı:** 28.5°C\n"
-                "• **En Sıcak Hücre Modülü:** 31.0°C (Limit: <45°C)\n"
-                "• **İnverter IGBT Sıcaklığı:** 48.0°C (Limit: <110°C)\n\n"
-                "✅ Soğutma devresi ve termal pompalar nominal çalışma rejiminde."
-            )
+            bat_temp = telemetry.get("bms_pack_temp_c")
+            lines = [
+                "⚡ **EV BMS & İnverter Termal Yönetimi (0x1809E5F4 - PGN 61448):**\n\n",
+                "• **Protokol:** ISO 11898-2 (EV Yüksek Voltaj BMS)\n",
+            ]
+            if bat_temp is not None:
+                lines.append(f"• **Batarya Paketi Ortalama Sıcaklığı:** {bat_temp:.1f}°C (ölçüm)\n\n")
+                lines.append("✅ Değer canlı telemetri süzgecinden okunmuştur.\n")
+            else:
+                lines.append(
+                    "⚠️ **Canlı ölçüm yok:** Bu kare paket sıcaklığı ve termal yönetim sinyallerini "
+                    "taşır; gerçek değerler için BMS telemetrisini bağlayın.\n"
+                )
+            return "".join(lines)
 
         if "18F020" in can_id_hex or "0x18F020F4" in user_query:
-            return (
-                "⚡ **EV BMS Yüksek Voltaj İzolasyonu & Kontaktör Güvenliği (0x18F020F4):**\n\n"
-                "• **Ana Pozitif Kontaktör (Main Contactor+):** Kapalı (Aktif İletimde)\n"
-                "• **Ana Negatif Kontaktör (Main Contactor-):** Kapalı (Aktif İletimde)\n"
-                "• **Ön Şarj Rölesi (Precharge Relay):** Tamamlandı / Açık\n"
-                "• **HV İzolasyon Direnci:** >50 MΩ (Güvenli, Eşik >500 Ω/V)\n"
-                "• **HVIL Güvenlik Kilidi:** Kapalı Döngü (Sağlam)\n\n"
-                "✅ Yüksek voltaj bara güvenliği devrede, kontaktör yapışması veya kaçak yok."
-            )
+            isolation = telemetry.get("bms_hv_isolation_mohm")
+            lines = [
+                "⚡ **EV BMS Yüksek Voltaj İzolasyonu & Kontaktör Güvenliği (0x18F020F4):**\n\n",
+            ]
+            if isolation is not None:
+                lines.append(f"• **HV İzolasyon Direnci:** {isolation:.1f} MΩ (ölçüm, eşik >500 Ω/V)\n\n")
+                lines.append("✅ Değer canlı telemetri süzgecinden okunmuştur.\n")
+            else:
+                lines.append(
+                    "• Bu kare ana kontaktör durumları, ön şarj rölesi ve HV izolasyon "
+                    "izleme sinyallerini taşır.\n\n"
+                    "⚠️ **Canlı ölçüm yok:** Kontaktör ve izolasyon değerleri bu oturumda "
+                    "çözülmedi; gerçek durum için BMS telemetrisini bağlayın.\n"
+                )
+            return "".join(lines)
 
         # 1. Direct DTC code match in prompt (P0xxx, C1xxx, U0xxx, B0xxx)
         dtc_match = re.search(r"\b([PBUC][0-9A-F]{4})\b", user_query, re.IGNORECASE)

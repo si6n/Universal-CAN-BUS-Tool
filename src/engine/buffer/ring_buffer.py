@@ -115,11 +115,18 @@ class BinaryRingBuffer:
         with self._lock:
             return min(self._total_written, self.capacity)
 
-    def get_latest_view(self, count: int) -> tuple[np.ndarray, np.ndarray]:
-        """Wrap-around safe, genuine zero-copy (F-33/E-13): two NumPy views.
+    def get_latest_view(
+        self, count: int, *, copy: bool = True
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Wrap-around safe view access over the shared buffer storage.
 
-        Returns (oldest_part, newest_part) — both are views over the shared
-        buffer storage; np.concatenate is never used (it would allocate).
+        E-C-001 (TOCTOU): with the default ``copy=True`` the returned parts
+        are detached copies — a concurrent writer can never mutate bytes a
+        reader is holding after the lock was released. ``copy=False``
+        preserves the genuine zero-copy views (F-33/E-13) for hot-path
+        consumers that read under the same lock discipline.
+
+        Returns (oldest_part, newest_part).
         """
         with self._lock:
             available = min(self._total_written, self.capacity)
@@ -134,9 +141,14 @@ class BinaryRingBuffer:
             if s0 < e0 or e0 == 0:
                 # Contiguous range (includes the exactly-full wrap edge case)
                 end = e0 if e0 != 0 else self.capacity
-                return self._buffer[s0:end], self._buffer[0:0]
-            # Wrapped: oldest tail segment + newest head segment
-            return self._buffer[s0:], self._buffer[:e0]
+                old_part, new_part = self._buffer[s0:end], self._buffer[0:0]
+            else:
+                # Wrapped: oldest tail segment + newest head segment
+                old_part, new_part = self._buffer[s0:], self._buffer[:e0]
+
+            if copy:
+                return old_part.copy(), new_part.copy()
+            return old_part, new_part
 
     def get_latest_frames(self, count: int) -> list[CanFrame]:
         """Fetch latest N frames in chronological order."""

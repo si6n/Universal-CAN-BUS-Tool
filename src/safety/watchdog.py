@@ -84,29 +84,55 @@ class TxWatchdogSupervisor:
         logger.info("TX Watchdog Supervisor stopped")
 
     def _monitor_loop(self) -> None:
-        """Continuous background check enforcing lease bounds."""
-        while True:
-            with self._lock:
-                if not self._is_running:
-                    break
-                now = time.monotonic()
-                elapsed = now - self._last_heartbeat_time
+        """Continuous background check enforcing lease bounds.
 
-            # Only enforce watchdog if transmission is armed or active
-            if self.supervisor.is_tx_permitted and elapsed > self.timeout_sec:
-                logger.critical(
-                    "TX Watchdog Lease Expired! Revoking all TX authorization.",
-                    extra={"elapsed_ms": elapsed * 1000.0, "timeout_ms": self.timeout_sec * 1000.0},
-                )
-                # Revoke TX in state machine
-                self.supervisor.trigger_fault(
-                    f"WATCHDOG_TIMEOUT: Lease expired after {elapsed * 1000.0:.1f} ms without heartbeat",
-                )
-                # Engage hardware/software E-Stop if available
-                if self.estop:
-                    self.estop.trigger(
-                        EStopTriggerSource.KEEPALIVE_TIMEOUT,
-                        f"Watchdog lease expired ({elapsed * 1000.0:.1f}ms > {self.timeout_sec * 1000.0:.1f}ms)",
+        S-H-001: the loop body is exception-isolated — a crashing callback or
+        trigger must never silently kill the monitor thread and leave TX
+        authorization open forever. If the loop itself dies despite the
+        guards, the finally-block revokes TX authority as a last resort.
+        """
+        try:
+            while True:
+                try:
+                    with self._lock:
+                        if not self._is_running:
+                            break
+                        now = time.monotonic()
+                        elapsed = now - self._last_heartbeat_time
+
+                    # Only enforce watchdog if transmission is armed or active
+                    if self.supervisor.is_tx_permitted and elapsed > self.timeout_sec:
+                        logger.critical(
+                            "TX Watchdog Lease Expired! Revoking all TX authorization.",
+                            extra={"elapsed_ms": elapsed * 1000.0, "timeout_ms": self.timeout_sec * 1000.0},
+                        )
+                        # Revoke TX in state machine
+                        self.supervisor.trigger_fault(
+                            f"WATCHDOG_TIMEOUT: Lease expired after {elapsed * 1000.0:.1f} ms without heartbeat",
+                        )
+                        # Engage hardware/software E-Stop if available
+                        if self.estop:
+                            self.estop.trigger(
+                                EStopTriggerSource.KEEPALIVE_TIMEOUT,
+                                f"Watchdog lease expired ({elapsed * 1000.0:.1f}ms > {self.timeout_sec * 1000.0:.1f}ms)",
+                            )
+                except Exception as exc:  # noqa: BLE001
+                    logger.error(
+                        "TX Watchdog monitor iteration failed; continuing supervision",
+                        extra={"error": str(exc)},
                     )
 
-            time.sleep(self.CHECK_INTERVAL_SEC)
+                time.sleep(self.CHECK_INTERVAL_SEC)
+        except BaseException as exc:  # loop machinery itself failed
+            logger.critical(
+                "TX Watchdog monitor loop terminated abnormally — revoking TX authorization",
+                extra={"error": str(exc)},
+            )
+        finally:
+            # Last-resort safety: never leave TX authority open when the
+            # supervisor thread is gone.
+            if self._is_running:
+                try:
+                    self.supervisor.trigger_fault("WATCHDOG_MONITOR_DIED: monitor thread exited unexpectedly")
+                except Exception:  # noqa: BLE001
+                    logger.critical("WATCHDOG_MONITOR_DIED: supervisor fault trigger also failed")

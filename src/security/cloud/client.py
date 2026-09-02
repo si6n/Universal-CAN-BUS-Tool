@@ -40,6 +40,43 @@ class CloudConfig:
     max_retries: int = 3
     retry_backoff_seconds: float = 1.5
     user_agent: str = "UniversalCAN-Desktop/13.0"
+    # SEC-C-001: production builds must speak HTTPS. Loopback dev servers are
+    # the only permitted plain-HTTP exception (no MITM surface on localhost).
+    require_https: bool = True
+
+    def __post_init__(self) -> None:
+        self._validate_scheme()
+
+    def _validate_scheme(self) -> None:
+        """Fail closed on insecure transport (SEC-C-001).
+
+        Only https:// URLs — or loopback (localhost / 127.0.0.1 / [::1]) for
+        local development — are accepted. Any other http:// endpoint would
+        expose the session cookie to network interception.
+        """
+        if not self.require_https:
+            return
+        url = self.base_url.strip().lower()
+        if url.startswith("https://"):
+            return
+        if url.startswith("http://") and self._is_loopback(url):
+            return
+        raise SecurityError(
+            "Cloud API base_url must use HTTPS (only loopback http://localhost "
+            "is allowed for development); refusing insecure session transport",
+            code="CLOUD_INSECURE_TRANSPORT",
+            details={"base_url": self.base_url},
+        )
+
+    @staticmethod
+    def _is_loopback(url: str) -> bool:
+        """True when the http:// authority targets a loopback host."""
+        try:
+            authority = url.split("http://", 1)[1].split("/", 1)[0]
+            host = authority.rsplit("@", 1)[-1].split(":", 1)[0].strip("[]")
+        except IndexError:
+            return False
+        return host in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 
     def endpoint(self, path: str, *, health_endpoint: bool = False) -> str:
         """Build a full URL; health endpoints live outside the api prefix."""

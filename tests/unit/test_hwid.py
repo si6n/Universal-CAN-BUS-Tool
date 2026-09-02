@@ -58,11 +58,16 @@ def test_collect_components_format() -> None:
 
 @pytest.mark.parametrize("invalid_uuid", list(_INVALID_UUIDS))
 def test_collect_motherboard_uuid_fallback_on_invalid(invalid_uuid: str) -> None:
-    """Test that invalid UUID values trigger the fallback node identifier."""
+    """Invalid UUID values trigger the hardened fallback (SEC-H-002).
+
+    The fallback binds hostname AND primary MAC so cloned/guessed
+    hostnames cannot reproduce another machine's identifier.
+    """
     with patch("src.security.hwid.collector._wmi_query", return_value=invalid_uuid):
-        uuid_val = collect_motherboard_uuid()
-        expected = f"FALLBACK-{platform.node()}"
-        assert uuid_val == expected
+        with patch("src.security.hwid.collector.collect_primary_mac", return_value="A0:AD:9F:D0:CC:00"):
+            uuid_val = collect_motherboard_uuid()
+            expected = f"FALLBACK-{platform.node()}-A0:AD:9F:D0:CC:00"
+            assert uuid_val == expected
 
 
 def test_collect_cpu_processor_id_fallback() -> None:
@@ -122,12 +127,16 @@ def test_run_powershell_exception_handling(exc_type: Exception) -> None:
 
 
 def test_non_win32_platform_fingerprint() -> None:
-    """Test that non-Windows platforms return deterministic platform hash."""
+    """Non-Windows platforms return a deterministic platform hash (SEC-H-002:
+    the fallback mixes in the primary MAC for clone resistance)."""
     with patch.object(sys, "platform", "linux"):
-        fp = generate_hardware_fingerprint()
-        expected_raw = f"NON_WIN32-{platform.node()}-{platform.machine()}-{platform.processor()}"
-        expected_hash = hashlib.sha256(expected_raw.encode("utf-8")).hexdigest()
-        assert fp == expected_hash
+        with patch("src.security.hwid.collector.collect_primary_mac", return_value="A0:AD:9F:D0:CC:00"):
+            fp = generate_hardware_fingerprint()
+            expected_raw = (
+                f"NON_WIN32-{platform.node()}-{platform.machine()}-{platform.processor()}-A0:AD:9F:D0:CC:00"
+            )
+            expected_hash = hashlib.sha256(expected_raw.encode("utf-8")).hexdigest()
+            assert fp == expected_hash
         assert _run_powershell("anything") == ""
 
 

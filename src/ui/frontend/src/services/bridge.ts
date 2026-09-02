@@ -71,6 +71,22 @@ export class DesktopBridge {
     return typeof window !== 'undefined' && !!window.pywebview;
   }
 
+  /**
+   * UI-C-005 guard: mock fallbacks are a development convenience only.
+   * A production build opened without the native pywebview bridge must
+   * fail loudly instead of silently serving mocked E-Stop resets,
+   * enterprise licenses, and cloud sessions.
+   */
+  private static requireNativeOrDev(): void {
+    const isProd = typeof import.meta !== 'undefined' && !!(import.meta as any).env?.PROD;
+    if (isProd && !this.isNative()) {
+      throw new Error(
+        'Native bridge missing in production build: pywebview API is required. ' +
+          'Run the application through the desktop launcher, not a browser.'
+      );
+    }
+  }
+
   public static async triggerEstop(): Promise<void> {
     if (this.isNative() && window.pywebview?.api?.trigger_estop) {
       await window.pywebview.api.trigger_estop();
@@ -113,6 +129,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.estop_request_challenge) {
       return await window.pywebview.api.estop_request_challenge();
     }
+    this.requireNativeOrDev(); // safety-critical: no silent mock
     return { success: true, epoch: 1, nonce: 'local_nonce', maxAgeMs: 30000, action: 'ESTOP_RESET' };
   }
 
@@ -120,6 +137,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.estop_submit_reset_token) {
       return await window.pywebview.api.estop_submit_reset_token(tokenStr);
     }
+    this.requireNativeOrDev(); // safety-critical: no silent mock
     return { success: true };
   }
 
@@ -127,6 +145,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.estop_reset_local) {
       return await window.pywebview.api.estop_reset_local();
     }
+    this.requireNativeOrDev(); // safety-critical: no silent mock
     return { success: true };
   }
 
@@ -143,6 +162,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_test_connection) {
       return await window.pywebview.api.cloud_test_connection(url, sessionToken);
     }
+    this.requireNativeOrDev();
     return { success: true, status: 200, user: { email: 'operator@example.com', organization_name: 'CAN Diagnostics Ltd' } };
   }
 
@@ -150,6 +170,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_save_config) {
       return await window.pywebview.api.cloud_save_config(url, sessionToken);
     }
+    this.requireNativeOrDev();
     return { success: true };
   }
 
@@ -157,6 +178,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_get_status) {
       return await window.pywebview.api.cloud_get_status();
     }
+    this.requireNativeOrDev();
     return {
       success: true,
       baseUrl: 'http://127.0.0.1:8000',
@@ -171,6 +193,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_register_device) {
       return await window.pywebview.api.cloud_register_device(deviceName);
     }
+    this.requireNativeOrDev();
     return { success: true, deviceId: 'dev_mock_uuid_2026', resetsRemaining: 1 };
   }
 
@@ -178,6 +201,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_activate_license) {
       return await window.pywebview.api.cloud_activate_license(licenseRef);
     }
+    this.requireNativeOrDev(); // mock grants ENTERPRISE tier — never in prod
     return {
       success: true,
       licenseId: 'lic_mock_2026',
@@ -192,6 +216,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_upload_session) {
       return await window.pywebview.api.cloud_upload_session(filePath, vehicleVin);
     }
+    this.requireNativeOrDev();
     return { success: true, sessionId: 'sess_mock_2026', status: 'ready' };
   }
 
@@ -199,6 +224,7 @@ export class DesktopBridge {
     if (this.isNative() && window.pywebview?.api?.cloud_upload_raw_content) {
       return await window.pywebview.api.cloud_upload_raw_content(filename, content, vehicleVin);
     }
+    this.requireNativeOrDev();
     return { success: true, sessionId: 'sess_mock_2026', status: 'ready' };
   }
 }

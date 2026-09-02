@@ -159,8 +159,26 @@ class TestCausalBayesianInferenceEngine:
         )
         assert "0x1808E5F4" in report
         assert "Hücre Voltaj" in report or "Cell Voltage" in report
-        assert "Delta V" in report
+        # AI-C-001: no fabricated live measurements — without decoded BMS
+        # telemetry the engine must say so instead of inventing numbers.
+        assert "Canlı ölçüm yok" in report
+        assert "3.78" not in report  # the old hardcoded fake voltage
         assert "P0A0B" not in report
+
+    def test_ev_bms_cell_voltage_frame_with_real_telemetry(self) -> None:
+        """AI-C-001: decoded BMS telemetry is surfaced when actually present."""
+        query = "CAN ID 0x1808E5F4 nedir?"
+        report = CausalBayesianInferenceEngine.evaluate_diagnostic_query(
+            query,
+            active_dtcs=[],
+            telemetry={
+                "bms_cell_voltage_min_v": 3.78,
+                "bms_cell_voltage_max_v": 3.80,
+            },
+        )
+        assert "3.780" in report or "3.78" in report
+        assert "Delta V" in report
+        assert "(ölçüm)" in report
 
     def test_physical_can_error_frame_analysis(self) -> None:
         query = (

@@ -104,3 +104,56 @@ def test_launcher_preflight_report() -> None:
     assert len(report.prereqs) >= 2
     assert report.update_info.has_update is True
     assert report.target_executable.exists()
+
+
+def test_updater_rejects_hashless_package() -> None:
+    """L-C-002 regression: a manifest without sha256 must fail closed."""
+    updater = UpdateManager(current_version="13.0.0")
+    manifest = {
+        "version": "13.1.0",
+        "download_url": "https://example.com/update-no-hash.exe",
+        "sha256": "",  # missing integrity anchor
+        "size_bytes": 100,
+    }
+    info = updater.check_for_updates(custom_manifest=manifest)
+    assert info.has_update is True
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dest = Path(tmpdir) / "update.exe"
+        assert updater.download_update(info, dest) is False
+        assert not dest.exists()
+
+
+def test_updater_rejects_non_https_download_url() -> None:
+    """L-H-001 regression: plain-HTTP download URLs are refused."""
+    updater = UpdateManager(current_version="13.0.0")
+    manifest = {
+        "version": "13.1.0",
+        "download_url": "http://example.com/update-insecure.exe",
+        "sha256": "a" * 64,
+    }
+    info = updater.check_for_updates(custom_manifest=manifest)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dest = Path(tmpdir) / "update.exe"
+        assert updater.download_update(info, dest) is False
+        assert not dest.exists()
+
+
+def test_cloud_config_rejects_non_loopback_http() -> None:
+    """SEC-C-001 regression: only HTTPS or loopback HTTP is permitted."""
+    import pytest
+
+    from src.core.errors import SecurityError
+
+    # Plain HTTP to a network host must fail closed
+    with pytest.raises(SecurityError, match="HTTPS"):
+        CloudConfig(base_url="http://updates.universal-can.example.com:8000")
+
+    # Loopback HTTP stays allowed for local development
+    cfg = CloudConfig(base_url="http://localhost:8000")
+    assert cfg.endpoint("/health", health_endpoint=True).startswith("http://localhost:8000")
+
+    # HTTPS always allowed
+    cfg_https = CloudConfig(base_url="https://cloud.universal-can.example.com")
+    assert cfg_https.endpoint("/health", health_endpoint=True).startswith("https://")

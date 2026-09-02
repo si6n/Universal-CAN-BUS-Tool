@@ -405,114 +405,117 @@ class J1939TransportProtocol:
         payload = frame.data[1:8]
 
         # Session lookup strictly keyed by (source_address, destination_address, channel_id)
+        # P-C-002 fix: the entire session mutation — sequence check, payload
+        # append, completion, and slot release — runs under one lock hold so
+        # concurrent TP.DT frames cannot interleave with torn state.
         session_key = (sa, da, frame.channel_id)
         with self._sessions_lock:
             session = self._rx_sessions.get(session_key)
 
-        if session is None:
-            return None, None
+            if session is None:
+                return None, None
 
-        now = self._get_now()
+            now = self._get_now()
 
-        # Session hold: T4 (1050 ms) for CMDT peer-to-peer sessions, T1
-        # (750 ms) for BAM broadcasts (P-c — aligned with _reap_stale_sessions)
-        hold_timeout = self.T4_TIMEOUT_SEC if not session.is_bam else self.T1_TIMEOUT_SEC
-        if (now - session.last_activity_time) > hold_timeout:
-            logger.warning(
-                "J1939 TP.DT session timeout (hold window exceeded)",
-                extra={
-                    "sa": sa,
-                    "da": da,
-                    "target_pgn": hex(session.target_pgn),
-                    "timeout_s": hold_timeout,
-                    "is_bam": session.is_bam,
-                },
-            )
-            self._release_session_slot(session_key, session)
-            abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_TIMEOUT)
-            return None, abort_frame
+            # Session hold: T4 (1050 ms) for CMDT peer-to-peer sessions, T1
+            # (750 ms) for BAM broadcasts (P-c — aligned with _reap_stale_sessions)
+            hold_timeout = self.T4_TIMEOUT_SEC if not session.is_bam else self.T1_TIMEOUT_SEC
+            if (now - session.last_activity_time) > hold_timeout:
+                logger.warning(
+                    "J1939 TP.DT session timeout (hold window exceeded)",
+                    extra={
+                        "sa": sa,
+                        "da": da,
+                        "target_pgn": hex(session.target_pgn),
+                        "timeout_s": hold_timeout,
+                        "is_bam": session.is_bam,
+                    },
+                )
+                self._release_session_slot(session_key, session)
+                abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_TIMEOUT)
+                return None, abort_frame
 
-        # Check sequence order
-        if seq_num != session.expected_sequence:
-            logger.warning(
-                "J1939 TP.DT out of order sequence",
-                extra={
-                    "expected": session.expected_sequence,
-                    "got": seq_num,
-                    "sa": sa,
-                    "da": da,
-                    "target_pgn": hex(session.target_pgn),
-                },
-            )
-            self._release_session_slot(session_key, session)
-            abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_SEQUENCE_ERROR)
-            return None, abort_frame
+            # Check sequence order
+            if seq_num != session.expected_sequence:
+                logger.warning(
+                    "J1939 TP.DT out of order sequence",
+                    extra={
+                        "expected": session.expected_sequence,
+                        "got": seq_num,
+                        "sa": sa,
+                        "da": da,
+                        "target_pgn": hex(session.target_pgn),
+                    },
+                )
+                self._release_session_slot(session_key, session)
+                abort_frame = self._create_abort_frame(session, reason=ABORT_REASON_SEQUENCE_ERROR)
+                return None, abort_frame
 
-        # Append payload data
-        bytes_needed = session.total_bytes - len(session.received_bytes)
-        session.received_bytes.extend(payload[:bytes_needed])
-        session.expected_sequence += 1
-        session.last_activity_time = now
+            # Append payload data
+            bytes_needed = session.total_bytes - len(session.received_bytes)
+            session.received_bytes.extend(payload[:bytes_needed])
+            session.expected_sequence += 1
+            session.last_activity_time = now
 
-        # Check if transfer is complete
-        if session.expected_sequence > session.total_packets or len(session.received_bytes) >= session.total_bytes:
-            completed_data = bytes(session.received_bytes[: session.total_bytes])
-            completed_msg = CompletedMessage(
-                source_address=session.source_address,
-                destination_address=session.destination_address,
-                pgn=session.target_pgn,
-                data=completed_data,
-                timestamp_ns=frame.timestamp_ns,
-                channel_id=frame.channel_id,
-            )
+            # Check if transfer is complete
+            if session.expected_sequence > session.total_packets or len(session.received_bytes) >= session.total_bytes:
+                completed_data = bytes(session.received_bytes[: session.total_bytes])
+                completed_msg = CompletedMessage(
+                    source_address=session.source_address,
+                    destination_address=session.destination_address,
+                    pgn=session.target_pgn,
+                    data=completed_data,
+                    timestamp_ns=frame.timestamp_ns,
+                    channel_id=frame.channel_id,
+                )
 
-            resp_frame = None
+                resp_frame = None
+                if not session.is_bam and session.destination_address == self.my_address:
+                    # Send TP.CM_EndOfMsgACK
+                    ack_data = bytearray(8)
+                    ack_data[0] = TP_CTRL_ACK
+                    ack_data[1:3] = session.total_bytes.to_bytes(2, byteorder="little")
+                    ack_data[3] = session.total_packets
+                    ack_data[4] = 0xFF
+                    ack_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
+
+                    can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)
+                    resp_frame = CanFrame.create(
+                        channel_id=frame.channel_id,
+                        arbitration_id=can_id,
+                        data=bytes(ack_data),
+                        is_extended=True,
+                        direction="tx",
+                    )
+
+                self._release_session_slot(session_key, session)
+                return completed_msg, resp_frame
+
+            # Partial transfer on a CMDT session: issue the next CTS window so
+            # the sender can continue. The receiver's grant policy is bounded by
+            # its remaining buffer, expressed via rx_cts_window (0 = grant all).
             if not session.is_bam and session.destination_address == self.my_address:
-                # Send TP.CM_EndOfMsgACK
-                ack_data = bytearray(8)
-                ack_data[0] = TP_CTRL_ACK
-                ack_data[1:3] = session.total_bytes.to_bytes(2, byteorder="little")
-                ack_data[3] = session.total_packets
-                ack_data[4] = 0xFF
-                ack_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
+                rx_window = getattr(session, "rx_cts_window", 0)
+                if rx_window > 0 and (session.expected_sequence - 1) % rx_window == 0:
+                    remaining_packets = session.total_packets - (session.expected_sequence - 1)
+                    grant = min(rx_window, remaining_packets)
+                    cts_data = bytearray(8)
+                    cts_data[0] = TP_CTRL_CTS
+                    cts_data[1] = grant
+                    cts_data[2] = session.expected_sequence
+                    cts_data[3] = 0xFF
+                    cts_data[4] = 0xFF
+                    cts_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
+                    can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)
+                    return None, CanFrame.create(
+                        channel_id=frame.channel_id,
+                        arbitration_id=can_id,
+                        data=bytes(cts_data),
+                        is_extended=True,
+                        direction="tx",
+                    )
 
-                can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)
-                resp_frame = CanFrame.create(
-                    channel_id=frame.channel_id,
-                    arbitration_id=can_id,
-                    data=bytes(ack_data),
-                    is_extended=True,
-                    direction="tx",
-                )
-
-            self._release_session_slot(session_key, session)
-            return completed_msg, resp_frame
-
-        # Partial transfer on a CMDT session: issue the next CTS window so
-        # the sender can continue. The receiver's grant policy is bounded by
-        # its remaining buffer, expressed via rx_cts_window (0 = grant all).
-        if not session.is_bam and session.destination_address == self.my_address:
-            rx_window = getattr(session, "rx_cts_window", 0)
-            if rx_window > 0 and (session.expected_sequence - 1) % rx_window == 0:
-                remaining_packets = session.total_packets - (session.expected_sequence - 1)
-                grant = min(rx_window, remaining_packets)
-                cts_data = bytearray(8)
-                cts_data[0] = TP_CTRL_CTS
-                cts_data[1] = grant
-                cts_data[2] = session.expected_sequence
-                cts_data[3] = 0xFF
-                cts_data[4] = 0xFF
-                cts_data[5:8] = session.target_pgn.to_bytes(3, byteorder="little")
-                can_id = 0x18EC0000 | (session.source_address << 8) | (self.my_address & 0xFF)
-                return None, CanFrame.create(
-                    channel_id=frame.channel_id,
-                    arbitration_id=can_id,
-                    data=bytes(cts_data),
-                    is_extended=True,
-                    direction="tx",
-                )
-
-        return None, None
+            return None, None
 
     def _create_cts_frame(self, session: ReassemblySession) -> CanFrame:
         """Construct standard J1939 TP.CM_CTS frame (PGN 60416 / 0xEC00 with Control Byte 0x11)."""

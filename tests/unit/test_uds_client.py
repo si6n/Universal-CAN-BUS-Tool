@@ -41,6 +41,9 @@ class MockDiagnosticBus(AbstractBus):
     def send(self, frame: CanFrame) -> None:
         self.sent_frames.append(frame)
 
+    def send_sync(self, frame: CanFrame) -> None:
+        self.send(frame)
+
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
         try:
             return self.rx_queue.get(timeout=timeout_s or 0.05)
@@ -373,3 +376,110 @@ def test_uds_client_dual_confirmation_rejected_when_unconfirmed() -> None:
 
     assert exc_info.value.code == "CONFIRMATION_REQUIRED"
     client.close()
+
+
+class FlowControlMockBus(MockDiagnosticBus):
+    """Mock bus that answers a multi-frame request with FC(CTS, BS, STmin).
+
+    P-C-001 regression: the mock behaves like a real ECU — it will NOT
+    tolerate receiving CF frames before it has sent a Flow Control.
+    """
+
+    def __init__(self, bs: int = 0, st_min_ms: int = 1) -> None:
+        super().__init__()
+        self.bs = bs
+        self.st_min_ms = st_min_ms
+        self.violated = False
+        self.fc_sent = False
+        # FF observed -> FC emitted once the *next* recv() is called
+        self._fc_pending = False
+
+    def send(self, frame: CanFrame) -> None:
+        self.sent_frames.append(frame)
+        if len(frame.data) >= 1 and (frame.data[0] >> 4) == 0x1:  # First Frame
+            self._fc_pending = True
+
+    def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
+        if self._fc_pending and not self.fc_sent:
+            # Emit FC only when the client politely waits for it
+            self._fc_pending = False
+            self.fc_sent = True
+            fc = bytearray(8)
+            fc[0] = 0x30  # PCI FC | FS CTS
+            fc[1] = self.bs & 0xFF
+            fc[2] = self.st_min_ms & 0xFF
+            return CanFrame.create(
+                channel_id=self.channel_id,
+                arbitration_id=0x7E8,
+                data=bytes(fc),
+                is_extended=False,
+            )
+        return super().recv(timeout_s=timeout_s)
+
+
+def test_uds_client_multiframe_waits_for_flow_control() -> None:
+    """P-C-001 regression: CF frames must not be transmitted before FC(CTS).
+
+    A 14-byte payload (e.g. RequestDownload 0x34 with 4-byte address+size)
+    is segmented as FF + 2 CFs on classic CAN. The client must send the FF,
+    wait for the ECU's Flow Control, and only then transmit the CFs.
+    """
+    bus = FlowControlMockBus()
+    client = UdsClient(bus=bus, tx_port=bus, tx_id=0x7E0, rx_id=0x7E8)
+
+    payload = b"\x34\x00\x44" + bytes.fromhex("A0000000") + bytes.fromhex("00010000")
+    assert len(payload) == 11  # > 7 -> FF (6 bytes) + 2 CFs (5 bytes) on classic CAN
+
+    client._send_payload(payload)
+    client.close()
+
+    frames = bus.sent_frames
+    # FF + CF1 — all transmitted, but only after FC arrived
+    assert len(frames) == 2
+    assert (frames[0].data[0] >> 4) == 0x1  # First Frame
+    assert (frames[1].data[0] >> 4) == 0x2  # Consecutive Frame, seq 1
+    assert (frames[1].data[0] & 0x0F) == 1
+
+
+def test_uds_client_multiframe_no_fc_raises_timeout() -> None:
+    """Without an FC the client must fail with UDS_TIMEOUT, not flood the ECU."""
+    bus = MockDiagnosticBus()  # never answers FC
+    client = UdsClient(bus=bus, tx_port=bus, tx_id=0x7E0, rx_id=0x7E8)
+
+    payload = b"\x22" + b"\x00" * 20  # > 7 bytes -> multi-frame
+
+    with pytest.raises(ProtocolError) as exc_info:
+        client._send_payload(payload)
+    assert exc_info.value.code == "UDS_TIMEOUT"
+    client.close()
+
+    # Only the First Frame may ever hit the wire
+    assert len(bus.sent_frames) == 1
+    assert (bus.sent_frames[0].data[0] >> 4) == 0x1
+
+
+def test_uds_client_multiframe_honours_bs_window() -> None:
+    """FC(BS=1) must pause after every CF until the next FC arrives."""
+    bus = FlowControlMockBus(bs=1, st_min_ms=0)
+    # Patch recv to re-issue an FC after each CF once the first FC was sent
+    original_send = bus.send
+
+    cf_count = 0
+
+    def counting_send(frame: CanFrame) -> None:
+        nonlocal cf_count
+        original_send(frame)
+        if (frame.data[0] >> 4) == 0x2:
+            cf_count += 1
+            bus._fc_pending = True
+            bus.fc_sent = False  # allow the next FC
+
+    bus.send = counting_send  # type: ignore[method-assign]
+    client = UdsClient(bus=bus, tx_port=bus, tx_id=0x7E0, rx_id=0x7E8)
+
+    payload = b"\x36" + b"\x41" * 20  # FF + 3 CFs
+    client._send_payload(payload)
+    client.close()
+
+    assert len(bus.sent_frames) == 4
+    assert cf_count == 3

@@ -81,9 +81,11 @@ def collect_motherboard_uuid() -> str:
     """Collect Motherboard UUID from Win32_ComputerSystemProduct."""
     uuid_str = _wmi_query("Win32_ComputerSystemProduct", "UUID")
     if uuid_str.upper() in _INVALID_UUIDS or not uuid_str:
-        # Fallback: use machine name + platform node
-        uuid_str = f"FALLBACK-{platform.node()}"
-        logger.info("Motherboard UUID invalid, using fallback", extra={"fallback": uuid_str})
+        # SEC-H-002: bind the fallback to a physical network identity too —
+        # a bare hostname is guessable and identical on cloned machines.
+        mac = collect_primary_mac()
+        uuid_str = f"FALLBACK-{platform.node()}-{mac}"
+        logger.info("Motherboard UUID invalid, using fallback", extra={"fallback_prefix": uuid_str[:16] + "…"})
     return uuid_str
 
 
@@ -137,7 +139,11 @@ def generate_hardware_fingerprint() -> str:
         and disk_serial == "UNKNOWN_DISK"
         and bios_serial == "UNKNOWN_BIOS"
     ):
-        fallback = f"NON_WIN32-{platform.node()}-{platform.machine()}-{platform.processor()}"
+        # SEC-H-002: mix in the primary MAC so two identical machines
+        # (same hostname pattern, same arch) still produce distinct
+        # fingerprints.
+        mac = collect_primary_mac()
+        fallback = f"NON_WIN32-{platform.node()}-{platform.machine()}-{platform.processor()}-{mac}"
         return hashlib.sha256(fallback.encode("utf-8")).hexdigest()
 
     components = f"{mb_uuid}|{cpu_id}|{disk_serial}|{bios_serial}"
