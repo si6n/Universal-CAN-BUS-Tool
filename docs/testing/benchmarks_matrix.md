@@ -3,7 +3,8 @@
 Universal-CAN-BUS-Tool `MASTER_PLAN.md` Bölüm 18'deki benchmark vektör setinin
 Golden-Traces arşivindeki **gerçek izlerle** eşlemesi. Her vektör tekrarlanabilir
 şekilde `extract_benchmark_vectors.py` ile üretilir ve `expected/` altında golden
-YAML ile doğrulanır.
+YAML ile doğrulanır. Arşivin tam kaynak envanteri (linkler, lisanslar ve durum
+rozetleri) için bkz. [sources.html](sources.html).
 
 ## Üretim
 ```bash

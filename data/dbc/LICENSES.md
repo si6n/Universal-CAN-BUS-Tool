@@ -19,6 +19,15 @@ korur. Entegrasyon sırasında bu dosya `data/dbc/` yanına kopyalanmalıdır.
 | andrewdodd/decoda | MIT | © 2022 Andrew Dodd | J1939DA/ISOBUS DD → JSON dönüştürücü — yalnızca **referans/altyapı** incelemesi, kod dağıtımı yok | — |
 | SAE J1939-71 yaygın yerleşim (CCVS1 SPN 84) | Standart (üç bağımsız kaynakla teyitli yerleşim) | SAE | `raw/pgn-extras/065265-ccvs1.yaml` | `curated/heavy_duty/j1939_ccvs1_extra.dbc` |
 | Üretici-özel J1939 proprietary (Cummins/Scania/Volvo) | Paket içi üretim (projenin OEM decoder tanımlarından) | — | — | `curated/heavy_duty/*_j1939_proprietary.dbc` |
+| projectgus/kona-ev-dbc | MIT | © projectgus + katkıda bulunanlar | Hyundai Kona Electric 4 bus DBC (PCAN/BCAN/CCAN/COMP-CAN; küratörlükte bozuk NS_ başlığı temizlendi) | `curated/passenger/hyundai_kona_ev_*.dbc`, `curated/ev_bms/hyundai_kona_ev_pcan.dbc` |
+| fsfarmscaper/jaguar-xf-x250-can | **CC-BY-SA-4.0** (DBC/dokümantasyon) + MIT (scriptler) | © fsfarmscaper | Jaguar XF X250 MS/HS bus DBC — **atıf zorunlu + share-alike** | `curated/passenger/jaguar_xf_x250_ms_bus.dbc`, `jaguar_xf_x250_hs_bus.dbc` |
+| dalathegreat/leaf_can_bus_messages | **GPL-3.0** | © dalathegreat + baradhili (orijinal tablo) | Nissan LEAF ZE0/AZE0/ZE1 EV/CAR/AV/QC bus DBC'leri (GPL viral lisans; paket dağıtımında lisans metni korunur) | `curated/passenger/nissan_leaf_{ev_can_ze0,ev_can_aze0,ev_can_ze1,car_can_aze0,av_can,qc_can}.dbc` + `curated/ev_bms/` kopyaları |
+| joshwardell/model3dbc | MIT | © Josh Wardell | Tesla Model 3/Y topluluk decode DBC (Model3CAN) | `curated/passenger/tesla_model3_model3can.dbc` |
+| autti/abraham | MIT | © autti + katkıda bulunanlar | Lincoln MKZ / Ford Fusion crowdsourced DBC | `curated/passenger/lincoln_mkz.dbc` |
+| qwec01/ARCFOX_dbc | **GPL-3.0** | © qwec01 | ARCFOX IBUS1/IBUS2/EVBUS + GB27830-2015 (GB18030 → UTF-8 çevrildi) | `curated/passenger/arcfox_{evbus,ibus1,ibus2}.dbc`, `curated/ev_bms/arcfox_{evbus,ibus2}.dbc`, `gb27830_2015.dbc` |
+| open-vehicle-control-system/dbc | MIT | © OVCS katkıda bulunanlar | Tesla iBooster Gen 2 fren aktüatörü DBC | `curated/passenger/tesla_ibooster_gen2.dbc` |
+| alan707/openOBD2 | MIT | © alan707 | Standart OBD-II PID DBC — küratörlükte PID 0x09 adı J1979'a göre Bank1→Bank2 düzeltildi + 2 çakışan sinyal strict-hattıyla düşüldü | `curated/diagnostics/obd2_open_pids.dbc` |
+| BogGyver/opendbc (tesla_unity_dev dalı) | MIT (commaai/opendbc fork'u) | © comma.ai + BogGyver katkıda bulunanlar | 28 committed DBC: statik 7 (hyundai_kia_generic, stellantis_dasm, tesla_can_pre1916, vw_golf_mk4, vw_mqb_2010, chrysler_pacifica_2017_hybrid, tesla_radar) + generated 21 (Lexus ×6, Honda ×6, Toyota ×9). Küratörlükte tesla_can_pre1916'nın kesik `VAL_ 921 DAS_lssState` numaralandırmasındaki sarkan değeri düşürüldü | `curated/passenger/*` (Batch-4: boggyver kaynaklı tümü) |
 
 ## DO-NOT-INTEGRATE — lisanssız / riskli dosyalar
 
@@ -32,6 +41,10 @@ Bu dosyalar `raw/` altında **araştırma kaydı** olarak durur; lisans durumu
 | `Sterlingarcher2525/ioniq5-can` (içerik indirilmedi) | Ioniq5 RE notları | Lisans yok |
 | `krsche/renault-megane-3-rs-can-dbc` (içerik indirilmedi) | Megane 3 RS | Lisans yok |
 | `jackm/j1939decode` (içerik indirilmedi) | J1939 C lib | Lisans yok |
+| Konik-ai/j1939_dbc (Batch-3 taraması) | MIT etiketli ama nberlette/canbus fork'u; `j1939.dbc` resmî SAE J1939 standardından türetilmiş ([nberlette issue #6](https://github.com/nberlette/canbus/issues/6) telif iddiası) | SAE telif riski |
+| uhi22/IoniqMotorCAN (Batch-3 taraması) | Hyundai Ioniq 28 motor CAN (`Traces/*.dbc`) | Lisans yok |
+| icecube45/Dash_InfinitiG37 (Batch-3 taraması) | Infiniti G37 2011 DBC | Lisans yok |
+| Trueffelwurm/Car-CAN-Message-DB (Batch-3 taraması) | Opel Astra H — DBC değil (Markdown tablo) + lisans yok | Lisans yok + format uyumsuz |
 
 ## Ücretli / kayıtlı alternatifler (kayıt amaçlı)
 

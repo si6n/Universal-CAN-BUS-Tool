@@ -7,7 +7,7 @@
 > hız fail-closed kilidi, ISO-TP tampon aşımı, UDS routine CRC32 doğrulaması, J1939 CTS monotonluğu,
 > NMEA2000 sentinel sınırları, ReplayBus loop desteği, DBC C-identifier sanitizasyonu,
 > RP1210/CSV/BLF entegrasyonu, gateway lock-scope refactor, Hypothesis property süiti,
-> Bulut UI SaaS köprüsü, DBC Knowledge Pack [133 DBC], Golden-Traces [14 Benchmark Vektörü],
+> Bulut UI SaaS köprüsü, DBC Knowledge Pack [181 DBC], Golden-Traces [14 Benchmark Vektörü],
 > Sinyal Keşif & Kanıt Motoru, K1(b) H1 Cihaz Bağı, K2 E-Stop Challenge-Response Köprüsü,
 > Nuitka C++ Derleme Zırhı ve Desktop Launcher & Auto-Updater Altyapısı) ardından
 > **hâlâ açık** olan işlerin tek kaynağıdır. Bir kalem tamamlandığında bu dosyadan düşürülür.
@@ -56,7 +56,7 @@ ISO-TP N_As, UDS raw NRC, ALFI, T4/T2/T3), Dalga 1-5, K1-K4 doküman kararları,
 refactor (H2), Hypothesis property süiti (40 test, mutasyon-doğrulanmış), RP1210
 entegrasyonu (K4-a), CSV replay (K3-a), BLF replay (K3-b), Bulut/Lisans UI SaaS
 köprüsü (K1-a), DBC decoder cache key frame_id geçişi, DBC Knowledge Pack
-(133 DBC, 12518 mesaj, 57862 sinyal), Golden-Traces 14 benchmark vektörü ve
+(181 DBC, 14961 mesaj, 75603 sinyal), Golden-Traces 14 benchmark vektörü ve
 entegrasyon süiti, Sinyal Keşif ve Kanıt Motoru (Signal Discovery & Evidence Engine
 ve 9 birim/entegrasyon testi), Nuitka C++ derleme hattı (`scripts/build_nuitka.py`),
 Masaüstü Launcher & Auto-Updater (`src/launcher/`), doküman hijyeni (82→13 md).

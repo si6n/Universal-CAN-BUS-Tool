@@ -1,6 +1,6 @@
 {
   "pack_name": "DBC-Knowledge-Pack",
-  "version": "3.0.0",
+  "version": "3.2.0",
   "description": "Comprehensive Curated Open-Source CAN Database Collection for Universal CAN-Bus Tool",
   "total_categories": 6,
   "categories": {
@@ -153,8 +153,26 @@
       "protocol": "CAN 2.0B / CAN-FD",
       "license": "MIT / Open",
       "description": "EV battery management systems, traction inverters, charging protocols, and standard ESS inverter CAN.",
-      "files_count": 9,
+      "files_count": 17,
       "files": [
+        {
+          "filename": "arcfox_evbus.dbc",
+          "relative_path": "curated/ev_bms/arcfox_evbus.dbc",
+          "messages_count": 25,
+          "signals_count": 67,
+          "sha256": "5dca845f2e8784749c33d07fb321a0c0b5a656a314762fabe2124fd5606ed377",
+          "size_bytes": 7877,
+          "is_valid": true
+        },
+        {
+          "filename": "arcfox_ibus2.dbc",
+          "relative_path": "curated/ev_bms/arcfox_ibus2.dbc",
+          "messages_count": 34,
+          "signals_count": 86,
+          "sha256": "e90c6bdc8515a5e77285f0ed9d892aaf4c7b9b5398800b5f5ba26f07e6f52dbe",
+          "size_bytes": 8956,
+          "is_valid": true
+        },
         {
           "filename": "byd_atto3.dbc",
           "relative_path": "curated/ev_bms/byd_atto3.dbc",
@@ -183,6 +201,15 @@
           "is_valid": true
         },
         {
+          "filename": "gb27830_2015.dbc",
+          "relative_path": "curated/ev_bms/gb27830_2015.dbc",
+          "messages_count": 24,
+          "signals_count": 653,
+          "sha256": "777822cc0ef4d9dc944500182b03ede7e84416339b3c21de123df3fefc5e3f2e",
+          "size_bytes": 65974,
+          "is_valid": true
+        },
+        {
           "filename": "gm_global_a_high_voltage_management.dbc",
           "relative_path": "curated/ev_bms/gm_global_a_high_voltage_management.dbc",
           "messages_count": 12,
@@ -198,6 +225,51 @@
           "signals_count": 132,
           "sha256": "956da08d4f3142052d30769f637bd0cf4d80ce137efdc97a586471085d15bd59",
           "size_bytes": 11852,
+          "is_valid": true
+        },
+        {
+          "filename": "hyundai_kona_ev_pcan.dbc",
+          "relative_path": "curated/ev_bms/hyundai_kona_ev_pcan.dbc",
+          "messages_count": 107,
+          "signals_count": 445,
+          "sha256": "67fda667ecb8cb7a79438eb731f8b5acd2d4a1f2ab832711849bfe8d48497905",
+          "size_bytes": 45506,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_aze0.dbc",
+          "relative_path": "curated/ev_bms/nissan_leaf_ev_can_aze0.dbc",
+          "messages_count": 29,
+          "signals_count": 190,
+          "sha256": "24e00c4e9f725c90dfad96797be8606dcedd72b9bc86d88741767044065d660d",
+          "size_bytes": 43947,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_ze0.dbc",
+          "relative_path": "curated/ev_bms/nissan_leaf_ev_can_ze0.dbc",
+          "messages_count": 28,
+          "signals_count": 151,
+          "sha256": "af732866cc6cc546d026b69d9a341e790707eae41afdb2da0d5f9084c7caecb2",
+          "size_bytes": 36159,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_ze1.dbc",
+          "relative_path": "curated/ev_bms/nissan_leaf_ev_can_ze1.dbc",
+          "messages_count": 52,
+          "signals_count": 249,
+          "sha256": "fe93c7c04144c48901df897640f42e45e300e778858c40582b85a04d7ad5b100",
+          "size_bytes": 56440,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_qc_can.dbc",
+          "relative_path": "curated/ev_bms/nissan_leaf_qc_can.dbc",
+          "messages_count": 12,
+          "signals_count": 59,
+          "sha256": "d724599bd6842c8ea219b13efcd8e02ee574b75f24e9610a838bf1fa8300c7ee",
+          "size_bytes": 19767,
           "is_valid": true
         },
         {
@@ -243,7 +315,7 @@
       "protocol": "CAN 2.0B / CAN-FD",
       "license": "MIT / CC-BY-4.0",
       "description": "Reverse-engineered passenger vehicle DBCs across Toyota, Tesla, VW Group, Ford, Hyundai/Kia, BMW, Rivian, GM, Mazda, Honda, Subaru, Nissan, BYD, Geely, Volvo, Mercedes.",
-      "files_count": 102,
+      "files_count": 148,
       "files": [
         {
           "filename": "acura_ilx_2016_can_generated.dbc",
@@ -279,6 +351,33 @@
           "signals_count": 406,
           "sha256": "c45e4c11f9d64acc4148c5a8eeb42faaaaaa1037d3e8f8a12253cede9b97ad05",
           "size_bytes": 26420,
+          "is_valid": true
+        },
+        {
+          "filename": "arcfox_evbus.dbc",
+          "relative_path": "curated/passenger/arcfox_evbus.dbc",
+          "messages_count": 25,
+          "signals_count": 67,
+          "sha256": "5dca845f2e8784749c33d07fb321a0c0b5a656a314762fabe2124fd5606ed377",
+          "size_bytes": 7877,
+          "is_valid": true
+        },
+        {
+          "filename": "arcfox_ibus1.dbc",
+          "relative_path": "curated/passenger/arcfox_ibus1.dbc",
+          "messages_count": 6,
+          "signals_count": 12,
+          "sha256": "6d4572f3558e6252f3eadba2ffc047fd3e522786b689ec8a1c6f9ca07c18aa6f",
+          "size_bytes": 2461,
+          "is_valid": true
+        },
+        {
+          "filename": "arcfox_ibus2.dbc",
+          "relative_path": "curated/passenger/arcfox_ibus2.dbc",
+          "messages_count": 34,
+          "signals_count": 86,
+          "sha256": "e90c6bdc8515a5e77285f0ed9d892aaf4c7b9b5398800b5f5ba26f07e6f52dbe",
+          "size_bytes": 8956,
           "is_valid": true
         },
         {
@@ -351,6 +450,15 @@
           "signals_count": 97,
           "sha256": "9158f618d540c31ab2dcdf87a838d3b44f6aeac5bc2bcb91fdaae2b24d57463a",
           "size_bytes": 7385,
+          "is_valid": true
+        },
+        {
+          "filename": "chrysler_pacifica_2017_hybrid.dbc",
+          "relative_path": "curated/passenger/chrysler_pacifica_2017_hybrid.dbc",
+          "messages_count": 76,
+          "signals_count": 177,
+          "sha256": "102166b7db0d222c3d6f3ec9a5250dc646fa9bc371016fe77584ecbd0e0e020d",
+          "size_bytes": 17488,
           "is_valid": true
         },
         {
@@ -561,6 +669,15 @@
           "is_valid": true
         },
         {
+          "filename": "honda_accord_2018_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_accord_2018_can_generated.dbc",
+          "messages_count": 48,
+          "signals_count": 357,
+          "sha256": "0d9c66397b17f2a200e9bb98c4b00a1a16fcb813aa572b6a159db72c7a78d680",
+          "size_bytes": 21379,
+          "is_valid": true
+        },
+        {
           "filename": "honda_bosch_radarless_generated.dbc",
           "relative_path": "curated/passenger/honda_bosch_radarless_generated.dbc",
           "messages_count": 53,
@@ -615,6 +732,24 @@
           "is_valid": true
         },
         {
+          "filename": "honda_crv_ex_2017_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_crv_ex_2017_can_generated.dbc",
+          "messages_count": 45,
+          "signals_count": 347,
+          "sha256": "0a515219635e419fe90f8c308be428d16b85b16a89602572208d28d175372f3e",
+          "size_bytes": 20885,
+          "is_valid": true
+        },
+        {
+          "filename": "honda_crv_executive_2016_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_crv_executive_2016_can_generated.dbc",
+          "messages_count": 31,
+          "signals_count": 218,
+          "sha256": "50bd81430a28d83a04ea8b895f4c96bec5616cdf555ee22b750c57f6e0b8fc3c",
+          "size_bytes": 13764,
+          "is_valid": true
+        },
+        {
           "filename": "honda_crv_touring_2016_can_generated.dbc",
           "relative_path": "curated/passenger/honda_crv_touring_2016_can_generated.dbc",
           "messages_count": 36,
@@ -633,6 +768,24 @@
           "is_valid": true
         },
         {
+          "filename": "honda_fit_ex_2018_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_fit_ex_2018_can_generated.dbc",
+          "messages_count": 32,
+          "signals_count": 228,
+          "sha256": "8ceb3bc1735c1f6124d185026bc42c240e25cdb897ad70ddc2e1e2e7dc55f450",
+          "size_bytes": 14405,
+          "is_valid": true
+        },
+        {
+          "filename": "honda_fit_hybrid_2018_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_fit_hybrid_2018_can_generated.dbc",
+          "messages_count": 31,
+          "signals_count": 229,
+          "sha256": "19de9e5954803cfc1d5829b12d33e567eb873e91410023c3aa669808036ebe69",
+          "size_bytes": 14307,
+          "is_valid": true
+        },
+        {
           "filename": "honda_insight_ex_2019_can_generated.dbc",
           "relative_path": "curated/passenger/honda_insight_ex_2019_can_generated.dbc",
           "messages_count": 50,
@@ -648,6 +801,15 @@
           "signals_count": 279,
           "sha256": "f77abbc220a1207463ef7205ce06e76879a2a8af1d268e76fefab8a47d6ce348",
           "size_bytes": 18925,
+          "is_valid": true
+        },
+        {
+          "filename": "honda_odyssey_extreme_edition_2018_china_can_generated.dbc",
+          "relative_path": "curated/passenger/honda_odyssey_extreme_edition_2018_china_can_generated.dbc",
+          "messages_count": 34,
+          "signals_count": 234,
+          "sha256": "91caf94da4cc791c10c0268f87e28ffca995d0d39eb2f6d328f40a2b33169ec5",
+          "size_bytes": 14716,
           "is_valid": true
         },
         {
@@ -714,6 +876,15 @@
           "is_valid": true
         },
         {
+          "filename": "hyundai_kia_generic.dbc",
+          "relative_path": "curated/passenger/hyundai_kia_generic.dbc",
+          "messages_count": 144,
+          "signals_count": 1318,
+          "sha256": "6acb7128bb496be3f3ba470684e0a4fb367202394066173924e74335cf6044c3",
+          "size_bytes": 93962,
+          "is_valid": true
+        },
+        {
           "filename": "hyundai_kia_mando_corner_radar_generated.dbc",
           "relative_path": "curated/passenger/hyundai_kia_mando_corner_radar_generated.dbc",
           "messages_count": 6,
@@ -732,6 +903,42 @@
           "is_valid": true
         },
         {
+          "filename": "hyundai_kona_ev_bcan.dbc",
+          "relative_path": "curated/passenger/hyundai_kona_ev_bcan.dbc",
+          "messages_count": 7,
+          "signals_count": 4,
+          "sha256": "93dd586412e0bfbd66ff7d9029a7cc5c4de893039c939a2359d70d803f6cba27",
+          "size_bytes": 471,
+          "is_valid": true
+        },
+        {
+          "filename": "hyundai_kona_ev_ccan.dbc",
+          "relative_path": "curated/passenger/hyundai_kona_ev_ccan.dbc",
+          "messages_count": 2,
+          "signals_count": 1,
+          "sha256": "e72d34066ffe0d230e65e5f3dc9ca9bbda7997c889f13b79145b5df59758c60f",
+          "size_bytes": 174,
+          "is_valid": true
+        },
+        {
+          "filename": "hyundai_kona_ev_comp_can.dbc",
+          "relative_path": "curated/passenger/hyundai_kona_ev_comp_can.dbc",
+          "messages_count": 5,
+          "signals_count": 12,
+          "sha256": "d6ae20d487491b2a1a53ddbff42f4c8a25b912231431278b054a1770218a54a9",
+          "size_bytes": 1494,
+          "is_valid": true
+        },
+        {
+          "filename": "hyundai_kona_ev_pcan.dbc",
+          "relative_path": "curated/passenger/hyundai_kona_ev_pcan.dbc",
+          "messages_count": 107,
+          "signals_count": 445,
+          "sha256": "67fda667ecb8cb7a79438eb731f8b5acd2d4a1f2ab832711849bfe8d48497905",
+          "size_bytes": 45506,
+          "is_valid": true
+        },
+        {
           "filename": "hyundai_palisade_2023_generated.dbc",
           "relative_path": "curated/passenger/hyundai_palisade_2023_generated.dbc",
           "messages_count": 101,
@@ -747,6 +954,87 @@
           "signals_count": 49,
           "sha256": "7ced6ca68c27e5a1cd10ac63c37beee7383d2cc07c501773b64f2568e4bd4596",
           "size_bytes": 3941,
+          "is_valid": true
+        },
+        {
+          "filename": "jaguar_xf_x250_hs_bus.dbc",
+          "relative_path": "curated/passenger/jaguar_xf_x250_hs_bus.dbc",
+          "messages_count": 53,
+          "signals_count": 153,
+          "sha256": "b27bd681b31d70b09a9318e93e97fbfc89096645576509cb78b357453c0f47e6",
+          "size_bytes": 59851,
+          "is_valid": true
+        },
+        {
+          "filename": "jaguar_xf_x250_ms_bus.dbc",
+          "relative_path": "curated/passenger/jaguar_xf_x250_ms_bus.dbc",
+          "messages_count": 64,
+          "signals_count": 125,
+          "sha256": "b70502970fc1ed219f9b879372895e19facbd788b4fd366607c4dc26c9061731",
+          "size_bytes": 35553,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_gs300h_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_gs300h_2017_pt_generated.dbc",
+          "messages_count": 45,
+          "signals_count": 242,
+          "sha256": "a42a8611efe5e0790c5fb28bdeb6683c659ceda9041d938ae0ba4c7362d70610",
+          "size_bytes": 19574,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_is_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_is_2018_pt_generated.dbc",
+          "messages_count": 47,
+          "signals_count": 245,
+          "sha256": "52cd32ea81987bc824326bba5f1556680b4c7ac762b08403b03b815c90971ad9",
+          "size_bytes": 19802,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_nx300_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_nx300_2018_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 242,
+          "sha256": "f72e7eba3ce74a8c48dea8323685a33c65c9b4747fcee621fe0c628fcf13d545",
+          "size_bytes": 19601,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_nx300h_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_nx300h_2018_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 241,
+          "sha256": "9f6a0e97db46713bab650eb1d3b4f5488bdbfceeea3f89562048e3e6bc5cf2e4",
+          "size_bytes": 19555,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_rx_350_2016_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_rx_350_2016_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 241,
+          "sha256": "b3bc17edc03640adbe949cb2eeb4ef312f1319cf157030ea84719a4948adf036",
+          "size_bytes": 19507,
+          "is_valid": true
+        },
+        {
+          "filename": "lexus_rx_hybrid_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/lexus_rx_hybrid_2017_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 241,
+          "sha256": "7d6ce78ef7babd97311e2b79154786db8f5d81b2a08aaa8c3e4847f210a26eac",
+          "size_bytes": 19558,
+          "is_valid": true
+        },
+        {
+          "filename": "lincoln_mkz.dbc",
+          "relative_path": "curated/passenger/lincoln_mkz.dbc",
+          "messages_count": 1,
+          "signals_count": 11,
+          "sha256": "f456be1b3982a0b48696befd71717f0ff0beb155ee732e12673f4150fa296ac8",
+          "size_bytes": 1956,
           "is_valid": true
         },
         {
@@ -840,6 +1128,60 @@
           "is_valid": true
         },
         {
+          "filename": "nissan_leaf_av_can.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_av_can.dbc",
+          "messages_count": 2,
+          "signals_count": 16,
+          "sha256": "3ee4801286223a2b91d9fcc9f51720000707468ce7e7e161f729cea7e64d6926",
+          "size_bytes": 3379,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_car_can_aze0.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_car_can_aze0.dbc",
+          "messages_count": 54,
+          "signals_count": 355,
+          "sha256": "e7d42f55465fd4d1dfdd7a8357291bbfd5734eef5de61ac155b7586029f02cd1",
+          "size_bytes": 40842,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_aze0.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_ev_can_aze0.dbc",
+          "messages_count": 29,
+          "signals_count": 190,
+          "sha256": "24e00c4e9f725c90dfad96797be8606dcedd72b9bc86d88741767044065d660d",
+          "size_bytes": 43947,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_ze0.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_ev_can_ze0.dbc",
+          "messages_count": 28,
+          "signals_count": 151,
+          "sha256": "af732866cc6cc546d026b69d9a341e790707eae41afdb2da0d5f9084c7caecb2",
+          "size_bytes": 36159,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_ev_can_ze1.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_ev_can_ze1.dbc",
+          "messages_count": 52,
+          "signals_count": 249,
+          "sha256": "fe93c7c04144c48901df897640f42e45e300e778858c40582b85a04d7ad5b100",
+          "size_bytes": 56440,
+          "is_valid": true
+        },
+        {
+          "filename": "nissan_leaf_qc_can.dbc",
+          "relative_path": "curated/passenger/nissan_leaf_qc_can.dbc",
+          "messages_count": 12,
+          "signals_count": 59,
+          "sha256": "d724599bd6842c8ea219b13efcd8e02ee574b75f24e9610a838bf1fa8300c7ee",
+          "size_bytes": 19767,
+          "is_valid": true
+        },
+        {
           "filename": "nissan_x_trail_2017_generated.dbc",
           "relative_path": "curated/passenger/nissan_x_trail_2017_generated.dbc",
           "messages_count": 20,
@@ -903,6 +1245,15 @@
           "is_valid": true
         },
         {
+          "filename": "stellantis_dasm.dbc",
+          "relative_path": "curated/passenger/stellantis_dasm.dbc",
+          "messages_count": 23,
+          "signals_count": 85,
+          "sha256": "dc5055d4d2967e82050116708d5b6d23b3b3e883f52d675abf04545cf5f5f71a",
+          "size_bytes": 6964,
+          "is_valid": true
+        },
+        {
           "filename": "subaru_forester_2017_generated.dbc",
           "relative_path": "curated/passenger/subaru_forester_2017_generated.dbc",
           "messages_count": 28,
@@ -957,6 +1308,33 @@
           "is_valid": true
         },
         {
+          "filename": "tesla_can_pre1916.dbc",
+          "relative_path": "curated/passenger/tesla_can_pre1916.dbc",
+          "messages_count": 48,
+          "signals_count": 699,
+          "sha256": "30fec7dfab9495a98b010db1d0ecbc7f7099deb8e4fc165ce085dca2b5ef213d",
+          "size_bytes": 76539,
+          "is_valid": true
+        },
+        {
+          "filename": "tesla_ibooster_gen2.dbc",
+          "relative_path": "curated/passenger/tesla_ibooster_gen2.dbc",
+          "messages_count": 8,
+          "signals_count": 208,
+          "sha256": "9a964d88ff546d0091dbaac43c4a129cb9c4106218d8194a1f233017df774bc9",
+          "size_bytes": 17509,
+          "is_valid": true
+        },
+        {
+          "filename": "tesla_model3_model3can.dbc",
+          "relative_path": "curated/passenger/tesla_model3_model3can.dbc",
+          "messages_count": 159,
+          "signals_count": 2752,
+          "sha256": "d54df533fc82f3dab11ddd0f5ae4d846f22c0a24b111d8cba2b93e79caf60151",
+          "size_bytes": 322430,
+          "is_valid": true
+        },
+        {
           "filename": "tesla_model3_party.dbc",
           "relative_path": "curated/passenger/tesla_model3_party.dbc",
           "messages_count": 21,
@@ -981,6 +1359,15 @@
           "signals_count": 74,
           "sha256": "2b0ff9c0caac1bee2708cd0e2b4c50fa39e40107a6af0d9ff4343720b8c2780d",
           "size_bytes": 7896,
+          "is_valid": true
+        },
+        {
+          "filename": "tesla_radar.dbc",
+          "relative_path": "curated/passenger/tesla_radar.dbc",
+          "messages_count": 93,
+          "signals_count": 1060,
+          "sha256": "aa2a44a9d0040b9be86abb2e4ae7c290fc61b17f632668c2a110f1d77696589d",
+          "size_bytes": 81509,
           "is_valid": true
         },
         {
@@ -1020,6 +1407,51 @@
           "is_valid": true
         },
         {
+          "filename": "toyota_avalon_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_avalon_2017_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 240,
+          "sha256": "a0c3ef7d8aa9ead24d90db92c6a43e15ca6d3cda931ce171558f2c095d42f976",
+          "size_bytes": 19397,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_camry_hybrid_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_camry_hybrid_2018_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 242,
+          "sha256": "bdbe5dc05918080ad2487e934f76b1172de5b5538b795150d0e65b7d0ae6b235",
+          "size_bytes": 19546,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_corolla_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_corolla_2017_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 240,
+          "sha256": "d011a96e0743d4f5c3e6b28eafe8752fb59a2e160f87f4008359d03b586fa873",
+          "size_bytes": 19389,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_highlander_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_highlander_2017_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 240,
+          "sha256": "24454eeef44a8ecf79ab7aff3ae7a64c9e8012b98bb4e8c8f34ae83770cc1b6f",
+          "size_bytes": 19401,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_highlander_hybrid_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_highlander_hybrid_2018_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 239,
+          "sha256": "75891f486011713164eab8f6a0c0bc9478ecf99cdc0212f5a946fd43506693ce",
+          "size_bytes": 19412,
+          "is_valid": true
+        },
+        {
           "filename": "toyota_iQ_2009_can.dbc",
           "relative_path": "curated/passenger/toyota_iQ_2009_can.dbc",
           "messages_count": 26,
@@ -1035,6 +1467,15 @@
           "signals_count": 351,
           "sha256": "31ac11f7325de481c55f647fd228267c064804549e811f2f2bb88d45f0090382",
           "size_bytes": 32001,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_nodsu_hybrid_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_nodsu_hybrid_pt_generated.dbc",
+          "messages_count": 46,
+          "signals_count": 259,
+          "sha256": "e1184acd9051c051cfcd4b440565498018d4f379f41c72e2c12696f691571df4",
+          "size_bytes": 21336,
           "is_valid": true
         },
         {
@@ -1056,6 +1497,15 @@
           "is_valid": true
         },
         {
+          "filename": "toyota_prius_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_prius_2017_pt_generated.dbc",
+          "messages_count": 45,
+          "signals_count": 243,
+          "sha256": "1909739d1c4238fb40de034df4938fd09d62278f87e57e17ccfd18830a9dee4e",
+          "size_bytes": 19718,
+          "is_valid": true
+        },
+        {
           "filename": "toyota_radar_dsu_tssp.dbc",
           "relative_path": "curated/passenger/toyota_radar_dsu_tssp.dbc",
           "messages_count": 19,
@@ -1065,12 +1515,30 @@
           "is_valid": true
         },
         {
+          "filename": "toyota_rav4_2017_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_rav4_2017_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 239,
+          "sha256": "d7cc0b88d59e783723d04022913199e5137464f44c791807acba9c28968ca762",
+          "size_bytes": 19343,
+          "is_valid": true
+        },
+        {
           "filename": "toyota_secoc_pt_generated.dbc",
           "relative_path": "curated/passenger/toyota_secoc_pt_generated.dbc",
           "messages_count": 66,
           "signals_count": 399,
           "sha256": "ace5c822261f7a2e84b14787200f7a6bdcbc0f0ece9c4ba61b51fbe28b103624",
           "size_bytes": 36312,
+          "is_valid": true
+        },
+        {
+          "filename": "toyota_sienna_xle_2018_pt_generated.dbc",
+          "relative_path": "curated/passenger/toyota_sienna_xle_2018_pt_generated.dbc",
+          "messages_count": 44,
+          "signals_count": 240,
+          "sha256": "ccc8dca876f0d0e266c7d13c61db1886e22f19da94009dff2f8007a7cd53889c",
+          "size_bytes": 19402,
           "is_valid": true
         },
         {
@@ -1110,6 +1578,15 @@
           "is_valid": true
         },
         {
+          "filename": "vw_golf_mk4.dbc",
+          "relative_path": "curated/passenger/vw_golf_mk4.dbc",
+          "messages_count": 84,
+          "signals_count": 1218,
+          "sha256": "ad67f39d9106c1eea0f54e9cca7525a364bada062454246e474c5bcaf52a4018",
+          "size_bytes": 71780,
+          "is_valid": true
+        },
+        {
           "filename": "vw_meb_2024_generated.dbc",
           "relative_path": "curated/passenger/vw_meb_2024_generated.dbc",
           "messages_count": 132,
@@ -1146,6 +1623,15 @@
           "is_valid": true
         },
         {
+          "filename": "vw_mqb_2010.dbc",
+          "relative_path": "curated/passenger/vw_mqb_2010.dbc",
+          "messages_count": 108,
+          "signals_count": 1116,
+          "sha256": "198dbce656152fd8e7c091d9f239d3aa42997195d2a9da92d2d5351c1ba31dbd",
+          "size_bytes": 97161,
+          "is_valid": true
+        },
+        {
           "filename": "vw_mqbevo.dbc",
           "relative_path": "curated/passenger/vw_mqbevo.dbc",
           "messages_count": 136,
@@ -1170,7 +1656,7 @@
       "protocol": "SAE J1979 OBD-II",
       "license": "MIT",
       "description": "OBD-II Mode 01 PID reference DBCs incl. multiplexed PID-response layouts.",
-      "files_count": 2,
+      "files_count": 3,
       "files": [
         {
           "filename": "OBD2.dbc",
@@ -1189,11 +1675,20 @@
           "sha256": "98d123e996325c4bb10ca67ecb9169867d71794b2cdb1d41b0ae5f7ed8a6d7cf",
           "size_bytes": 1217,
           "is_valid": true
+        },
+        {
+          "filename": "obd2_open_pids.dbc",
+          "relative_path": "curated/diagnostics/obd2_open_pids.dbc",
+          "messages_count": 20,
+          "signals_count": 25,
+          "sha256": "a87aa25a94a864b77cc293c0b9415a1aee8a39438fa16c4bc1bc7336a9f60060",
+          "size_bytes": 4785,
+          "is_valid": true
         }
       ]
     }
   },
-  "total_files": 126,
-  "total_messages": 12518,
-  "total_signals": 57862
+  "total_files": 181,
+  "total_messages": 14961,
+  "total_signals": 75603
 }
