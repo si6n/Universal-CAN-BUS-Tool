@@ -918,8 +918,8 @@ def test_tier2_r5_rate_limiter_sliding_window_1000ms_recovery() -> None:
 
     # Seed 50 timestamps from 2.0s ago
     old_t = time.monotonic() - 2.0
-    for _ in range(50):
-        gateway._tx_timestamps.append(old_t)
+    for i in range(50):
+        gateway._tx_timestamps.append((old_t, threading.get_ident(), i))
 
     # Transmit new frame -> expired timestamps popped
     assert gateway.validate_and_transmit(frame) is True

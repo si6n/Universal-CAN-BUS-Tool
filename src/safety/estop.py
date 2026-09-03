@@ -158,6 +158,12 @@ class EmergencyStopSystem:
         # oldest nonce can be evicted when the window is full.
         self._consumed_nonces: "collections.OrderedDict[bytes, bool]" = collections.OrderedDict()
         self._epoch: int = 0
+        # CRITICAL-1 (E-Stop TOCTOU): TX fence generation + dedicated send
+        # lock. A frame may only be dispatched when the fence generation it
+        # was validated against is STILL current at dispatch time, checked
+        # while holding this lock — closing the check-then-send race window.
+        self._tx_fence: int = 0
+        self._tx_send_lock = threading.Lock()
         self._lock = threading.RLock()
 
     @property
@@ -177,6 +183,29 @@ class EmergencyStopSystem:
         """Return current monotonically increasing state epoch counter."""
         with self._lock:
             return self._epoch
+
+    @property
+    def tx_fence(self) -> int:
+        """Return current monotonic TX fence generation (CRITICAL-1).
+
+        The generation advances on EVERY engagement and on EVERY authorized
+        reset — any state transition a validated frame must not survive.
+        Readers comparing a captured generation against the live one must do
+        so while holding `tx_send_lock` (see `acquire_tx_fence`).
+        """
+        with self._lock:
+            return self._tx_fence
+
+    @property
+    def tx_send_lock(self) -> threading.Lock:
+        """Return the dedicated E-Stop TX send lock (CRITICAL-1).
+
+        Gateway dispatch serializes on this leaf lock so the fenced
+        re-verification and the bus write are atomic with respect to any
+        engagement / reset state transition. It never nests inside the
+        estop RLock or the gateway lock (deadlock-free leaf lock).
+        """
+        return self._tx_send_lock
 
     @property
     def active_challenge(self) -> EStopChallenge | None:
@@ -331,6 +360,10 @@ class EmergencyStopSystem:
                 timestamp_ns=now_wall_ns,
                 system_speed_kmh=vehicle_speed_kmh,
             )
+            # CRITICAL-1: every engagement invalidates all in-flight validated
+            # frames — the fence generation advances atomically with the
+            # engagement under the estop lock.
+            self._tx_fence += 1
             event_snapshot = self._last_event
             callbacks_snapshot = list(self._callbacks)
 
@@ -460,6 +493,10 @@ class EmergencyStopSystem:
             # is cleared; last_event remains the "why did we stop" evidence.
             self._active_challenge = None
             self._epoch += 1
+            # CRITICAL-1: an authorized reset is also a TX state transition —
+            # any frame validated before the reset (against the engaged or
+            # the pre-engagement generation) must not be dispatched after it.
+            self._tx_fence += 1
             logger.warning(
                 "Emergency Stop successfully reset by authorized operator",
                 extra={"epoch": self._epoch},

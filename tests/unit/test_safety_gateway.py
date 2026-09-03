@@ -1,5 +1,6 @@
 import asyncio
 import concurrent.futures
+import threading
 import time
 from unittest.mock import MagicMock
 
@@ -310,8 +311,8 @@ def test_safety_gateway_sliding_window_expiration() -> None:
 
     # Insert old timestamps (> 1.5 seconds ago) into deque
     old_time = time.monotonic() - 2.0
-    for _ in range(50):
-        gateway._tx_timestamps.append(old_time)
+    for i in range(50):
+        gateway._tx_timestamps.append((old_time, threading.get_ident(), i))
 
     assert len(gateway._tx_timestamps) == 50
 
@@ -680,3 +681,313 @@ def test_estop_race_window_triggered_between_phases() -> None:
     finally:
         # Restore original property
         type(estop).is_engaged = original_property
+
+
+# ============================================================================
+# CRITICAL-1: E-Stop TOCTOU — TX fence hardening
+# ============================================================================
+
+
+class _RecordingSendBus:
+    """Test double recording privileged dispatches (appends only on dispatch)."""
+
+    def __init__(self) -> None:
+        self.sent_frames: list[CanFrame] = []
+        self.dispatch_threads: list[int] = []
+
+    def connect(self) -> None:
+        pass
+
+    def disconnect(self) -> None:
+        pass
+
+    def privileged_send(self, frame: CanFrame) -> None:
+        self.dispatch_threads.append(threading.get_ident())
+        self.sent_frames.append(frame)
+
+
+def test_estop_fires_while_send_delayed_at_fence_no_frame_leaks() -> None:
+    """CRITICAL-1 (E-Stop TOCTOU): E-Stop mid-send must leak ZERO frames.
+
+    The frame passes every validation stage against a CLEAR E-Stop, then its
+    privileged dispatch is delayed inside Phase 3 (parked at the E-Stop send
+    fence). The E-Stop engages while the frame is stalled mid-send. When the
+    fence is granted, the in-lock re-verification must abort the dispatch —
+    not even ONE frame may reach the wire (ASIL-B fail-closed).
+    """
+    estop = EmergencyStopSystem()
+    bus = _RecordingSendBus()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    errors: list[BaseException] = []
+
+    def transmit_worker() -> None:
+        try:
+            gateway.validate_and_transmit(frame)
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            errors.append(exc)
+
+    # Hold the E-Stop TX fence: the worker's privileged dispatch is DELAYED
+    # in Phase 3 — it cannot reach the bus while we hold the fence lock.
+    with estop.tx_send_lock:
+        tx_thread = threading.Thread(target=transmit_worker, name="tx-fence-worker")
+        tx_thread.start()
+        # Let the worker complete validation and park at the fence. (Even if
+        # it is still mid-validation at trigger time, every path aborts.)
+        time.sleep(0.05)
+
+        # E-Stop engages while the frame is stalled mid-send in the gateway.
+        estop.trigger(EStopTriggerSource.USER_UI_BUTTON, "Operator hit red button mid-send")
+
+    # Fence released -> the worker must re-verify INSIDE the lock and abort.
+    tx_thread.join(timeout=2.0)
+
+    assert not tx_thread.is_alive(), "TX worker hung at the fence"
+    assert len(errors) == 1
+    assert isinstance(errors[0], SafetyError)
+    # The engagement bumped the fence generation while the frame was parked:
+    # the fenced re-verification aborts the dispatch. (Had the E-Stop fired
+    # before Phase 2, the code would be ESTOP_ACTIVE instead — either way
+    # the frame dies; the fence error is the more precise diagnosis.)
+    assert errors[0].code in ("ESTOP_TX_FENCE_INVALIDATED", "ESTOP_ACTIVE")
+    # HARD invariant: not even a single frame reached the wire.
+    assert len(bus.sent_frames) == 0
+    assert len(bus.dispatch_threads) == 0
+
+
+def test_estop_tx_fence_epoch_invalidation_mid_send() -> None:
+    """CRITICAL-1: a fence-epoch bump between validation and dispatch kills the frame.
+
+    A frame validated against fence generation N must be rejected when the
+    generation advanced (engagement + authorized reset) before the send lock
+    was granted — even though the E-Stop ends up DISENGAGED at send time.
+    Deterministic injection: the gateway's snapshot read of tx_fence is
+    patched to advance the real fence (real trigger + real reset) right after
+    the gateway captured generation 0.
+    """
+    estop = EmergencyStopSystem()
+    bus = _RecordingSendBus()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    calls = [0]
+    original_tx_fence = type(estop).tx_fence
+
+    def patched_tx_fence(self: EmergencyStopSystem) -> int:
+        calls[0] += 1
+        if calls[0] == 1:
+            # The gateway is snapshotting RIGHT NOW: advance the real fence
+            # (engagement + authorized reset each bump the generation) and
+            # report the pre-bump generation the frame was validated against.
+            self.trigger(EStopTriggerSource.BUS_OFF_DETECTED, "Bus-off while frame in flight")
+            self.reset(self.create_reset_token())
+            return 0
+        return self._tx_fence
+
+    type(estop).tx_fence = property(patched_tx_fence)
+    try:
+        with pytest.raises(SafetyError) as exc_info:
+            gateway.validate_and_transmit(frame)
+        assert exc_info.value.code == "ESTOP_TX_FENCE_INVALIDATED"
+    finally:
+        type(estop).tx_fence = original_tx_fence
+
+    # The epoch-stale frame never reached the bus; E-Stop is disengaged again.
+    assert len(bus.sent_frames) == 0
+    assert not estop.is_engaged
+    assert estop.tx_fence == 2
+
+
+def test_estop_tx_fence_allows_clean_send_within_same_generation() -> None:
+    """CRITICAL-1 positive control: unchanged fence generation lets the send through."""
+    estop = EmergencyStopSystem()
+    bus = _RecordingSendBus()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    assert gateway.validate_and_transmit(frame) is True
+    assert len(bus.sent_frames) == 1
+    assert estop.tx_fence == 0
+    assert len(gateway._tx_timestamps) == 1
+
+
+# ============================================================================
+# HIGH-1: rate-limit rollback removes exactly the rolling thread's stamp
+# ============================================================================
+
+
+def test_rate_limit_rollback_removes_exactly_the_rolling_threads_stamp() -> None:
+    """HIGH-1: rollback deletes the rolling thread's OWN stamp by identity.
+
+    Deterministic interleave: thread A appends its stamp and parks at its
+    in-fence re-check (holding the send fence); thread B appends its own
+    stamp and parks at the fence behind A. A's send is then rejected — A's
+    rollback must remove EXACTLY A's (now_ns, thread_id, seq) tuple; B's
+    reservation must survive untouched (the old blind pop() deleted B's).
+    """
+    bus = VirtualBus(channel_id="safety_vbus_rollback")
+    bus.connect()
+    estop = EmergencyStopSystem()
+    gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    main_ident = threading.get_ident()
+
+    # Prior successful send from the main thread — its stamp must survive.
+    assert gateway.validate_and_transmit(frame) is True
+    assert len(gateway._tx_timestamps) == 1
+
+    gate_a = threading.Event()
+    gate_b = threading.Event()
+    a_at_fence = threading.Event()
+    a_finished = threading.Event()
+    per_thread_reads: dict[int, int] = {}
+    a_errors: list[BaseException] = []
+    b_result: list[bool] = []
+
+    original_is_engaged = type(estop).is_engaged
+
+    def patched_is_engaged(self: EmergencyStopSystem) -> bool:
+        tid = threading.get_ident()
+        reads = per_thread_reads.get(tid, 0)
+        per_thread_reads[tid] = reads + 1
+        # Each sender makes exactly 3 engagement reads (Stage 2, snapshot,
+        # fenced re-check). Gate the 3rd read per thread so A parks INSIDE
+        # the fence holding it, and B parks at its own re-check later.
+        if reads == 2:
+            if tid == thread_a.ident:
+                a_at_fence.set()
+                gate_a.wait(timeout=5.0)
+            elif tid == thread_b.ident:
+                gate_b.wait(timeout=5.0)
+        return self._is_engaged
+
+    def worker_a() -> None:
+        try:
+            gateway.validate_and_transmit(frame)
+        except BaseException as exc:  # noqa: BLE001 — asserted below
+            a_errors.append(exc)
+        finally:
+            a_finished.set()
+
+    def worker_b() -> None:
+        b_result.append(gateway.validate_and_transmit(frame))
+
+    thread_a = threading.Thread(target=worker_a, name="rollback-a")
+    thread_b = threading.Thread(target=worker_b, name="rollback-b")
+
+    type(estop).is_engaged = property(patched_is_engaged)
+    try:
+        thread_a.start()
+        # A is now parked INSIDE the fence (holding the send fence).
+        assert a_at_fence.wait(timeout=5.0), "A never reached the fenced re-check"
+
+        thread_b.start()
+        # Deterministic evidence both stamps are appended (Phase 1) while A
+        # is gated inside the fence and B waits at the fence behind it.
+        deadline = time.monotonic() + 5.0
+        while len(gateway._tx_timestamps) < 3 and time.monotonic() < deadline:
+            time.sleep(0.002)
+        assert len(gateway._tx_timestamps) == 3, "workers did not consume their stamps"
+
+        # Reject A's send WITHOUT running the E-Stop machine (direct state
+        # flip: no callbacks fire, so the sliding window is not cleared and
+        # the rollback path is observed in isolation).
+        estop._is_engaged = True
+        gate_a.set()
+
+        assert a_finished.wait(timeout=5.0), "A never completed"
+        assert len(a_errors) == 1
+        assert isinstance(a_errors[0], SafetyError)
+        assert a_errors[0].code == "ESTOP_ACTIVE"
+
+        # HIGH-1 core assertion: A's rollback removed EXACTLY A's own stamp.
+        # B's reservation (and the earlier main-thread stamp) are intact.
+        remaining = list(gateway._tx_timestamps)
+        assert len(remaining) == 2, f"expected main+B stamps, got {remaining}"
+        remaining_idents = {stamp[1] for stamp in remaining}
+        assert main_ident in remaining_idents
+        assert thread_b.ident in remaining_idents
+        assert thread_a.ident not in remaining_idents
+
+        # Disengage and release B: B's own stamp is retained on success.
+        estop._is_engaged = False
+        gate_b.set()
+        thread_b.join(timeout=5.0)
+        assert not thread_b.is_alive(), "B hung at the fence"
+        assert b_result == [True]
+        assert len(gateway._tx_timestamps) == 2
+        # Main's + B's frames went out; A's rejected frame never did.
+        assert len(bus.sent_frames) == 2
+    finally:
+        estop._is_engaged = False
+        gate_a.set()
+        gate_b.set()
+        type(estop).is_engaged = original_is_engaged
+        thread_a.join(timeout=5.0)
+        thread_b.join(timeout=5.0)
+        bus.disconnect()
+
+
+# ============================================================================
+# MEDIUM-6: managed bounded executor for the async TxPort entry
+# ============================================================================
+
+
+class _ThreadRecordingBus:
+    """Bus double recording WHICH thread performed each privileged dispatch."""
+
+    def __init__(self) -> None:
+        self.sent_frames: list[CanFrame] = []
+        self.dispatch_thread_names: list[str] = []
+
+    def connect(self) -> None:
+        pass
+
+    def disconnect(self) -> None:
+        pass
+
+    def privileged_send(self, frame: CanFrame) -> None:
+        self.dispatch_thread_names.append(threading.current_thread().name)
+        self.sent_frames.append(frame)
+
+
+def test_gateway_send_offloads_via_managed_bounded_executor() -> None:
+    """MEDIUM-6: async sends run on the gateway's OWN bounded pool, never the loop default."""
+    bus = _ThreadRecordingBus()
+    gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+
+    # Managed and bounded by a class-level budget — not the event loop's
+    # shared default executor (unbounded and shared with every other offload).
+    assert gateway._tx_executor is not None
+    assert gateway._tx_executor._max_workers == TxSafetyGateway.TX_EXECUTOR_MAX_WORKERS
+    assert TxSafetyGateway.TX_EXECUTOR_MAX_WORKERS <= 8
+
+    executor_before = gateway._tx_executor
+
+    asyncio.run(gateway.send(frame))
+    assert len(bus.sent_frames) == 1
+    assert bus.dispatch_thread_names[0].startswith("tx-gateway-")
+
+    # The SAME managed pool instance is reused across sends — never
+    # recreated, never swapped for the loop default executor.
+    asyncio.run(gateway.send(frame))
+    assert gateway._tx_executor is executor_before
+    assert len(bus.sent_frames) == 2
+    assert all(name.startswith("tx-gateway-") for name in bus.dispatch_thread_names)
+
+
+def test_gateway_executor_shutdown_is_idempotent_and_fails_closed() -> None:
+    """MEDIUM-6: shutdown releases the pool; further async sends fail closed."""
+    bus = _ThreadRecordingBus()
+    gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
+
+    gateway.shutdown()
+    gateway.shutdown()  # idempotent
+
+    frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
+    with pytest.raises(SafetyError, match="shut down"):
+        asyncio.run(gateway.send(frame))
+    assert len(bus.sent_frames) == 0

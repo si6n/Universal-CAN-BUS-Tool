@@ -245,6 +245,8 @@ class RollingDiskBuffer:
     MAX_RETENTION_SEC: ClassVar[int] = 600
     MAX_DISK_BYTES: ClassVar[int] = 100 * 1024 * 1024
 
+    _serialize_chunk = staticmethod(_serialize_chunk)
+
     def __init__(
         self,
         storage_dir: str | Path,
@@ -263,6 +265,9 @@ class RollingDiskBuffer:
         self._secret_provider = secret_provider or get_default_secret_provider()
 
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
+        self._tls = threading.local()
+        self._closed = False
         self._current_chunk_frames: list[CanFrame] = []
         # E10: count of frames rejected at append-time for malformed content
         self._rejected_frames: int = 0
@@ -276,7 +281,7 @@ class RollingDiskBuffer:
         # on the caller thread (single-writer ordering); only compression and
         # disk IO are offloaded. Queue full => caller writes synchronously
         # (documented drop-free fallback, preferable to losing telemetry).
-        self._flush_queue: queue.Queue[tuple[Path, bytes]] = queue.Queue(maxsize=16)
+        self._flush_queue: queue.Queue[tuple[Path, bytes] | None] = queue.Queue(maxsize=16)
         self._flush_worker = threading.Thread(
             target=self._flush_worker_loop, name="rolling_disk_flush", daemon=True
         )
@@ -329,14 +334,18 @@ class RollingDiskBuffer:
         try:
             _serialize_frame(frame)
         except ValueError as exc:
-            self._rejected_frames += 1
+            with self._lock:
+                self._rejected_frames += 1
             logger.warning(
                 "Rolling disk rejected malformed frame",
                 extra={"error": str(exc), "total_rejected": self._rejected_frames},
             )
             return
-        self._current_chunk_frames.append(frame)
-        if len(self._current_chunk_frames) >= self.chunk_frame_threshold:
+
+        with self._lock:
+            self._current_chunk_frames.append(frame)
+            should_flush = len(self._current_chunk_frames) >= self.chunk_frame_threshold
+        if should_flush:
             self.flush()
 
     def flush(self) -> Path | None:
@@ -346,28 +355,32 @@ class RollingDiskBuffer:
         ordering); compression and disk IO are offloaded to the worker.
         Queue full => synchronous fallback write (documented in module doc).
         """
-        if not self._current_chunk_frames:
-            return None
+        with self._lock:
+            if not self._current_chunk_frames:
+                return None
+            frames = self._current_chunk_frames
+            self._current_chunk_frames = []
+            chunk_idx = self._chunk_index
+            self._chunk_index += 1
 
         key = _get_hmac_key(self._secret_provider)
         try:
-            raw_bytes = _serialize_chunk(self._current_chunk_frames, key)
+            raw_bytes = self._serialize_chunk(frames, key)
         except ValueError as exc:
             # E10 defense-in-depth: append() already validates frames, but a
             # frame mutated after admission must not kill the ingestion loop —
             # drop the whole pending chunk (it cannot be partially trusted)
             # and keep recording the next one.
-            self._rejected_frames += len(self._current_chunk_frames)
+            with self._lock:
+                self._rejected_frames += len(frames)
             logger.error(
                 "Rolling disk dropped unserializable pending chunk",
-                extra={"error": str(exc), "frames": len(self._current_chunk_frames)},
+                extra={"error": str(exc), "frames": len(frames)},
             )
-            self._current_chunk_frames = []
-            self._chunk_index += 1
             return None
-        timestamp_ns = self._current_chunk_frames[0].timestamp_ns
+        timestamp_ns = frames[0].timestamp_ns
         chunk_file = self.storage_dir / (
-            f"chunk_{self._chunk_index:08d}_{timestamp_ns:020d}.bin.zst"
+            f"chunk_{chunk_idx:08d}_{timestamp_ns:020d}.bin.zst"
         )
 
         try:
@@ -382,13 +395,10 @@ class RollingDiskBuffer:
             "Enqueued rolling disk chunk",
             extra={
                 "file": chunk_file.name,
-                "frames": len(self._current_chunk_frames),
+                "frames": len(frames),
                 "uncompressed_kb": len(raw_bytes) // 1024,
             },
         )
-
-        self._current_chunk_frames = []
-        self._chunk_index += 1
         return chunk_file
 
     def _write_chunk(self, chunk_file: Path, raw_bytes: bytes) -> bytes:
@@ -398,7 +408,11 @@ class RollingDiskBuffer:
         a power cut after the rename can never leave a truncated chunk
         shadowing the kara kutu (black-box) recording.
         """
-        compressed_bytes = self._cctx.compress(raw_bytes)
+        cctx = getattr(self._tls, "cctx", None)
+        if cctx is None:
+            cctx = zstd.ZstdCompressor(level=3)
+            self._tls.cctx = cctx
+        compressed_bytes = cctx.compress(raw_bytes)
         temporary_file = chunk_file.with_suffix(chunk_file.suffix + ".tmp")
         with open(temporary_file, "wb") as f:
             f.write(compressed_bytes)
@@ -420,6 +434,7 @@ class RollingDiskBuffer:
         while True:
             item = self._flush_queue.get()
             if item is None:
+                self._flush_queue.task_done()
                 return
             chunk_file, raw_bytes = item
             try:
@@ -438,6 +453,8 @@ class RollingDiskBuffer:
                 )
                 self._quarantine_failed_chunk(chunk_file)
                 time.sleep(1.0)
+            finally:
+                self._flush_queue.task_done()
 
     @staticmethod
     def _quarantine_failed_chunk(chunk_file: Path) -> None:
@@ -454,11 +471,14 @@ class RollingDiskBuffer:
     def _drain_flush_queue(self, timeout_s: float) -> None:
         """Block until the worker catches up (used by read paths for consistency)."""
         deadline = time.monotonic() + timeout_s
-        while not self._flush_queue.empty():
+        while self._flush_queue.unfinished_tasks > 0:
             if time.monotonic() > deadline:
-                logger.warning("Rolling disk flush queue drain timed out", extra={"pending": self._flush_queue.qsize()})
+                logger.warning(
+                    "Rolling disk flush queue drain timed out",
+                    extra={"pending": self._flush_queue.unfinished_tasks},
+                )
                 return
-            time.sleep(0.01)
+            time.sleep(0.005)
 
     def _enforce_retention(self) -> None:
         """Purge chunks exceeding max time retention or total disk byte budget."""
@@ -512,9 +532,12 @@ class RollingDiskBuffer:
 
     def read_all_stored_frames(self) -> list[CanFrame]:
         """Read and authenticate all stored chunks in chronological order."""
-        self.flush()
-        # F-34: wait for async writes to land before reading the directory
-        self._drain_flush_queue(timeout_s=30.0)
+        with self._lock:
+            closed = self._closed
+        if not closed:
+            self.flush()
+            # F-34: wait for async writes to land before reading the directory
+            self._drain_flush_queue(timeout_s=30.0)
         key = _get_hmac_key(self._secret_provider)
         all_frames: list[CanFrame] = []
 
@@ -532,8 +555,32 @@ class RollingDiskBuffer:
 
         return all_frames
 
+    def read_all_stored_frames_after_close(self) -> list[CanFrame]:
+        """Convenience method to read frames after buffer has been closed."""
+        return self.read_all_stored_frames()
+
+    def close(self, timeout_s: float = 10.0) -> None:
+        """Flushes remaining frames, drains the queue, and shuts down the worker thread."""
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        self.flush()
+        try:
+            self._flush_queue.put(None, timeout=timeout_s)
+        except (queue.Full, Exception):
+            pass
+        if self._flush_worker.is_alive():
+            self._flush_worker.join(timeout=timeout_s)
+
     def clear(self) -> None:
         """Delete active authenticated chunks from the storage directory."""
-        self._current_chunk_frames = []
+        self._drain_flush_queue(timeout_s=10.0)
+        with self._lock:
+            self._current_chunk_frames = []
+            self._chunk_index = 0
+            self._rejected_frames = 0
         for file in self.storage_dir.glob("chunk_*.bin.zst"):
+            file.unlink(missing_ok=True)
+        for file in self.storage_dir.glob("*.tmp"):
             file.unlink(missing_ok=True)

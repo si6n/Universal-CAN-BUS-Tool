@@ -13,6 +13,7 @@ Enforces strict 6-stage policy evaluation order:
 from __future__ import annotations
 
 import collections
+import concurrent.futures
 import math
 import threading
 import time
@@ -89,6 +90,12 @@ class TxSafetyGateway:
         "default": (100, 100.0),
     }
 
+    # MEDIUM-6: bounded, gateway-owned executor for the async TxPort entry.
+    # Never offload onto the event loop's shared default executor (unbounded
+    # and shared with every other offload in the process).
+    TX_EXECUTOR_MAX_WORKERS: ClassVar[int] = 4
+    TX_EXECUTOR_THREAD_PREFIX: ClassVar[str] = "tx-gateway-"
+
     def __init__(
         self,
         bus: AbstractBus,
@@ -114,13 +121,29 @@ class TxSafetyGateway:
         # that production wiring could set by accident.
         self._whitelist_bypass_for_testing: bool = False
 
-        self._tx_timestamps: collections.deque[int] = collections.deque()
+        self._tx_timestamps: "collections.deque[tuple[int, int, int]]" = collections.deque()
+        # HIGH-1: monotonically increasing per-call sequence number. Combined
+        # with the thread id it makes every stamp uniquely identifiable, so a
+        # rollback removes EXACTLY the caller's own reservation — never the
+        # newest stamp of an unrelated concurrent sender (old blind pop()).
+        self._stamp_seq: int = 0
         self._budgets: dict[str, TxBudget] = {
             name: TxBudget(capacity, refill) for name, (capacity, refill) in self.BUDGETS.items()
         }
         self._current_vehicle_speed_kmh: float = 0.0
         self._last_speed_update_ns: int = 0
         self._lock = threading.RLock()
+
+        # MEDIUM-6: gateway-owned bounded executor for async sends (F-26/E-12).
+        # Eagerly constructed, single instance, reused across sends — never
+        # the event loop's shared default executor (unbounded and shared with
+        # every other offload in the process). Threads spawn lazily inside the
+        # pool, so an idle gateway costs nothing.
+        self._tx_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.TX_EXECUTOR_MAX_WORKERS,
+            thread_name_prefix=self.TX_EXECUTOR_THREAD_PREFIX,
+        )
+        self._tx_executor_shutdown = False
 
         # Wire E-stop callback to halt bus TX and trigger fault state
         self.estop.register_callback(self._on_estop_triggered)
@@ -191,6 +214,8 @@ class TxSafetyGateway:
         # -----------------------------------------------------------------
         timestamp_consumed = False
         budget_consumed = False
+        stamp: tuple[int, int, int] | None = None
+        budget: TxBudget | None = None
 
         with self._lock:
             now_ns = time.monotonic_ns()
@@ -326,7 +351,7 @@ class TxSafetyGateway:
             if budget_category == "default":
                 # Default lane: sliding window only (single meter)
                 while self._tx_timestamps:
-                    first_ts_ns = self._tx_timestamps[0]
+                    first_ts_ns = self._tx_timestamps[0][0]
                     if (now_ns - first_ts_ns) >= self.RATE_LIMIT_WINDOW_NS:
                         self._tx_timestamps.popleft()
                     else:
@@ -340,7 +365,15 @@ class TxSafetyGateway:
                     )
                     raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
 
-                self._tx_timestamps.append(now_ns)
+                # HIGH-1: identity-carrying stamp — (now_ns, thread_id, seq).
+                # The seq counter guarantees uniqueness even when one thread
+                # parks between append and rollback while another sender
+                # with the same thread id (impossible) or a colliding now_ns
+                # (possible under coarse clocks) interleaves. Rollback now
+                # removes EXACTLY this tuple, never a blind pop().
+                self._stamp_seq += 1
+                stamp = (now_ns, threading.get_ident(), self._stamp_seq)
+                self._tx_timestamps.append(stamp)
                 timestamp_consumed = True
             else:
                 # Categorised lane: token bucket only (single meter)
@@ -356,6 +389,11 @@ class TxSafetyGateway:
 
             # Snapshot estop state at the moment of lock release
             estop_snapshot = self.estop.is_engaged
+            # CRITICAL-1: capture the TX fence generation the frame is being
+            # validated against. PHASE 3 re-verifies it under the E-Stop send
+            # lock — any trigger/reset transition since this snapshot kills
+            # the frame before it can reach the wire.
+            fence_snapshot = self.estop.tx_fence
 
         # -----------------------------------------------------------------
         # PHASE 2: FINAL E-STOP GUARD (lock-free)
@@ -364,12 +402,8 @@ class TxSafetyGateway:
         # -----------------------------------------------------------------
         if estop_snapshot or self.estop.is_engaged:
             # E-Stop was engaged either during Stage 2 validation or in the
-            # window between lock release and this check. Rollback consumed tokens.
-            with self._lock:
-                if timestamp_consumed and self._tx_timestamps:
-                    self._tx_timestamps.pop()
-                if budget_consumed:
-                    budget.refund()
+            # window between lock release and this check. Roll back consumed tokens.
+            self._rollback_tx_reservation(timestamp_consumed, budget_consumed, stamp, budget)
             raise SafetyError(
                 "Transmission blocked: Emergency Stop is currently ENGAGED",
                 code="ESTOP_ACTIVE",
@@ -379,9 +413,52 @@ class TxSafetyGateway:
         # PHASE 3: TRANSMIT (outside lock, no rollback after this point)
         # D8: privileged dispatch through the explicit gateway port — no
         # more duck-typed reach into the driver's private _send_raw
+        #
+        # CRITICAL-1 (E-Stop TOCTOU): the dispatch is FENCED. The send lock
+        # makes [fence re-verification + privileged_send] atomic with respect
+        # to E-Stop state transitions (trigger/reset bump the fence generation
+        # under the estop lock before the dispatcher can acquire the fence).
+        # A frame validated against generation N is dispatched only if the
+        # generation is still N when the send lock is granted — an E-Stop
+        # fired mid-send invalidates the frame, so NOT EVEN ONE frame leaks.
         # -----------------------------------------------------------------
-        self.bus.privileged_send(frame)
+        with self.estop.tx_send_lock:
+            if fence_snapshot != self.estop.tx_fence or self.estop.is_engaged:
+                # State transitioned between validation and dispatch: the
+                # reservation is already rolled back below; nothing reaches the wire.
+                self._rollback_tx_reservation(timestamp_consumed, budget_consumed, stamp, budget)
+                raise SafetyError(
+                    "Transmission blocked: E-Stop TX fence invalidated "
+                    "(state transition during dispatch)",
+                    code="ESTOP_TX_FENCE_INVALIDATED",
+                )
+            self.bus.privileged_send(frame)
         return True
+
+    def _rollback_tx_reservation(
+        self,
+        timestamp_consumed: bool,
+        budget_consumed: bool,
+        stamp: tuple[int, int, int] | None,
+        budget: TxBudget | None,
+    ) -> None:
+        """Roll back exactly the caller's own consumed rate-limit reservation.
+
+        HIGH-1: the sliding-window stamp is identity-carrying
+        (now_ns, thread_id, seq). A rollback removes EXACTLY that tuple via
+        remove(stamp) — never a blind pop() that could delete the newest
+        stamp of an unrelated concurrent sender.
+        """
+        with self._lock:
+            if timestamp_consumed and stamp is not None:
+                try:
+                    self._tx_timestamps.remove(stamp)
+                except ValueError:
+                    # The stamp was already removed (e.g. the window was
+                    # cleared by an E-Stop callback). Nothing to roll back.
+                    pass
+            if budget_consumed and budget is not None:
+                budget.refund()
 
     def send_sync(self, frame: CanFrame) -> None:
         """Synchronously transmit frame conforming to TxPort protocol."""
@@ -392,8 +469,33 @@ class TxSafetyGateway:
 
         The synchronous validation pipeline may perform blocking work (driver TX,
         E-Stop state checks) — offloading it keeps ISO-TP CF bursts responsive.
+
+        MEDIUM-6: the offload runs on the gateway's OWN bounded, managed
+        ThreadPoolExecutor (thread_name_prefix 'tx-gateway-'), never on the
+        event loop's shared default executor (which is unbounded and shared
+        with every other offload in the process).
         """
         import asyncio
 
+        if self._tx_executor is None or self._tx_executor_shutdown:
+            # Fail-closed: no managed pool -> no offload -> no transmission.
+            raise SafetyError(
+                "Transmission blocked: gateway TX executor is shut down",
+                code="TX_EXECUTOR_SHUT_DOWN",
+            )
+
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self.send_sync, frame)
+        await loop.run_in_executor(self._tx_executor, self.send_sync, frame)
+
+    def shutdown(self) -> None:
+        """Release the managed TX executor (MEDIUM-6). Idempotent.
+
+        Sends attempted after shutdown fail closed with SafetyError. The
+        synchronous path (send_sync / validate_and_transmit) remains fully
+        functional — only the async offload lane is retired.
+        """
+        executor = self._tx_executor
+        if executor is not None and not self._tx_executor_shutdown:
+            self._tx_executor_shutdown = True
+            executor.shutdown(wait=False)
+            logger.info("TX gateway executor shut down")
