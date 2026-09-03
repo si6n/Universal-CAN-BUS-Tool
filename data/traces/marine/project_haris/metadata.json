@@ -1,0 +1,19 @@
+{
+  "title": "Project Haris: Maritime M-SOC Validation Dataset (NMEA 0183/2000 snapshots and raw capture, 2026-08-03 .. 2026-08-17)",
+  "description": "Flattened Elasticsearch snapshot exports and raw captures backing the validation work of the Project Haris open-source maritime security operations center (M-SOC). Two edge nodes: bench (NMEA 0183 simulator) and vessel (NMEA 2000 / CAN). Includes the full raw CAN capture of the vessel NMEA 2000 bus (36,238,192 frames, 76 unique PGNs).",
+  "upload_type": "dataset",
+  "access_right": "open",
+  "license": "mit",
+  "language": "eng",
+  "keywords": [
+    "maritime cybersecurity",
+    "M-SOC",
+    "NMEA 2000",
+    "NMEA 0183",
+    "Signal K",
+    "ELK stack",
+    "IoT security",
+    "vessel telemetry"
+  ],
+  "notes": "Coordinates are full-precision as collected (research-vessel telemetry). Per-file coverage windows: bench.csv Aug 3-17; vessel.csv Aug 3-13 (vessel bus live Aug 3, 5-7, 10-13); combined.csv Aug 3-17; raw/nmea_raw_bench.log Aug 3-12; raw/can0_raw_sinilind.log Aug 5-13 (vessel node offline Aug 14-23). Vessel Aug 3 rows are empty snapshots (bus not yet live)."
+}
