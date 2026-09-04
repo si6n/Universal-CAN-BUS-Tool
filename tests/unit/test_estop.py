@@ -14,7 +14,7 @@ from src.safety.estop import EmergencyStopSystem, EStopEvent, EStopTriggerSource
 
 def test_estop_initial_state() -> None:
     """Verify default clean unengaged state upon instantiation."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     assert not estop.is_engaged
     assert estop.last_event is None
     assert estop.get_reset_nonce() == b""
@@ -23,7 +23,7 @@ def test_estop_initial_state() -> None:
 @pytest.mark.parametrize("trigger_src", list(EStopTriggerSource))
 def test_estop_10_trigger_sources(trigger_src: EStopTriggerSource) -> None:
     """Verify all 10 E-Stop trigger sources engage the system and generate event records."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     reason = f"Test trigger {trigger_src.name}"
     speed = 42.5
 
@@ -47,7 +47,7 @@ def test_estop_10_trigger_sources(trigger_src: EStopTriggerSource) -> None:
 def test_estop_hmac_reset_success() -> None:
     """Verify proper challenge-response reset flow with structured token."""
     secret = b"test_secret_key_32_bytes_long!!!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Operator hit red button")
     assert estop.is_engaged
@@ -65,7 +65,7 @@ def test_estop_hmac_reset_success() -> None:
 
     # Verify disengaged
     assert not estop.is_engaged
-    # B10: the engagement audit record survives the reset — only the
+    # B10: the engagement audit record survives the reset â€” only the
     # challenge state is cleared, the "why did we stop" evidence remains.
     assert estop.last_event is not None
     assert estop.last_event.trigger == EStopTriggerSource.USER_UI_BUTTON
@@ -74,7 +74,7 @@ def test_estop_hmac_reset_success() -> None:
 
 def test_estop_hmac_reset_denied_invalid_token() -> None:
     """Verify rejection when an invalid token is provided."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.RATE_LIMIT_OVERFLOW, reason="Tx rate limit exceeded")
 
     with pytest.raises(SafetyError, match="Invalid E-Stop reset token") as exc_info:
@@ -87,7 +87,7 @@ def test_estop_hmac_reset_denied_invalid_token() -> None:
 
 def test_estop_nonce_cleared_prevents_replay() -> None:
     """Verify that once reset, the old token cannot be reused after a second trigger."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.SPEED_INTERLOCK_BREACH, reason="Speed breach", vehicle_speed_kmh=120.0)
 
     token1 = estop.compute_reset_token()
@@ -108,7 +108,7 @@ def test_estop_nonce_cleared_prevents_replay() -> None:
 def test_estop_custom_reset_secret() -> None:
     """Verify custom reset secret provided in constructor is honored."""
     custom_secret = os.urandom(64)
-    estop = EmergencyStopSystem(reset_secret=custom_secret)
+    estop = EmergencyStopSystem(reset_secret=custom_secret, allow_self_reset=True)
     estop.trigger(EStopTriggerSource.HARDWARE_DISCONNECT, reason="CAN adapter unplugged")
 
     token = estop.compute_reset_token()
@@ -120,7 +120,7 @@ def test_estop_custom_reset_secret() -> None:
 
 def test_estop_callbacks_and_error_isolation() -> None:
     """Verify all callbacks are executed and exceptions in one callback do not abort others."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
 
     events_received: list[EStopEvent] = []
 
@@ -146,7 +146,7 @@ def test_estop_callbacks_and_error_isolation() -> None:
 
 def test_estop_reset_when_not_engaged_is_noop() -> None:
     """Verify calling reset when not engaged returns cleanly without error."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     assert not estop.is_engaged
     # Should not raise exception
     estop.reset("dummy_token")
@@ -155,7 +155,7 @@ def test_estop_reset_when_not_engaged_is_noop() -> None:
 
 def test_estop_concurrent_triggers_thread_safety() -> None:
     """Verify thread safety under concurrent triggers and queries."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     errors: list[Exception] = []
 
     def worker(idx: int) -> None:
@@ -182,7 +182,7 @@ def test_estop_concurrent_triggers_thread_safety() -> None:
 def test_estop_concurrent_trigger_and_reset_toctou_safety() -> None:
     """Stress test E-Stop TOCTOU safety under rapid interleaved concurrent triggers and resets."""
     secret = b"toctou_verification_secret_32b!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     errors: list[Exception] = []
     iterations = 200
 

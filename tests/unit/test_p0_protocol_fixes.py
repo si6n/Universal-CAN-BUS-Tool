@@ -233,8 +233,19 @@ class TestCmdtSenderStateMachine(unittest.TestCase):
 
     def test_invalid_cts_aborts_with_unexpected_control(self) -> None:
         self.tx.start_cmdt_transfer(0xF9, self.pgn, b"D" * 14)
+        # P2-6: CTS with zero packets is a legal "connection hold" in SAE
+        # J1939-21 (T4 exists for exactly this) — the session must WAIT,
+        # not abort. Only impossible sequences (0 / > total) abort.
         zero_cts = make_tp_cm(0xF9, 0x01, TP_CTRL_CTS, self.pgn, 0, 1, 0xFF)
-        _, abort = self.tx.handle_rx_frame(zero_cts)
+        _, resp = self.tx.handle_rx_frame(zero_cts)
+        self.assertIsNone(resp)  # hold: nothing emitted, no abort
+        self.assertEqual(len(self.tx._tx_sessions), 1)  # session preserved
+        session = next(iter(self.tx._tx_sessions.values()))
+        self.assertEqual(session.state, "WAIT_CTS")
+
+        # An impossible sequence (next_seq=0) DOES abort.
+        bad_cts = make_tp_cm(0xF9, 0x01, TP_CTRL_CTS, self.pgn, 4, 0, 0xFF)
+        _, abort = self.tx.handle_rx_frame(bad_cts)
         self.assertIsNotNone(abort)
         self.assertEqual(abort.data[1], ABORT_REASON_UNEXPECTED_CONTROL)
         self.assertEqual(len(self.tx._tx_sessions), 0)

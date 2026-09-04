@@ -584,18 +584,33 @@ class SimulatedUdsEcu:
         if data_len == 0:
             return
 
-        if not self.is_fd and data_len <= 7:
-            # Classic Single Frame
+        if data_len <= 7:
+            # Classic Single Frame (P2-5: CAN_DL <= 8 uses the nibble form
+            # on BOTH classic and FD — the escape form requires SF_DL >= 8)
             sf_payload = bytes([(0x0 << 4) | data_len]) + data + (b"\xcc" * (7 - data_len))
-            frame = CanFrame(
-                channel_id=self.channel_id,
-                arbitration_id=self.tx_id,
-                dlc=8,
-                data=sf_payload,
-                is_extended=False,
-                is_fd=False,
-                direction="tx",
-            )
+            if self.is_fd:
+                # FD frames are padded to the 12-byte DLC minimum
+                sf_payload = sf_payload + b"\xcc" * 4
+                dlc = 9
+                frame = CanFrame(
+                    channel_id=self.channel_id,
+                    arbitration_id=self.tx_id,
+                    dlc=dlc,
+                    data=sf_payload,
+                    is_extended=False,
+                    is_fd=True,
+                    direction="tx",
+                )
+            else:
+                frame = CanFrame(
+                    channel_id=self.channel_id,
+                    arbitration_id=self.tx_id,
+                    dlc=8,
+                    data=sf_payload,
+                    is_extended=False,
+                    is_fd=False,
+                    direction="tx",
+                )
             await self.tx_port.send(frame)
         elif self.is_fd and data_len <= 62:
             # CAN-FD Extended Single Frame

@@ -128,9 +128,16 @@ class EmergencyStopSystem:
         secret_provider: SecretProvider | None = None,
         key_name: str = DEFAULT_ESTOP_KEY_NAME,
         max_token_age_s: float = 30.0,
+        allow_self_reset: bool = False,
     ) -> None:
         self._key_name = key_name
         self._max_token_age_ns = int(max_token_age_s * 1_000_000_000)
+        # P1-1: minting/verification separation — the enforcement object
+        # refuses to mint reset tokens unless explicitly elevated. Only
+        # EStopResetAuthority constructs (or flags) an instance with this
+        # enabled; everything else (gateway wiring, UI hold, test fixtures)
+        # operates verification-only.
+        self._allow_self_reset = allow_self_reset
 
         if reset_secret is not None:
             self._secret_provider: SecretProvider = EphemeralSecretBackend({self._key_name: bytes(reset_secret)})
@@ -220,8 +227,17 @@ class EmergencyStopSystem:
 
     @property
     def reset_secret(self) -> bytes:
-        """Retrieve current binary HMAC secret from SecretProvider (for backward compatibility)."""
-        return self._get_secret()
+        """Retrieve current binary HMAC secret from SecretProvider.
+
+        P1-1: the enforcement object no longer hands out the signing
+        secret — possession of it is equivalent to reset authority.
+        Only EStopResetAuthority (which shares the provider) may resolve it.
+        """
+        raise SafetyError(
+            "The E-Stop signing secret is not exposed on the enforcement "
+            "object (P1-1). Use EStopResetAuthority.",
+            code="ESTOP_SECRET_DENIED",
+        )
 
     @reset_secret.setter
     def reset_secret(self, secret: bytes) -> None:
@@ -268,8 +284,22 @@ class EmergencyStopSystem:
             return self._active_challenge
 
     def create_reset_token(self) -> EmergencyStopToken | None:
-        """Generate a valid, signed EmergencyStopToken for the currently active challenge."""
+        """Generate a valid, signed EmergencyStopToken for the currently active challenge.
+
+        P1-1 (self-signing separation): token MINTING is an authorization
+        operation and no longer available on the enforcement object by
+        default. It must go through `EStopResetAuthority`, which is the only
+        component configured with `allow_self_reset=True`. Any code holding
+        a plain `EmergencyStopSystem` reference (gateway, flasher, protocol
+        engines, a buggy retry loop) cannot forge a reset token anymore.
+        """
         with self._lock:
+            if not self._allow_self_reset:
+                raise SafetyError(
+                    "Token minting is denied on this EmergencyStopSystem instance — "
+                    "route reset authorization through EStopResetAuthority",
+                    code="ESTOP_MINT_DENIED",
+                )
             if not self._is_engaged:
                 return None
 
@@ -303,8 +333,16 @@ class EmergencyStopSystem:
 
         If called with an active challenge, returns a canonical structured token string
         or computed signature compatible with reset().
+
+        P1-1: same authority gate as create_reset_token.
         """
         with self._lock:
+            if not self._allow_self_reset:
+                raise SafetyError(
+                    "Token computation is denied on this EmergencyStopSystem instance — "
+                    "route reset authorization through EStopResetAuthority",
+                    code="ESTOP_MINT_DENIED",
+                )
             secret = self._get_secret()
 
             # B11: when a live challenge exists, create_reset_token() already
@@ -475,11 +513,25 @@ class EmergencyStopSystem:
                 raise SafetyError("E-Stop reset token timestamp expired", code="ESTOP_RESET_DENIED")
 
             # 7. Constant-Time HMAC Signature Verification
+            # P1-11: parse to bytes FIRST — hmac.compare_digest rejects
+            # non-ASCII str inputs with a bare TypeError (crashing the UI
+            # reset flow); a malformed hex signature must surface as a
+            # SafetyError instead. Comparing bytes also removes the .lower()
+            # dance entirely.
             secret = self._get_secret()
             structured_payload = challenge.serialize_for_signature()
-            expected_sig_structured = hmac.new(secret, structured_payload, hashlib.sha256).hexdigest()
+            expected_sig_bytes = hmac.new(secret, structured_payload, hashlib.sha256).digest()
 
-            is_valid = hmac.compare_digest(sig.lower(), expected_sig_structured.lower())
+            try:
+                sig_bytes = bytes.fromhex(sig.strip())
+            except ValueError as exc:
+                raise SafetyError(
+                    f"Invalid E-Stop reset token signature format: {exc}",
+                    code="ESTOP_RESET_DENIED",
+                    cause=exc,
+                ) from exc
+
+            is_valid = hmac.compare_digest(sig_bytes, expected_sig_bytes)
 
             if not is_valid:
                 raise SafetyError("Invalid E-Stop reset token", code="ESTOP_RESET_DENIED")
@@ -512,3 +564,52 @@ class EmergencyStopSystem:
         self._consumed_nonces[nonce] = True
         while len(self._consumed_nonces) > self.MAX_CONSUMED_NONCES:
             self._consumed_nonces.popitem(last=False)  # evict oldest
+
+
+class EStopResetAuthority:
+    """Separate authorization component that mints E-Stop reset tokens (P1-1).
+
+    ISO 26262 independence: the component that ENFORCES the E-Stop
+    (`EmergencyStopSystem`) no longer produces the credential that clears
+    it. This authority is the single, explicitly-wired holder of minting
+    rights; the desktop application constructs exactly one and routes the
+    operator-driven reset flow through it. The gateway, protocol engines,
+    and any other subsystem only ever see the verification-only
+    enforcement object.
+
+    The authority shares the SecretProvider-backed key with the
+    enforcement object (same key name), so minted tokens verify — but it
+    is a distinct object reference, and elevating an enforcement object
+    after the fact requires the deliberate constructor flag.
+    """
+
+    def __init__(self, estop: EmergencyStopSystem) -> None:
+        self._estop = estop
+        # Elevate the shared enforcement object for minting. This is the
+        # ONLY place _allow_self_reset is set to True.
+        estop._allow_self_reset = True
+
+    @property
+    def estop(self) -> EmergencyStopSystem:
+        """The enforcement object this authority may mint tokens for."""
+        return self._estop
+
+    def mint_reset_token(self) -> EmergencyStopToken | None:
+        """Mint a fresh, signed reset token for the active challenge.
+
+        Mirrors the operator-driven flow: challenge (re)issue is handled
+        internally; a None return means the E-Stop is not engaged.
+        """
+        return self._estop.create_reset_token()
+
+    def compute_reset_token(
+        self,
+        nonce: bytes | str | None = None,
+        epoch: int | None = None,
+        timestamp_ns: int | None = None,
+        action: str = "ESTOP_RESET",
+    ) -> str:
+        """Authorization helper mirroring the enforcement object's computation."""
+        return self._estop.compute_reset_token(
+            nonce=nonce, epoch=epoch, timestamp_ns=timestamp_ns, action=action
+        )

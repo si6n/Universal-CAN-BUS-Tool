@@ -24,7 +24,7 @@ from src.safety.secret_provider import (
 
 def test_estop_initial_state() -> None:
     """Verify default clean unengaged state upon instantiation."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     assert not estop.is_engaged
     assert estop.last_event is None
     assert estop.get_reset_nonce() == b""
@@ -36,7 +36,7 @@ def test_estop_initial_state() -> None:
 @pytest.mark.parametrize("trigger_src", list(EStopTriggerSource))
 def test_estop_10_trigger_sources(trigger_src: EStopTriggerSource) -> None:
     """Verify all 10 E-Stop trigger sources engage the system and generate event records."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     reason = f"Test trigger {trigger_src.name}"
     speed = 42.5
 
@@ -90,7 +90,7 @@ def test_estop_structured_token_reset_success() -> None:
     """Verify challenge-response reset flow using structured EmergencyStopToken."""
     secret = b"test_secret_key_32_bytes_long!!!"
     provider = EphemeralSecretBackend({DEFAULT_ESTOP_KEY_NAME: secret})
-    estop = EmergencyStopSystem(secret_provider=provider)
+    estop = EmergencyStopSystem(secret_provider=provider, allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Operator pressed red button")
     assert estop.is_engaged
@@ -115,7 +115,7 @@ def test_estop_structured_token_reset_success() -> None:
 def test_estop_string_token_reset_success() -> None:
     """Verify reset using serialized token string."""
     secret = b"another_secret_key_for_testing!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.SPEED_INTERLOCK_BREACH, reason="Speed breach", vehicle_speed_kmh=88.0)
     assert estop.is_engaged
@@ -130,7 +130,7 @@ def test_estop_string_token_reset_success() -> None:
 
 def test_estop_anti_replay_consumed_nonce_rejected() -> None:
     """Verify that replaying a token after disengagement and re-engagement fails."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
 
     # Engagement 1
     estop.trigger(EStopTriggerSource.SPEED_INTERLOCK_BREACH, reason="Cycle 1")
@@ -160,7 +160,7 @@ def test_estop_anti_replay_consumed_nonce_rejected() -> None:
 
 def test_estop_epoch_mismatch_rejected() -> None:
     """Verify that a token with wrong epoch is rejected."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.COMMUNICATION_TIMEOUT, reason="Lost heartbeat")
 
     valid_token = estop.create_reset_token()
@@ -182,7 +182,7 @@ def test_estop_epoch_mismatch_rejected() -> None:
 
 def test_estop_action_mismatch_rejected() -> None:
     """Verify that a token with invalid action is rejected."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.HARDWARE_DISCONNECT, reason="Adapter unplugged")
 
     valid_token = estop.create_reset_token()
@@ -203,7 +203,7 @@ def test_estop_action_mismatch_rejected() -> None:
 
 def test_estop_nonce_mismatch_rejected() -> None:
     """Verify that a token with wrong nonce is rejected."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.RATE_LIMIT_OVERFLOW, reason="Tx flood")
 
     valid_token = estop.create_reset_token()
@@ -224,7 +224,7 @@ def test_estop_nonce_mismatch_rejected() -> None:
 
 def test_estop_stale_token_ttl_expired() -> None:
     """Verify that an expired token beyond TTL is rejected."""
-    estop = EmergencyStopSystem(max_token_age_s=0.01)  # 10ms TTL
+    estop = EmergencyStopSystem(max_token_age_s=0.01, allow_self_reset=True)  # 10ms TTL
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Fast timeout test")
 
     valid_token = estop.create_reset_token()
@@ -240,7 +240,7 @@ def test_estop_stale_token_ttl_expired() -> None:
 
 def test_estop_forged_hmac_signature_rejected() -> None:
     """Verify that forged or corrupted signatures are rejected in constant time."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.UNAUTHORIZED_PAYLOAD, reason="Injected frame")
 
     token = estop.create_reset_token()
@@ -274,7 +274,7 @@ def test_estop_linux_secret_provider_integration(tmp_path: Path) -> None:
     storage_file = tmp_path / "estop_secrets.bin"
     provider = LinuxSecretBackend(storage_path=storage_file)
 
-    estop = EmergencyStopSystem(secret_provider=provider)
+    estop = EmergencyStopSystem(secret_provider=provider, allow_self_reset=True)
     assert provider.has_secret(DEFAULT_ESTOP_KEY_NAME)
 
     estop.trigger(EStopTriggerSource.PROCESS_TERMINATION, reason="Shutdown test")
@@ -286,7 +286,7 @@ def test_estop_linux_secret_provider_integration(tmp_path: Path) -> None:
 
 def test_estop_callbacks_and_error_isolation() -> None:
     """Verify all callbacks are executed and exceptions in one callback do not abort others."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
 
     events_received: list[EStopEvent] = []
 
@@ -312,7 +312,7 @@ def test_estop_callbacks_and_error_isolation() -> None:
 
 def test_estop_reset_when_not_engaged_is_noop() -> None:
     """Verify calling reset when not engaged returns cleanly without error."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     assert not estop.is_engaged
     estop.reset("dummy_token")
     assert not estop.is_engaged
@@ -320,7 +320,7 @@ def test_estop_reset_when_not_engaged_is_noop() -> None:
 
 def test_estop_concurrent_triggers_thread_safety() -> None:
     """Verify thread safety under concurrent triggers and queries."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     errors: list[Exception] = []
 
     def worker(idx: int) -> None:
@@ -348,7 +348,7 @@ def test_estop_concurrent_triggers_thread_safety() -> None:
 def test_estop_concurrent_trigger_and_reset_toctou_safety() -> None:
     """Stress test E-Stop TOCTOU safety under rapid interleaved concurrent triggers and resets."""
     secret = b"toctou_verification_secret_32b!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     errors: list[Exception] = []
     iterations = 100
 
@@ -392,7 +392,7 @@ def test_estop_consumed_nonce_window_is_bounded() -> None:
     is safe: challenges older than max_token_age_s are TTL-rejected anyway,
     so a replayed nonce that fell off the window can no longer verify.
     """
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     # Fill the window beyond capacity through the REAL production insertion
     # path (_record_consumed_nonce is what reset() calls on success)
     for i in range(estop.MAX_CONSUMED_NONCES + 50):

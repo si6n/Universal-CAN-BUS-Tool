@@ -39,7 +39,7 @@ def test_safety_gateway_normal_tx() -> None:
 def test_safety_gateway_estop_blocks_all() -> None:
     bus = VirtualBus(channel_id="safety_vbus_1")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -65,7 +65,7 @@ def test_safety_gateway_estop_blocks_all() -> None:
 def test_safety_gateway_whitelist_violation_triggers_estop() -> None:
     bus = VirtualBus(channel_id="safety_vbus_2")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     # Unauthorized ID 0x123
@@ -87,9 +87,9 @@ def test_safety_gateway_fail_closed_empty_whitelist() -> None:
     """Verify that empty or None whitelist is strictly Fail-Closed (R3)."""
     bus = VirtualBus(channel_id="safety_vbus_fc")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
 
-    # Empty whitelist — production gateway is strictly Fail-Closed
+    # Empty whitelist â€” production gateway is strictly Fail-Closed
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=set())
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
@@ -122,7 +122,7 @@ def test_safety_gateway_for_testing_factory_bypasses_whitelist() -> None:
 def test_safety_gateway_speed_interlock_and_dual_confirmation() -> None:
     bus = VirtualBus(channel_id="safety_vbus_3")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x31\x01\x02\x01")
@@ -163,7 +163,7 @@ def test_safety_gateway_rule_ordering_moving_vehicle_unconfirmed_command() -> No
     """Verify CAN-24 Rule Ordering: Speed Interlock (Stage 4) takes precedence over Dual Confirmation (Stage 5)."""
     bus = VirtualBus(channel_id="safety_vbus_order")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x11\x01")
@@ -186,7 +186,7 @@ def test_safety_gateway_speed_staleness_rejection() -> None:
     """Verify that stale vehicle speed telemetry (> 1.0s) blocks critical commands (CAN-24)."""
     bus = VirtualBus(channel_id="safety_vbus_stale")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x11\x01")
@@ -208,7 +208,7 @@ def test_safety_gateway_nan_and_negative_speed_fail_closed() -> None:
     """Verify that NaN or negative speeds immediately invalidate telemetry (fail-closed)."""
     bus = VirtualBus(channel_id="safety_vbus_nan")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x31\x01")
@@ -276,10 +276,12 @@ def test_safety_gateway_frame_sanity_checks() -> None:
 
 
 def test_safety_gateway_rate_limiting_deque_overflow() -> None:
-    """Verify that transmitting over MAX_TX_RATE_PER_SEC within 1s triggers E-Stop and raises error."""
+    """P1-9: exceeding MAX_TX_RATE_PER_SEC rejects (backpressure); a
+    SUSTAINED violation streak (RATE_ESTOP_AFTER consecutive rejections)
+    escalates to an E-Stop."""
     bus = VirtualBus(channel_id="safety_vbus_rate_0")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -290,7 +292,13 @@ def test_safety_gateway_rate_limiting_deque_overflow() -> None:
 
     assert len(gateway._tx_timestamps) == 100
 
-    # 101st transmission must be rejected and trip E-Stop
+    # First overloads are plain rejections — backpressure, NOT an E-Stop
+    for _ in range(gateway.RATE_ESTOP_AFTER - 1):
+        with pytest.raises(RateLimitExceededError):
+            gateway.validate_and_transmit(frame)
+    assert estop.is_engaged is False, "single bursts must not latch an E-Stop (self-DoS guard)"
+
+    # The sustained-streak threshold trips the E-Stop
     with pytest.raises(RateLimitExceededError) as exc_info:
         gateway.validate_and_transmit(frame)
 
@@ -381,7 +389,7 @@ def test_protocol_burst_budget_allows_full_bam_transfer() -> None:
     bus, gateway = _budget_gateway("safety_vbus_bam")
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
 
-    # 255 CF packets — exactly the BAM maximum; must all pass without E-Stop
+    # 255 CF packets â€” exactly the BAM maximum; must all pass without E-Stop
     for _ in range(255):
         assert gateway.validate_and_transmit(frame, budget_category="protocol_burst") is True
 
@@ -392,7 +400,7 @@ def test_protocol_burst_budget_allows_full_bam_transfer() -> None:
 
 def test_default_lane_metered_exactly_once() -> None:
     """S-C-007 regression: the default lane is metered by the sliding window
-    ONLY — the default token bucket must never double-count it and reject
+    ONLY â€” the default token bucket must never double-count it and reject
     traffic that is well under the 100 msg/s window limit."""
 
     class _NoSendVirtualBus(VirtualBus):
@@ -401,13 +409,13 @@ def test_default_lane_metered_exactly_once() -> None:
 
     bus = _NoSendVirtualBus(channel_id="safety_vbus_single_meter")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
 
     # Simulate the old double-metering hazard: drain the default bucket as if
     # another consumer had used it (capacity 100). With single-metering the
-    # window — not the bucket — governs the default lane, so 100 frames pass.
+    # window â€” not the bucket â€” governs the default lane, so 100 frames pass.
     gateway._budgets["default"]._tokens = 0.0
     for _ in range(gateway.MAX_TX_RATE_PER_SEC):
         assert gateway.validate_and_transmit(frame) is True
@@ -419,7 +427,7 @@ def test_default_lane_metered_exactly_once() -> None:
 
 
 def test_protocol_burst_budget_exhaustion_at_capacity_plus_one() -> None:
-    """F-18: protocol_burst capacity is 255 — the 256th burst frame is rejected."""
+    """F-18: protocol_burst capacity is 255 â€” the 256th burst frame is rejected."""
     bus, gateway = _budget_gateway("safety_vbus_bam2")
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"")
 
@@ -555,7 +563,7 @@ def test_estop_callback_does_not_block_on_slow_driver_io() -> None:
             self.sent_frames.append(frame)
 
     bus = SlowBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -594,7 +602,7 @@ def test_estop_callback_does_not_block_on_slow_driver_io() -> None:
 
 
 def test_estop_race_window_snapshot_already_engaged() -> None:
-    """H2 Regression: E-Stop engaged during Stage 2 → tokens rolled back on Phase 2 rejection.
+    """H2 Regression: E-Stop engaged during Stage 2 â†’ tokens rolled back on Phase 2 rejection.
 
     Scenario: estop.is_engaged=True at snapshot time (caught in Stage 2 or between
     Stage 2 and snapshot). Tokens are consumed but frame is rejected in Phase 2.
@@ -602,7 +610,7 @@ def test_estop_race_window_snapshot_already_engaged() -> None:
     """
     bus = VirtualBus(channel_id="safety_vbus_race_engaged")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -614,7 +622,7 @@ def test_estop_race_window_snapshot_already_engaged() -> None:
     initial_timestamps = len(gateway._tx_timestamps)
     initial_budget_tokens = gateway._budgets["default"]._tokens
 
-    # Attempt transmission — should be rejected in Stage 2 (no token consumption)
+    # Attempt transmission â€” should be rejected in Stage 2 (no token consumption)
     with pytest.raises(SafetyError, match="Emergency Stop is currently ENGAGED"):
         gateway.validate_and_transmit(frame)
 
@@ -629,13 +637,13 @@ def test_estop_race_window_snapshot_already_engaged() -> None:
 def test_estop_race_window_triggered_between_phases() -> None:
     """H2 Regression: E-Stop triggered between Phase 1 (lock release) and Phase 3 (send).
 
-    Scenario: estop snapshot clear → estop.trigger() in another thread → Phase 2
-    detects engagement → tokens rolled back, frame rejected, no send.
+    Scenario: estop snapshot clear â†’ estop.trigger() in another thread â†’ Phase 2
+    detects engagement â†’ tokens rolled back, frame rejected, no send.
     """
     import threading
     from unittest.mock import Mock
 
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
 
     # Mock bus that signals when privileged_send is about to be called
     bus = Mock()
@@ -648,9 +656,9 @@ def test_estop_race_window_triggered_between_phases() -> None:
     call_count = [0]
     def patched_is_engaged_getter(self: EmergencyStopSystem) -> bool:
         call_count[0] += 1
-        # First call: Stage 2 check (inside lock) → return False
-        # Second call: snapshot at lock release → return False, signal Phase 1 done
-        # Third call: Phase 2 double-check → trigger estop, return True
+        # First call: Stage 2 check (inside lock) â†’ return False
+        # Second call: snapshot at lock release â†’ return False, signal Phase 1 done
+        # Third call: Phase 2 double-check â†’ trigger estop, return True
         if call_count[0] == 2:
             phase1_completed.set()
         elif call_count[0] == 3:
@@ -669,7 +677,7 @@ def test_estop_race_window_triggered_between_phases() -> None:
 
         initial_budget_tokens = gateway._budgets["default"]._tokens
 
-        # Attempt transmission — Phase 2 should detect estop and rollback
+        # Attempt transmission â€” Phase 2 should detect estop and rollback
         with pytest.raises(SafetyError, match="Emergency Stop is currently ENGAGED"):
             gateway.validate_and_transmit(frame)
 
@@ -684,7 +692,7 @@ def test_estop_race_window_triggered_between_phases() -> None:
 
 
 # ============================================================================
-# CRITICAL-1: E-Stop TOCTOU — TX fence hardening
+# CRITICAL-1: E-Stop TOCTOU â€” TX fence hardening
 # ============================================================================
 
 
@@ -712,10 +720,10 @@ def test_estop_fires_while_send_delayed_at_fence_no_frame_leaks() -> None:
     The frame passes every validation stage against a CLEAR E-Stop, then its
     privileged dispatch is delayed inside Phase 3 (parked at the E-Stop send
     fence). The E-Stop engages while the frame is stalled mid-send. When the
-    fence is granted, the in-lock re-verification must abort the dispatch —
+    fence is granted, the in-lock re-verification must abort the dispatch â€”
     not even ONE frame may reach the wire (ASIL-B fail-closed).
     """
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     bus = _RecordingSendBus()
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -725,11 +733,11 @@ def test_estop_fires_while_send_delayed_at_fence_no_frame_leaks() -> None:
     def transmit_worker() -> None:
         try:
             gateway.validate_and_transmit(frame)
-        except BaseException as exc:  # noqa: BLE001 — asserted below
+        except BaseException as exc:  # noqa: BLE001 â€” asserted below
             errors.append(exc)
 
     # Hold the E-Stop TX fence: the worker's privileged dispatch is DELAYED
-    # in Phase 3 — it cannot reach the bus while we hold the fence lock.
+    # in Phase 3 â€” it cannot reach the bus while we hold the fence lock.
     with estop.tx_send_lock:
         tx_thread = threading.Thread(target=transmit_worker, name="tx-fence-worker")
         tx_thread.start()
@@ -748,7 +756,7 @@ def test_estop_fires_while_send_delayed_at_fence_no_frame_leaks() -> None:
     assert isinstance(errors[0], SafetyError)
     # The engagement bumped the fence generation while the frame was parked:
     # the fenced re-verification aborts the dispatch. (Had the E-Stop fired
-    # before Phase 2, the code would be ESTOP_ACTIVE instead — either way
+    # before Phase 2, the code would be ESTOP_ACTIVE instead â€” either way
     # the frame dies; the fence error is the more precise diagnosis.)
     assert errors[0].code in ("ESTOP_TX_FENCE_INVALIDATED", "ESTOP_ACTIVE")
     # HARD invariant: not even a single frame reached the wire.
@@ -761,12 +769,12 @@ def test_estop_tx_fence_epoch_invalidation_mid_send() -> None:
 
     A frame validated against fence generation N must be rejected when the
     generation advanced (engagement + authorized reset) before the send lock
-    was granted — even though the E-Stop ends up DISENGAGED at send time.
+    was granted â€” even though the E-Stop ends up DISENGAGED at send time.
     Deterministic injection: the gateway's snapshot read of tx_fence is
     patched to advance the real fence (real trigger + real reset) right after
     the gateway captured generation 0.
     """
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     bus = _RecordingSendBus()
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -801,7 +809,7 @@ def test_estop_tx_fence_epoch_invalidation_mid_send() -> None:
 
 def test_estop_tx_fence_allows_clean_send_within_same_generation() -> None:
     """CRITICAL-1 positive control: unchanged fence generation lets the send through."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     bus = _RecordingSendBus()
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
@@ -822,19 +830,19 @@ def test_rate_limit_rollback_removes_exactly_the_rolling_threads_stamp() -> None
 
     Deterministic interleave: thread A appends its stamp and parks at its
     in-fence re-check (holding the send fence); thread B appends its own
-    stamp and parks at the fence behind A. A's send is then rejected — A's
+    stamp and parks at the fence behind A. A's send is then rejected â€” A's
     rollback must remove EXACTLY A's (now_ns, thread_id, seq) tuple; B's
     reservation must survive untouched (the old blind pop() deleted B's).
     """
     bus = VirtualBus(channel_id="safety_vbus_rollback")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
     main_ident = threading.get_ident()
 
-    # Prior successful send from the main thread — its stamp must survive.
+    # Prior successful send from the main thread â€” its stamp must survive.
     assert gateway.validate_and_transmit(frame) is True
     assert len(gateway._tx_timestamps) == 1
 
@@ -866,7 +874,7 @@ def test_rate_limit_rollback_removes_exactly_the_rolling_threads_stamp() -> None
     def worker_a() -> None:
         try:
             gateway.validate_and_transmit(frame)
-        except BaseException as exc:  # noqa: BLE001 — asserted below
+        except BaseException as exc:  # noqa: BLE001 â€” asserted below
             a_errors.append(exc)
         finally:
             a_finished.set()
@@ -959,7 +967,7 @@ def test_gateway_send_offloads_via_managed_bounded_executor() -> None:
     gateway = TxSafetyGateway(bus=bus, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
-    # Managed and bounded by a class-level budget — not the event loop's
+    # Managed and bounded by a class-level budget â€” not the event loop's
     # shared default executor (unbounded and shared with every other offload).
     assert gateway._tx_executor is not None
     assert gateway._tx_executor._max_workers == TxSafetyGateway.TX_EXECUTOR_MAX_WORKERS
@@ -971,7 +979,7 @@ def test_gateway_send_offloads_via_managed_bounded_executor() -> None:
     assert len(bus.sent_frames) == 1
     assert bus.dispatch_thread_names[0].startswith("tx-gateway-")
 
-    # The SAME managed pool instance is reused across sends — never
+    # The SAME managed pool instance is reused across sends â€” never
     # recreated, never swapped for the loop default executor.
     asyncio.run(gateway.send(frame))
     assert gateway._tx_executor is executor_before

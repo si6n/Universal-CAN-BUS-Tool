@@ -320,11 +320,15 @@ class TestJ1939CmdtReassembly:
         f2 = CanFrame.create(channel_id="can0", arbitration_id=0x18ECF920, data=bytes(rts2_data), is_extended=True)
         pipeline.process_frame(f2)
 
-        # Pipeline should emit Conn_Abort for old session with reason 0x02 (Session Collision)
-        assert len(mock_tx.sent_frames) == 2
+        # Pipeline emits Conn_Abort (reason 0x02) for the old session AND —
+        # since P2-4 drains the pending queue — the new session's CTS too
+        # (the old code queued the CTS where it rotted and the peer timed out).
+        assert len(mock_tx.sent_frames) == 3
         abort_frame = mock_tx.sent_frames[1]
         assert abort_frame.data[0] == TP_CTRL_ABORT
         assert abort_frame.data[1] == ABORT_REASON_SESSION_COLLISION
+        cts_frame = mock_tx.sent_frames[2]
+        assert cts_frame.data[0] == TP_CTRL_CTS
 
     def test_j1939_cmdt_out_of_order_sequence_abort(self) -> None:
         """Test that an unexpected sequence number aborts CMDT session with reason 0x01."""

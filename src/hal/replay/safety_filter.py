@@ -18,17 +18,20 @@ class ReplaySafetyFilter:
     """Filters unsafe commands (Address Claim, ECU Reset, Diagnostics) from replay streams."""
 
     # Critical J1939 / NMEA2000 PGNs to block in replay.
-    # D4: values follow SAE J1939-73 DM assignments — the previous table
-    # mislabeled 65235/65234 as DM4/DM5 (those are DM3/DM2 offsets) and so
-    # never actually blocked the freeze-frame/readiness clear paths.
+    # D4/P1-3: hex values now DERIVED from the decimal PGN assignments in
+    # SAE J1939-73 (comment = decimal → hex, verifiable at a glance). The
+    # previous table wrote the hex digits of one PGN next to the decimal of
+    # another (e.g. 0x0FED5 == 65237, not DM4's 65229), so DM3/DM4/DM5/DM11
+    # were never actually blocked while ET1 (65262) was blocked instead.
     BLOCKED_PGNS: ClassVar[set[int]] = {
         0x0EE00,  # 60928: Address Claimed / Cannot Claim (J1939-81)
         0x0FED8,  # 65240: Commanded Address
         0x0EA00,  # 59904: Request PGN (arbitrary PGN trigger)
-        0x0FED5,  # 65229: DM4 — Freeze Frame Clear (write path)
-        0x0FED6,  # 65230: DM5 — Diagnostic Readiness / DM5 Clear (write path)
-        0x0FEDA,  # 65242: DM11 — Diagnostic Data Clear (write path)
-        0x0FEEE,  # 65262: DM2 — Active DTCs (diagnostic state churn)
+        0x0FECB,  # 65227: DM2 — Previously Active DTCs (diagnostic state churn)
+        0x0FECC,  # 65228: DM3 — Diagnostic Data Clear (DTC evidence wipe)
+        0x0FECD,  # 65229: DM4 — Freeze Frame Clear (write path)
+        0x0FECE,  # 65230: DM5 — Diagnostic Readiness Clear (write path)
+        0x0FED3,  # 65235: DM11 — Diagnostic Data Clear (write path)
     }
 
     # D5: J1939-21 transport PGNs. TP.CM carries control bytes that command
@@ -38,6 +41,20 @@ class ReplaySafetyFilter:
     TRANSPORT_TUNNEL_PGNS: ClassVar[set[int]] = {
         0x0EC00,  # 60416: TP.CM (Connection Management)
         0x0EB00,  # 60160: TP.DT (Data Transfer)
+    }
+
+    # P1-2: PGNs whose replay physically actuates the vehicle. Guarded by
+    # block_actuator_routines (previously a dead flag — now a real gate).
+    ACTUATION_PGNS: ClassVar[set[int]] = {
+        0x00000,  # 0: TSC1 — Torque/Speed Control 1
+        0x00400,  # 1024: XBR — External Brake Request
+    }
+
+    # P1-2: UDS SIDs that directly drive outputs. Guarded by
+    # block_actuator_routines.
+    ACTUATOR_UDS_SIDS: ClassVar[set[int]] = {
+        0x2F,  # Input/Output Control By Identifier
+        0x3D,  # Write Memory By Address
     }
 
     # Standard Diagnostic Request Arbitration IDs (11-bit)
@@ -61,11 +78,16 @@ class ReplaySafetyFilter:
         0x27,  # Security Access
         0x28,  # Communication Control
         0x2E,  # Write Data By Identifier
+        0x2F,  # Input/Output Control By Identifier (P1-2: direct actuator drive)
         0x31,  # Routine Control (actuator testing)
         0x34,  # Request Download
         0x36,  # Transfer Data
         0x37,  # Request Transfer Exit
+        0x38,  # Link Control (baud-rate changes)
+        0x3D,  # Write Memory By Address (P1-2: raw memory writes)
+        0x3E,  # Tester Present (session keep-alive for the above)
         0x85,  # Control DTC Setting
+        0x87,  # Link Control (J1939 variant)
     }
 
     def __init__(
@@ -87,6 +109,58 @@ class ReplaySafetyFilter:
         self.total_blocked: int = 0
         self.blocked_reasons: dict[str, int] = {}
 
+    def _extract_uds_sid(self, frame: CanFrame) -> int | None:
+        """Extract the UDS SID from an ISO 15765-2 encoded frame (P1-4).
+
+        PCI layout rules per ISO 15765-2:2016:
+          - Classic SF (CAN_DL <= 8): SID at data[1]
+          - FD SF escape (CAN_DL > 8, low nibble == 0): SID at data[2]
+          - Classic FF: SID at data[2]
+          - FD FF escape (0x10 0x00 + 32-bit length): SID at data[6]
+
+        Fail-closed: an SF/FF whose PCI implies a longer frame than we can
+        see is treated as UNKNOWN → blocked by the caller.
+        """
+        if len(frame.data) < 2:
+            return None
+
+        pci_type = (frame.data[0] >> 4) & 0x0F
+
+        if pci_type == 0x0:  # Single Frame
+            low_nibble = frame.data[0] & 0x0F
+            if frame.is_fd and len(frame.data) > 8:
+                # FD escape SF: [0x00, SF_DL, payload...] — SF_DL lives in
+                # data[1], so the SID starts at data[2]
+                if low_nibble != 0x0:
+                    return self._UNKNOWN_SID  # classic nibble on an FD-length frame: malformed
+                if len(frame.data) < 3:
+                    return self._UNKNOWN_SID
+                return frame.data[2]
+            # Classic SF: SID at data[1]
+            return frame.data[1]
+
+        if pci_type == 0x1:  # First Frame
+            if (
+                frame.data[0] == 0x10
+                and frame.data[1] == 0x00
+                and len(frame.data) >= 6
+            ):
+                # FD escape FF: 0x10 0x00 + 32-bit FF_DL + payload
+                # → SID at data[6]
+                if len(frame.data) < 7:
+                    return self._UNKNOWN_SID
+                return frame.data[6]
+            if len(frame.data) >= 3:
+                return frame.data[2]
+            return self._UNKNOWN_SID
+
+        # Consecutive/Flow-Control/unknown PCI — SID not applicable here.
+        return None
+
+    # Sentinel for "a diagnostic frame we cannot prove safe" — never a
+    # member of PROHIBITED_UDS_SIDS by construction (negative int).
+    _UNKNOWN_SID: ClassVar[int] = -1
+
     def is_frame_safe(self, frame: CanFrame) -> tuple[bool, str]:
         """Evaluate if a frame is safe to be transmitted onto a CAN bus during replay."""
         self.total_evaluated += 1
@@ -104,6 +178,13 @@ class ReplaySafetyFilter:
             if self.block_address_claim and (pgn in self.BLOCKED_PGNS or masked_pgn in self.BLOCKED_PGNS):
                 return False, f"BLOCKED_J1939_PGN: {pgn} (0x{pgn:05X})"
 
+            # P1-2: TSC1/XBR physically command the vehicle — gated by the
+            # (formerly dead) block_actuator_routines flag, default ON.
+            if self.block_actuator_routines and (
+                pgn in self.ACTUATION_PGNS or masked_pgn in self.ACTUATION_PGNS
+            ):
+                return False, f"BLOCKED_ACTUATION_PGN: {pgn} (0x{pgn:05X})"
+
             # D5: TP.CM/TP.DT frames can tunnel arbitrary payloads (including
             # every blocked diagnostic command) in 7-byte slices and can
             # command peer-side session behaviour — block by default.
@@ -114,27 +195,32 @@ class ReplaySafetyFilter:
 
             # ISO-TP / UDS over 29-bit (e.g. 0x18DAxxF1)
             if pdu_format in {0xDA, 0xDB} and len(frame.data) >= 2:
-                # Single Frame (SF) or First Frame (FF) inspection
-                pci_type = (frame.data[0] >> 4) & 0x0F
-                sid = (
-                    frame.data[1]
-                    if pci_type == 0x0
-                    else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                sid = self._extract_uds_sid(frame)
+                prohibited = (
+                    sid is not None
+                    and (
+                        sid == self._UNKNOWN_SID
+                        or sid in self.PROHIBITED_UDS_SIDS
+                        or (self.block_actuator_routines and sid in self.ACTUATOR_UDS_SIDS)
+                    )
                 )
-                if sid is not None and sid in self.PROHIBITED_UDS_SIDS:
+                if prohibited:
                     return False, f"PROHIBITED_29BIT_UDS_SID: 0x{sid:02X}"
 
         # 11-bit Standard Frame Evaluation (OBD-II / UDS)
         else:
             if self.block_diagnostic_write and frame.arbitration_id in self.DIAGNOSTIC_11BIT_IDS:
                 if len(frame.data) >= 2:
-                    pci_type = (frame.data[0] >> 4) & 0x0F
-                    sid = (
-                        frame.data[1]
-                        if pci_type == 0x0
-                        else (frame.data[2] if pci_type == 0x1 and len(frame.data) >= 3 else None)
+                    sid = self._extract_uds_sid(frame)
+                    prohibited = (
+                        sid is not None
+                        and (
+                            sid == self._UNKNOWN_SID
+                            or sid in self.PROHIBITED_UDS_SIDS
+                            or (self.block_actuator_routines and sid in self.ACTUATOR_UDS_SIDS)
+                        )
                     )
-                    if sid is not None and sid in self.PROHIBITED_UDS_SIDS:
+                    if prohibited:
                         return False, f"PROHIBITED_11BIT_UDS_SID: 0x{sid:02X}"
 
         return True, ""

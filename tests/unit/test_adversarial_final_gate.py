@@ -122,7 +122,7 @@ class MockTestingBus(AbstractBus):
 def test_all_10_estop_trigger_sources_record_and_dispatch() -> None:
     """Verify each of the 10 defined E-Stop triggers correctly captures state."""
     secret = os.urandom(32)
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     events_captured: list[EStopEvent] = []
     estop.register_callback(events_captured.append)
 
@@ -146,7 +146,7 @@ def test_all_10_estop_trigger_sources_record_and_dispatch() -> None:
 
 def test_estop_callback_exception_safety() -> None:
     """Ensure faulty callbacks do not prevent other callbacks or crash trigger flow."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     broken_called = False
     good_called = False
 
@@ -171,7 +171,7 @@ def test_estop_callback_exception_safety() -> None:
 def test_estop_multithreaded_rapid_trigger_reset_race() -> None:
     """Stress test concurrent triggers and resets under 20 concurrent threads."""
     secret = b"fixed_super_secret_key_for_test"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     stop_event = threading.Event()
     errors: list[Exception] = []
 
@@ -217,7 +217,7 @@ def test_estop_multithreaded_rapid_trigger_reset_race() -> None:
 def test_gateway_complete_rule_matrix() -> None:
     """Exhaustive check of Gateway Rules 1 through 5."""
     bus = MockTestingBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x100, 0x200})
 
     frame_valid = CanFrame.create(channel_id="ch0", arbitration_id=0x100, data=b"\x01\x02\x03\x04")

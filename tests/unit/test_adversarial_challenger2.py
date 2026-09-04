@@ -249,10 +249,11 @@ def test_safety_gateway_1000_msg_per_sec_burst_attack() -> None:
 
     # Exactly 100 transmitted (the MAX_TX_RATE_PER_SEC limit)
     assert successful_tx == 100
-    # Exactly 1 attempt tripped the rate limit
-    assert rate_limit_errors == 1
-    # Remaining 899 attempts were blocked because E-Stop was engaged
-    assert estop_blocked_errors == 899
+    # P1-9: overloads reject as backpressure first; the sustained streak
+    # (RATE_ESTOP_AFTER consecutive rejections) then latches the E-Stop.
+    assert rate_limit_errors == gateway.RATE_ESTOP_AFTER
+    # Remaining attempts were blocked because E-Stop was engaged
+    assert estop_blocked_errors == 1000 - 100 - gateway.RATE_ESTOP_AFTER
     assert len(bus.sent_frames) == 100
     assert estop.is_engaged is True
     assert estop.last_event is not None

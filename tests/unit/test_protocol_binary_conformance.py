@@ -70,16 +70,27 @@ def test_n2k_signed_tilt_trim_decoding() -> None:
 def test_uds_transfer_data_block_sequence_wraparound_to_zero() -> None:
     """Verify ISO 14229-1 Service 0x36 blockSequenceCounter wraps from 0xFF to 0x00."""
     mock_client = MagicMock()
-    mock_resp = MagicMock(is_positive=True, nrc=0)
+    mock_resp = MagicMock(is_positive=True, nrc=0, data=b"\x20\x10\x00")
     mock_client.change_session.return_value = mock_resp
     mock_client.request_download.return_value = mock_resp
-    mock_client.transfer_data.return_value = mock_resp
+    # P1-6: transfer_data echoes the block sequence counter in data[0]
+    mock_client.transfer_data.side_effect = (
+        lambda block_sequence, data: MagicMock(
+            is_positive=True, nrc=0, data=bytes([block_sequence & 0xFF])
+        )
+    )
     mock_client.request_transfer_exit.return_value = mock_resp
     mock_client.start_routine.return_value = mock_resp
     mock_client.ecu_reset.return_value = mock_resp
 
     mock_gateway = MagicMock()
     mock_gateway.estop.is_engaged = False
+    # P1-8: preflight fields surfaced to the flasher
+    mock_gateway.supervisor.is_tx_permitted = True
+    mock_gateway.watchdog.is_lease_valid = True
+    mock_gateway.SPEED_NOISE_THRESHOLD_KMH = 0.5
+    mock_gateway._current_vehicle_speed_kmh = 0.0
+    mock_gateway._last_speed_update_ns = 1
 
     engine = EcuFlashingEngine(uds_client=mock_client, gateway=mock_gateway)
 
@@ -112,7 +123,7 @@ def test_uds_transfer_data_block_sequence_wraparound_to_zero() -> None:
 def test_uds_flashing_failure_triggers_best_effort_recovery() -> None:
     """P8: a failure after the diagnostic session opened attempts an ECU hard reset."""
     mock_client = MagicMock()
-    ok_resp = MagicMock(is_positive=True, nrc=0)
+    ok_resp = MagicMock(is_positive=True, nrc=0, data=b"\x20\x10\x00")
     fail_resp = MagicMock(is_positive=False, nrc=0x72, nrc_description_tr="General Programming Failure")
     mock_client.change_session.return_value = ok_resp
     mock_client.request_download.return_value = ok_resp
@@ -121,6 +132,12 @@ def test_uds_flashing_failure_triggers_best_effort_recovery() -> None:
 
     mock_gateway = MagicMock()
     mock_gateway.estop.is_engaged = False
+    # P1-8: preflight fields surfaced to the flasher
+    mock_gateway.supervisor.is_tx_permitted = True
+    mock_gateway.watchdog.is_lease_valid = True
+    mock_gateway.SPEED_NOISE_THRESHOLD_KMH = 0.5
+    mock_gateway._current_vehicle_speed_kmh = 0.0
+    mock_gateway._last_speed_update_ns = 1
     engine = EcuFlashingEngine(uds_client=mock_client, gateway=mock_gateway)
 
     config = FlashingConfig(

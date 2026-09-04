@@ -200,7 +200,7 @@ def test_future_tampered_high_water_mark_blocks_validation(tmp_path: Path) -> No
 def test_estop_replay_attack_with_old_nonce_and_tokens() -> None:
     """Stress test E-Stop against replay attacks using multiple expired nonces."""
     secret = b"estop_super_secret_key_32_bytes"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     recorded_tokens: list[tuple[bytes, str]] = []
 
@@ -255,7 +255,7 @@ def test_estop_replay_attack_with_old_nonce_and_tokens() -> None:
 )
 def test_estop_forged_hmac_signatures_rejected(forged_token: str) -> None:
     """Verify that all forged, malformed, or invalid HMAC tokens are rejected."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.UNAUTHORIZED_PAYLOAD, reason="Malicious CAN payload")
     assert estop.is_engaged
 
@@ -268,7 +268,7 @@ def test_estop_forged_hmac_signatures_rejected(forged_token: str) -> None:
 def test_estop_concurrent_trigger_and_reset_race_conditions() -> None:
     """Stress-test concurrent trigger and reset spam across 10 threads."""
     secret = b"race_condition_test_secret_32b!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     stop_event = threading.Event()
     exceptions: list[Exception] = []
 
@@ -546,7 +546,7 @@ def test_gateway_estop_interlock_under_flood_and_recovery() -> None:
 
     bus = PythonCanBus(interface="virtual", channel="stress_vbus_flood")
     bus.connect()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0, 0x7E8})
 
     valid_frame = CanFrame.create(channel_id="ch0", arbitration_id=0x7E0, data=b"\x01\x02")
@@ -669,7 +669,7 @@ def test_replay_bus_speed_scaling_precision(speed_multiplier: float) -> None:
     elapsed = time.perf_counter() - t0
 
     expected_elapsed_s = ((frame_count - 1) * 0.002) / speed_multiplier
-    tolerance_s = 0.025  # ±25ms tolerance on Windows scheduler
+    tolerance_s = 0.025  # Ã‚Â±25ms tolerance on Windows scheduler
 
     assert abs(elapsed - expected_elapsed_s) < tolerance_s, (
         f"Speed {speed_multiplier}x timing error: actual {elapsed * 1000:.2f}ms vs expected {expected_elapsed_s * 1000:.2f}ms"

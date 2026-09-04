@@ -12,7 +12,7 @@ import zlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from src.core.errors import ProtocolError, SafetyError
 from src.core.logging import get_logger
@@ -51,6 +51,10 @@ class FlashingConfig:
     block_size: int = 256  # 64, 128, 256, 512, 1024, 4096 bytes
     security_level: int = 1
     security_key: bytes | None = None
+    # P1-5: ISO 14229 re-locks security on session transitions — the
+    # programming session typically requires its own (usually higher)
+    # security level. Defaults to security_level when not set.
+    programming_security_level: int | None = None
     verify_checksum: bool = True
     checksum_routine_id: int = 0x0202
     reset_after_flash: bool = True
@@ -62,6 +66,11 @@ class FlashingConfig:
             raise ValueError(f"Invalid block_size {self.block_size}. Must be greater than 0.")
         if not self.data:
             raise ValueError("Flashing payload data cannot be empty.")
+
+    @property
+    def effective_programming_security_level(self) -> int:
+        """Security level applied inside the programming session."""
+        return self.programming_security_level if self.programming_security_level is not None else self.security_level
 
 
 @dataclass(slots=True)
@@ -103,6 +112,78 @@ class EcuFlashingEngine:
         """Signal engine to abort flashing safely at next boundary."""
         self._is_cancelled = True
         self._log("İptal talebi alındı! Flashing durduruluyor...", "warning")
+
+    def _check_cancelled(self) -> None:
+        """P1-8: cancellation is honoured at EVERY step boundary, not only
+        inside the 0x36 loop — steps 2-9 can each take seconds on a slow bus."""
+        if self._is_cancelled:
+            raise ProtocolError("Flashing kullanıcı tarafından iptal edildi.")
+
+    @staticmethod
+    def _parse_max_block_length(download_response: Any) -> int:
+        """Parse maxNumberOfBlockLength from a positive 0x34 response (P1-6).
+
+        Response layout per ISO 14229-1 §14.2:
+            lengthFormatIdentifier (1B) | maxNumberOfBlockLength (n bytes)
+
+        The high nibble encodes the width (1..8, 0xF = variable) and the
+        low nibble the address unit size. An unparsable/absent value fails
+        closed — the caller must never flash with an unbounded block size.
+        """
+        data = getattr(download_response, "data", None)
+        if not data or len(data) < 1:
+            raise ProtocolError(
+                "0x34 yanıtı maxNumberOfBlockLength içermiyor — sınırsız blok boyutu ile flash reddedildi (fail-closed)"
+            )
+        length_format = data[0]
+        num_bytes = (length_format >> 4) & 0x0F
+        if not (1 <= num_bytes <= 8):
+            raise ProtocolError(
+                f"0x34 yanıtı geçersiz lengthFormatIdentifier (0x{length_format:02X}) — flash reddedildi (fail-closed)"
+            )
+        raw = bytes(data[1 : 1 + num_bytes])
+        if len(raw) < num_bytes:
+            raise ProtocolError("0x34 yanıtı maxNumberOfBlockLength alanı kesik — flash reddedildi (fail-closed)")
+        value = int.from_bytes(raw, byteorder="big")
+        if value <= 0:
+            raise ProtocolError("0x34 yanıtı maxNumberOfBlockLength=0 — flash reddedildi (fail-closed)")
+        return value
+
+    def _assert_gateway_preconditions(self) -> None:
+        """P1-8: verify every TX precondition before touching the ECU.
+
+        Once the first session-control frame leaves, a mid-sequence gateway
+        rejection leaves the ECU in a programming session with the recovery
+        reset itself blocked (ESTOP_ACTIVE). Checking supervisor state,
+        watchdog lease, and speed interlock up front turns those failures
+        into step-1 SafetyErrors — before the ECU is disturbed.
+        """
+        estop = self.gateway.estop
+        if estop.is_engaged:
+            raise SafetyError("E-Stop aktifken flashing yapılamaz!")
+
+        supervisor = getattr(self.gateway, "supervisor", None)
+        if supervisor is not None and not getattr(supervisor, "is_tx_permitted", True):
+            raise SafetyError(
+                "Güvenlik süpervizörü TX izni vermiyor (FAULT/ARMED olmayan durum) — flashing reddedildi."
+            )
+
+        watchdog = getattr(self.gateway, "watchdog", None)
+        if watchdog is not None and not getattr(watchdog, "is_lease_valid", True):
+            raise SafetyError(
+                "TX watchdog kira süresi geçersiz — flashing reddedildi (lease yenileyin)."
+            )
+
+        # Speed interlock: gateway exposes the freshest speed telemetry.
+        last_update_ns = getattr(self.gateway, "_last_speed_update_ns", None)
+        if last_update_ns == 0:
+            raise SafetyError("Hız telemetrisi yok/taze değil — hareketli araçta flashing reddedildi.")
+        speed = getattr(self.gateway, "_current_vehicle_speed_kmh", 0.0)
+        threshold = getattr(self.gateway, "SPEED_NOISE_THRESHOLD_KMH", 0.5)
+        if speed is not None and speed > threshold:
+            raise SafetyError(
+                f"Araç hareket halinde ({speed:.1f} km/s > {threshold} km/s) — flashing reddedildi."
+            )
 
     def _log(self, message: str, level: str = "info") -> None:
         if self.on_log:
@@ -171,9 +252,15 @@ class EcuFlashingEngine:
             if self.gateway.estop.is_engaged:
                 raise SafetyError("Acil Durdurma (E-Stop) aktifken flashing yapılamaz!")
 
+            # P1-8: verify ALL gateway preconditions BEFORE a single byte
+            # reaches the ECU. Once the ECU leaves its default session a
+            # failed TX must recover it — cheaper to fail here, at step 1.
+            self._assert_gateway_preconditions()
+
             # 2. Extended Diagnostic Session
             self._emit_progress(FlashingStep.EXTENDED_SESSION, 2, 0, total_bytes, start_time, crc_hex)
             self._log("Adım 2/10: Genişletilmiş Diyagnostik Oturumu (0x10 0x03) açılıyor...", "info")
+            self._check_cancelled()
             resp = self.uds_client.change_session(DiagnosticSessionType.EXTENDED_DIAGNOSTIC_SESSION)
             if not resp.is_positive:
                 raise ProtocolError(f"Genişletilmiş oturum açılamadı: {resp.nrc_description_tr} (NRC 0x{resp.nrc:02X})")
@@ -181,28 +268,32 @@ class EcuFlashingEngine:
             # must attempt best-effort recovery before surfacing the error.
             recovery_needed = True
 
-            # 3. Security Access (Optional/If configured)
-            self._emit_progress(FlashingStep.SECURITY_ACCESS, 3, 0, total_bytes, start_time, crc_hex)
+            # 3. Programming Session (P1-5: 0x10 0x02 BEFORE 0x27 — the ECU
+            # re-locks security access on session transition; the normative
+            # reprogramming order is 0x10 0x02 -> 0x27 -> 0x34, with the
+            # bootloader applying its own seed/key ladder).
+            self._emit_progress(FlashingStep.PROGRAMMING_SESSION, 3, 0, total_bytes, start_time, crc_hex)
+            self._log("Adım 3/10: Bootloader Programlama Oturumu (0x10 0x02) açılıyor...", "info")
+            self._check_cancelled()
+            resp = self.uds_client.change_session(DiagnosticSessionType.PROGRAMMING_SESSION)
+            if not resp.is_positive:
+                raise ProtocolError(f"Programlama oturumuna geçilemedi: {resp.nrc_description_tr}")
+
+            # 4. Security Access inside the programming session (optional/if configured)
+            self._emit_progress(FlashingStep.SECURITY_ACCESS, 4, 0, total_bytes, start_time, crc_hex)
             if config.security_key is not None:
-                self._log(f"Adım 3/10: Güvenlik Erişimi (0x27 Level {config.security_level}) doğrulanıyor...", "info")
-                seed_resp = self.uds_client.security_access_request_seed(level=config.security_level)
+                sec_level = config.effective_programming_security_level
+                self._log(f"Adım 4/10: Güvenlik Erişimi (0x27 Level {sec_level}) doğrulanıyor...", "info")
+                self._check_cancelled()
+                seed_resp = self.uds_client.security_access_request_seed(level=sec_level)
                 if not seed_resp.is_positive:
                     raise ProtocolError(f"Güvenlik tohumu alınamadı: {seed_resp.nrc_description_tr}")
-                key_resp = self.uds_client.security_access_send_key(
-                    level=config.security_level, key=config.security_key
-                )
+                key_resp = self.uds_client.security_access_send_key(level=sec_level, key=config.security_key)
                 if not key_resp.is_positive:
                     raise ProtocolError(f"Güvenlik anahtarı reddedildi: {key_resp.nrc_description_tr}")
                 self._log("Güvenlik kilidi başarıyla açıldı.", "info")
             else:
-                self._log("Adım 3/10: Güvenlik Erişimi adımı atlandı (Anahtarsız mod).", "info")
-
-            # 4. Programming Session
-            self._emit_progress(FlashingStep.PROGRAMMING_SESSION, 4, 0, total_bytes, start_time, crc_hex)
-            self._log("Adım 4/10: Bootloader Programlama Oturumu (0x10 0x02) açılıyor...", "info")
-            resp = self.uds_client.change_session(DiagnosticSessionType.PROGRAMMING_SESSION)
-            if not resp.is_positive:
-                raise ProtocolError(f"Programlama oturumuna geçilemedi: {resp.nrc_description_tr}")
+                self._log("Adım 4/10: Güvenlik Erişimi adımı atlandı (Anahtarsız mod).", "info")
 
             # 5. Request Download
             self._emit_progress(FlashingStep.REQUEST_DOWNLOAD, 5, 0, total_bytes, start_time, crc_hex)
@@ -210,6 +301,7 @@ class EcuFlashingEngine:
                 f"Adım 5/10: İndirme Talebi (0x34) gönderiliyor (Adres: 0x{config.memory_address:08X}, Boyut: {total_bytes})...",
                 "info",
             )
+            self._check_cancelled()
             resp = self.uds_client.request_download(
                 memory_address=config.memory_address,
                 memory_size=total_bytes,
@@ -218,19 +310,38 @@ class EcuFlashingEngine:
             if not resp.is_positive:
                 raise ProtocolError(f"RequestDownload ECU tarafından reddedildi: {resp.nrc_description_tr}")
 
+            # P1-6: the ECU's maxNumberOfBlockLength bounds every 0x36
+            # message (SID + BSC + payload). Effective block size is
+            # min(config, max_len - 2); an unparsable/absent value fails
+            # closed — flashing with an unbounded block size is how a
+            # half-erased ECU happens.
+            max_block_len = self._parse_max_block_length(resp)
+            effective_block_size = min(config.block_size, max(max_block_len - 2, 1))
+            if effective_block_size < config.block_size:
+                self._log(
+                    f"Blok boyutu ECU sınırına göre {config.block_size} → {effective_block_size} bayta düşürüldü "
+                    f"(maxNumberOfBlockLength={max_block_len}).",
+                    "info",
+                )
+
             # 6. Transfer Data in Blocks
-            self._log(f"Adım 6/10: Blok aktarımı başlatılıyor (Blok Boyutu: {config.block_size} B)...", "info")
+            self._log(f"Adım 6/10: Blok aktarımı başlatılıyor (Blok Boyutu: {effective_block_size} B)...", "info")
             bytes_sent = 0
             block_seq = 1
 
             while bytes_sent < total_bytes:
-                if self._is_cancelled:
-                    raise ProtocolError("Flashing kullanıcı tarafından iptal edildi.")
+                self._check_cancelled()
 
-                chunk = config.data[bytes_sent : bytes_sent + config.block_size]
+                chunk = config.data[bytes_sent : bytes_sent + effective_block_size]
                 resp = self.uds_client.transfer_data(block_sequence=block_seq, data=chunk)
                 if not resp.is_positive:
                     raise ProtocolError(f"Blok #{block_seq} aktarımı reddedildi: {resp.nrc_description_tr}")
+
+                # P1-6: verify the ECU echoed our block sequence counter.
+                if resp.data and len(resp.data) >= 1 and resp.data[0] != (block_seq & 0xFF):
+                    raise ProtocolError(
+                        f"Blok #{block_seq} yanıtı BSC uyuşmazlığı (ECU: {resp.data[0]:02X})"
+                    )
 
                 bytes_sent += len(chunk)
                 block_seq = (block_seq + 1) & 0xFF  # Wraps naturally from 0xFF to 0x00 per ISO 14229-1
@@ -249,6 +360,7 @@ class EcuFlashingEngine:
             # 7. Request Transfer Exit
             self._emit_progress(FlashingStep.TRANSFER_EXIT, 7, total_bytes, total_bytes, start_time, crc_hex)
             self._log("Adım 7/10: Aktarım Çıkışı (0x37) gönderiliyor...", "info")
+            self._check_cancelled()
             resp = self.uds_client.request_transfer_exit()
             if not resp.is_positive:
                 raise ProtocolError(f"RequestTransferExit reddedildi: {resp.nrc_description_tr}")
@@ -256,6 +368,7 @@ class EcuFlashingEngine:
             # 8. Checksum / Routine Verification
             self._emit_progress(FlashingStep.CHECKSUM_VERIFICATION, 8, total_bytes, total_bytes, start_time, crc_hex)
             if config.verify_checksum:
+                self._check_cancelled()
                 self._log(f"Adım 8/10: Sağlama toplamı doğrulanıyor (CRC32: {crc_hex})...", "info")
                 crc_bytes = crc32_val.to_bytes(4, byteorder="big")
                 resp = self.uds_client.start_routine(
@@ -271,10 +384,17 @@ class EcuFlashingEngine:
                 if not result_resp.is_positive:
                     raise ProtocolError(f"Sağlama toplamı sonuç sorgusu reddedildi: {result_resp.nrc_description_tr}")
 
-                if result_resp.data and len(result_resp.data) >= 1:
-                    status_code = result_resp.data[0]
-                    if status_code not in (0x00, 0x01):
-                        raise ProtocolError(f"ECU sağlama toplamı (CRC32) uyumsuzluğu tespit etti (Durum: 0x{status_code:02X})")
+                # P1-7: an empty routineStatusRecord is NOT proof of a valid
+                # image — fail closed. Resetting an unverified (possibly
+                # corrupt) image is the brick path.
+                if not result_resp.data or len(result_resp.data) < 1:
+                    raise ProtocolError(
+                        "ECU sağlama toplamı sonucu boş döndü (routineStatusRecord yok) — "
+                        "doğrulanmamış imaj üzerinde reset atılamaz (fail-closed)"
+                    )
+                status_code = result_resp.data[0]
+                if status_code not in (0x00, 0x01):
+                    raise ProtocolError(f"ECU sağlama toplamı (CRC32) uyumsuzluğu tespit etti (Durum: 0x{status_code:02X})")
 
                 self._log("✅ Sağlama toplamı (CRC32) ECU tarafından başarıyla doğrulandı.", "info")
             else:
@@ -283,6 +403,7 @@ class EcuFlashingEngine:
             # 9. ECU Reset
             self._emit_progress(FlashingStep.ECU_RESET, 9, total_bytes, total_bytes, start_time, crc_hex)
             if config.reset_after_flash:
+                self._check_cancelled()
                 self._log("Adım 9/10: ECU yeniden başlatılıyor (Hard Reset 0x11)...", "info")
                 with_reset_resp = self.uds_client.ecu_reset(
                     reset_type=config.reset_type, user_confirmed=config.user_confirmed

@@ -141,7 +141,7 @@ class CanFrame:
 
     VALID_DIRECTIONS: ClassVar[frozenset[str]] = frozenset({"rx", "tx"})
     VALID_ERROR_STATES: ClassVar[frozenset[str]] = frozenset({"active", "passive", "bus_off"})
-    VALID_SOURCES: ClassVar[frozenset[str]] = frozenset({"physical", "replay", "virtual", "injected"})
+    VALID_SOURCES: ClassVar[frozenset[str]] = frozenset({"physical", "replay", "virtual", "injected", "synthetic"})
 
     def __post_init__(self) -> None:
         """Validate all invariant invariants at instantiation time."""

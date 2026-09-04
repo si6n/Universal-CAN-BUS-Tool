@@ -26,7 +26,7 @@ from src.hal.drivers.pcan_kvaser import PythonCanBus
 from src.protocols.j1939.diagnostics import J1939DiagnosticService
 from src.protocols.j1939.transport import J1939TransportProtocol
 from src.protocols.nmea2000.fast_packet import Nmea2000FastPacketDecoder
-from src.safety.estop import EmergencyStopSystem, EStopTriggerSource
+from src.safety.estop import EmergencyStopSystem, EStopResetAuthority, EStopTriggerSource
 from src.safety.gateway import TxSafetyGateway
 from src.safety.secret_provider import get_default_secret_provider
 from src.safety.state_machine import SafetyState, SafetySupervisor
@@ -253,6 +253,11 @@ class UniversalCanDesktopApp:
                 interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
             )
         self.estop = EmergencyStopSystem()
+        # P1-1: mint/verify separation — exactly one reset authority exists,
+        # owned by the UI layer (the operator-driven reset flow). The
+        # gateway, watchdog, and protocol engines below receive only the
+        # verification-only enforcement object.
+        self.estop_reset_authority = EStopResetAuthority(self.estop)
         self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
         self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=800.0)
         self.gateway = TxSafetyGateway(
@@ -383,8 +388,12 @@ class UniversalCanDesktopApp:
             return {"success": False, "error": str(exc)}
 
     def reset_estop_local(self) -> dict[str, Any]:
-        """Local single-operator recovery helper (K2)."""
-        token = self.estop.create_reset_token()
+        """Local single-operator recovery helper (K2).
+
+        P1-1: routes through the single EStopResetAuthority — the only
+        component holding minting rights on the shared enforcement object.
+        """
+        token = self.estop_reset_authority.mint_reset_token()
         if token is None:
             return {"success": False, "error": "E-Stop reset challenge unavailable; refusing to leave FAULT"}
         return self.reset_estop_with_token(token.to_token_string())
@@ -405,9 +414,10 @@ class UniversalCanDesktopApp:
 
     def set_scenario(self, scenario: str) -> None:
         self._active_scenario = scenario
-        # Scenario switch may not silently clear a latched E-Stop either (F-17)
+        # Scenario switch may not silently clear a latched E-Stop either (F-17);
+        # it must go through the reset authority's minted token (P1-1).
         if self._is_estop:
-            token = self.estop.create_reset_token()
+            token = self.estop_reset_authority.mint_reset_token()
             if token is None:
                 logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
                 return

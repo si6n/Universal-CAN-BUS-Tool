@@ -40,6 +40,13 @@ def ctrl_targets_sender(frame: CanFrame) -> bool:
     """True when a TP.CM frame's control byte addresses a sender role (CTS/ACK/Abort)."""
     return frame.data[0] in (TP_CTRL_CTS, TP_CTRL_ACK, TP_CTRL_ABORT)
 
+
+def pgn_from_tp_cm(frame: CanFrame) -> int:
+    """Extract the target PGN encoded in TP.CM bytes 5..7 (little-endian)."""
+    if len(frame.data) < 8:
+        return 0
+    return int.from_bytes(bytes(frame.data[5:8]), byteorder="little")
+
 # TP.Conn_Abort Reason Codes (SAE J1939-21 Section 5.10.3)
 ABORT_REASON_SEQUENCE_ERROR: int = 0x01
 ABORT_REASON_SESSION_COLLISION: int = 0x02
@@ -192,18 +199,30 @@ class J1939TransportProtocol:
 
         # Check for TP.CM (PGN 60416 / 0xEC00)
         if pgn == PGN_TP_CM:
-            # CTS/ACK/Abort answering OUR pending sender sessions (CMDT tx role)
+            # P2-4: route by SESSION EXISTENCE, not control byte alone. A
+            # peer Abort (DA=us) that has no matching TX session is aimed at
+            # our RECEIVER session — the old control-byte dispatch dropped
+            # it, leaking the RX session until reaping.
+            tx_key = (self.my_address, sa, pgn_from_tp_cm(frame), frame.channel_id) if ctrl_targets_sender(frame) else None
             if da == self.my_address and ctrl_targets_sender(frame):
-                dt_frames, err_frame = self._handle_tx_cm(frame, sa, da)
-                if dt_frames:
-                    # First frame rides the single response slot; the rest queue
-                    self._pending_tx_frames.extend(dt_frames[1:])
+                # Abort with no TX session → fall through to the RX handler
+                # so the receiving side can drop its session.
+                has_tx_session = False
+                if tx_key is not None:
+                    with self._sessions_lock:
+                        probe_key = (self.my_address, sa, pgn_from_tp_cm(frame), frame.channel_id)
+                        has_tx_session = probe_key in self._tx_sessions
+                if has_tx_session or frame.data[0] != TP_CTRL_ABORT:
+                    dt_frames, err_frame = self._handle_tx_cm(frame, sa, da)
+                    if dt_frames:
+                        # First frame rides the single response slot; the rest queue
+                        self._pending_tx_frames.extend(dt_frames[1:])
+                        if err_frame is not None:
+                            self._pending_tx_frames.append(err_frame)
+                        return None, dt_frames[0]
                     if err_frame is not None:
-                        self._pending_tx_frames.append(err_frame)
-                    return None, dt_frames[0]
-                if err_frame is not None:
-                    return None, err_frame
-                return None, None
+                        return None, err_frame
+                    return None, None
             return self._handle_tp_cm(frame, sa, da)
 
         # Check for TP.DT (PGN 60160 / 0xEB00)
@@ -222,6 +241,27 @@ class J1939TransportProtocol:
             pending = self._pending_tx_frames
             self._pending_tx_frames = []
             return pending
+
+    def reset_sessions(self) -> None:
+        """Reset ALL transport state under the session lock (P2-13).
+
+        Public, thread-safe replacement for callers reaching into
+        `_rx_sessions`/`_per_sa_sessions` without `_sessions_lock` (a
+        concurrent RX thread iterating during a clear() raises
+        'dictionary changed size during iteration' or permanently skews
+        the quota counters). Also clears sender-side sessions and the
+        pending TX queue, which the pipeline-level reset used to miss.
+        """
+        with self._sessions_lock:
+            self._rx_sessions.clear()
+            self._tx_sessions.clear()
+            self._per_sa_sessions.clear()
+            self._pending_tx_frames.clear()
+
+    def reap_stale_sessions_public(self) -> int:
+        """Lock-holding public reaper (P2-8) — safe from any thread."""
+        with self._sessions_lock:
+            return self._reap_stale_sessions(now=self._get_now())
 
     def _handle_tp_cm(
         self, frame: CanFrame, sa: int, da: int
@@ -793,16 +833,27 @@ class J1939TransportProtocol:
             if ctrl_byte == TP_CTRL_CTS:
                 packet_count = frame.data[1]
                 next_seq = frame.data[2]
-                if (
-                    packet_count == 0
-                    or next_seq == 0
-                    or next_seq > session.total_packets
-                    or next_seq < session.next_sequence
-                ):
-                    # CTS with zero packets or backwards sequence rewind is invalid
+                # P2-6: SAE J1939-21 semantics — CTS with zero packets means
+                # "connection held, receiver not ready" (that is exactly what
+                # T4 exists for), and a lower next_seq is a retransmit
+                # request. Both are legal; only truly impossible sequences
+                # (0 or > total_packets) abort.
+                if next_seq == 0 or next_seq > session.total_packets:
                     abort = self._create_tx_abort_frame(session, ABORT_REASON_UNEXPECTED_CONTROL)
                     self._tx_sessions.pop(key, None)
                     return [], abort
+                if packet_count == 0:
+                    # HOLD: keep the session alive, refresh activity so T4
+                    # governs the wait, and emit nothing until a real CTS.
+                    session.state = "WAIT_CTS"
+                    session.last_activity_time = self._get_now()
+                    return [], None
+                if next_seq < session.next_sequence:
+                    # Retransmit window: rewind to the requested sequence.
+                    logger.info(
+                        "J1939 CMDT retransmit requested by receiver CTS",
+                        extra={"from_seq": session.next_sequence, "to_seq": next_seq},
+                    )
                 session.cts_window = packet_count
                 session.next_sequence = next_seq
                 session.state = "GRANTED"

@@ -98,20 +98,19 @@ class TestIsoTpExtremePayloadBoundaries:
 
     @pytest.mark.parametrize("is_fd", [False, True])
     def test_payload_boundary_1_byte(self, is_fd: bool) -> None:
-        """1-byte payload is the minimum Single Frame."""
+        """1-byte payload is the minimum Single Frame.
+
+        P2-5: CAN_DL <= 8 uses the CLASSIC nibble form even on FD — the
+        escape form requires CAN_DL > 8 (the old FD escape for short
+        payloads was non-conformant and silently discarded by real ECUs).
+        """
         transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8)
         payload = b"\x55"
         frames = transport.segment_message(payload, is_fd=is_fd)
         assert len(frames) == 1
-        if is_fd:
-            # CAN-FD Extended SF (0x00 0x01 0x55 ...)
-            assert frames[0].data[0] == 0x00
-            assert frames[0].data[1] == 0x01
-            assert frames[0].data[2] == 0x55
-        else:
-            # Classic CAN SF (0x01 0x55 ...)
-            assert frames[0].data[0] == 0x01
-            assert frames[0].data[1] == 0x55
+        # Classic nibble SF in both modes: 0x01 0x55 ...
+        assert frames[0].data[0] == 0x01
+        assert frames[0].data[1] == 0x55
 
         # Reassembly
         rx_transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8)
@@ -121,11 +120,16 @@ class TestIsoTpExtremePayloadBoundaries:
 
     @pytest.mark.parametrize("is_fd", [False, True])
     def test_payload_boundary_7_bytes(self, is_fd: bool) -> None:
-        """7-byte payload is Classic CAN Single Frame maximum limit."""
+        """7-byte payload is Classic CAN Single Frame maximum limit.
+
+        P2-5: classic nibble form in both modes (CAN_DL <= 8).
+        """
         transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8)
         payload = bytes(range(1, 8))
         frames = transport.segment_message(payload, is_fd=is_fd)
         assert len(frames) == 1
+        assert (frames[0].data[0] >> 4) == 0x0
+        assert (frames[0].data[0] & 0x0F) == 7
         rx_transport = IsoTpTransport(tx_id=0x7E0, rx_id=0x7E8)
         rx_frame = CanFrame.create("ch0", 0x7E8, frames[0].data, is_fd=is_fd)
         completed, _ = rx_transport.handle_rx_frame(rx_frame)

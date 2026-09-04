@@ -263,7 +263,7 @@ def test_tier1_secret_provider_dynamic_key_provisioning() -> None:
     retrieved = provider.get_secret("ESTOP_HMAC_KEY")
     assert retrieved == dynamic_secret
 
-    estop = EmergencyStopSystem(reset_secret=retrieved)
+    estop = EmergencyStopSystem(reset_secret=retrieved, allow_self_reset=True)
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Operator button")
     assert estop.is_engaged
 
@@ -274,10 +274,10 @@ def test_tier1_secret_provider_dynamic_key_provisioning() -> None:
 
 def test_tier1_estop_valid_token_reset() -> None:
     """Tier 1.2.2: Verify valid challenge-response reset disengages E-Stop."""
-    # Test fixture secret (32 bytes) — explicitly NOT a production key; the
+    # Test fixture secret (32 bytes) Ã¢â‚¬â€ explicitly NOT a production key; the
     # misleading old name tripped secret-scanner false positives.
     secret = b"estop_test_fixture_secret_32byte"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.SPEED_INTERLOCK_BREACH, reason="Speed violation", vehicle_speed_kmh=45.0)
     assert estop.is_engaged
@@ -354,7 +354,7 @@ def test_tier1_whitelist_empty_whitelist_rejection() -> None:
 def test_tier1_whitelist_unauthorized_id_violation_triggers_estop() -> None:
     """Tier 1.3.2: Verify whitelist violation automatically trips E-Stop with UNAUTHORIZED_PAYLOAD."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame_unauthorized = CanFrame.create(channel_id="c0", arbitration_id=0x666, data=b"\xDE\xAD")
@@ -381,7 +381,7 @@ def test_tier1_whitelist_explicit_test_ids_permitted() -> None:
 def test_tier1_whitelist_dynamic_runtime_id_addition() -> None:
     """Tier 1.3.4: Verify adding new ID to whitelist dynamically permits subsequent transmission."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     whitelist = {0x7E0}
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids=whitelist)
 
@@ -521,7 +521,7 @@ def test_tier1_rule_ordering_6_stage_pipeline_enforcement() -> None:
     """Tier 1.5.1: Verify 6-stage gateway validation pipeline passes clean frames."""
     bus = MockMemoryBus()
     supervisor = SafetySupervisor(initial_state=SafetyState.ARMED_TX)
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, supervisor=supervisor, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01\x02\x03\x04")
@@ -531,7 +531,7 @@ def test_tier1_rule_ordering_6_stage_pipeline_enforcement() -> None:
 def test_tier1_rule_ordering_speed_interlock_before_dual_confirmation() -> None:
     """Tier 1.5.2: Verify moving vehicle triggers speed interlock and trips E-Stop on critical commands."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     gateway.update_vehicle_speed(25.0)  # > 0.5 km/h
@@ -658,7 +658,7 @@ def test_tier2_r1_maximum_worker_pool_concurrency() -> None:
 def test_tier2_r2_replayed_nonce_token_rejection() -> None:
     """Tier 2.2.1: Verify previously valid reset token is rejected upon second trigger (anti-replay)."""
     secret = b"anti_replay_test_secret_32bytes!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     # First trigger & reset
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="First")
@@ -680,7 +680,7 @@ def test_tier2_r2_replayed_nonce_token_rejection() -> None:
 def test_tier2_r2_tampered_hmac_signature_rejection() -> None:
     """Tier 2.2.2: Verify 1-byte tampered HMAC token is rejected via constant-time verification."""
     secret = b"tamper_test_secret_32_bytes_len!"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.HARDWARE_DISCONNECT, reason="Disconnect")
     valid_token = estop.compute_reset_token()
@@ -701,7 +701,7 @@ def test_tier2_r2_tampered_hmac_signature_rejection() -> None:
 
 def test_tier2_r2_empty_or_malformed_token_rejection() -> None:
     """Tier 2.2.3: Verify empty, short, or non-hex reset tokens are strictly rejected."""
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     estop.trigger(EStopTriggerSource.RATE_LIMIT_OVERFLOW, reason="Overflow")
 
     for bad_token in ["", "   ", "short", "invalid_hex!@#$", "0" * 32]:
@@ -871,7 +871,7 @@ def test_tier2_r4_repeated_force_fault_idempotence() -> None:
 def test_tier2_r5_speed_threshold_exact_boundary_0_500_vs_0_501() -> None:
     """Tier 2.5.1: Verify speed 0.500 km/h is allowed (sensor noise) vs 0.501 km/h is blocked."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x11\x01")
 
@@ -889,9 +889,10 @@ def test_tier2_r5_speed_threshold_exact_boundary_0_500_vs_0_501() -> None:
 
 
 def test_tier2_r5_rate_limiter_burst_exact_100_vs_101_boundary() -> None:
-    """Tier 2.5.2: Verify exactly 100 msg/s passes and 101st message in 1.0s window triggers E-Stop."""
+    """Tier 2.5.2 / P1-9: exactly 100 msg/s passes; overloads are rejected as
+    backpressure, and only a sustained streak trips the E-Stop."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
@@ -901,7 +902,14 @@ def test_tier2_r5_rate_limiter_burst_exact_100_vs_101_boundary() -> None:
 
     assert len(gateway._tx_timestamps) == 100
 
-    # 101st message must trigger E-Stop
+    # Overloads reject WITHOUT latching an E-Stop (backpressure semantics)
+    for _ in range(gateway.RATE_ESTOP_AFTER - 1):
+        with pytest.raises(SafetyError) as rej:
+            gateway.validate_and_transmit(frame)
+        assert rej.value.code == "RATE_LIMIT_EXCEEDED"
+    assert estop.is_engaged is False
+
+    # The sustained-streak threshold trips the E-Stop
     with pytest.raises(SafetyError) as exc_info:
         gateway.validate_and_transmit(frame)
     assert exc_info.value.code == "RATE_LIMIT_EXCEEDED"
@@ -952,7 +960,7 @@ def test_tier2_r5_speed_interlock_negative_speed_sanitization() -> None:
 def test_tier3_uds_critical_service_ecu_reset_moving_vehicle_blocks_before_dual_confirmation() -> None:
     """Tier 3.1: UDS ECUReset (0x11) on moving vehicle (15 km/h) -> Speed interlock blocks and engages E-Stop."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(15.0)
 
@@ -969,7 +977,7 @@ def test_tier3_uds_critical_service_ecu_reset_moving_vehicle_blocks_before_dual_
 def test_tier3_uds_critical_service_write_did_moving_vehicle_blocks_before_dual_confirmation() -> None:
     """Tier 3.2: UDS WriteDID (0x2E) on moving vehicle (30 km/h) -> Speed interlock blocks and engages E-Stop."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(30.0)
 
@@ -984,7 +992,7 @@ def test_tier3_uds_critical_service_write_did_moving_vehicle_blocks_before_dual_
 def test_tier3_estop_active_blocks_valid_uds_read_did_request() -> None:
     """Tier 3.3: Active E-Stop immediately blocks valid UDS ReadDID (0x22 0xF190) request."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Emergency Button")
@@ -998,7 +1006,7 @@ def test_tier3_estop_active_blocks_valid_uds_read_did_request() -> None:
 def test_tier3_estop_reset_token_replay_attempt_while_vehicle_moving() -> None:
     """Tier 3.4: Replaying previous E-Stop reset token while vehicle is moving fails anti-replay."""
     secret = b"moving_vehicle_replay_secret_key"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     # First trigger and reset
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Stop 1")
@@ -1020,7 +1028,7 @@ def test_tier3_estop_reset_token_replay_attempt_while_vehicle_moving() -> None:
 def test_tier3_empty_whitelist_and_valid_estop_token_interaction() -> None:
     """Tier 3.5: Authenticated E-Stop reset disengages E-Stop, but empty whitelist continues to block unauthorized frames."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Test")
@@ -1036,7 +1044,7 @@ def test_tier3_empty_whitelist_and_valid_estop_token_interaction() -> None:
 def test_tier3_reentrant_callback_triggering_estop_during_gateway_transmission() -> None:
     """Tier 3.6: Callback in supervisor triggers E-Stop mid-session; subsequent transmissions blocked immediately."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     supervisor = SafetySupervisor(initial_state=SafetyState.ARMED_TX)
     gateway = TxSafetyGateway(bus=bus, estop=estop, supervisor=supervisor, whitelist_ids={0x7E0})
 
@@ -1057,17 +1065,20 @@ def test_tier3_reentrant_callback_triggering_estop_during_gateway_transmission()
 
 
 def test_tier3_rate_budget_exhausted_and_moving_vehicle() -> None:
-    """Tier 3.7: Rate limit overflow trips E-Stop; vehicle moving state updates do not clear E-Stop."""
+    """Tier 3.7 / P1-9: sustained rate-limit overflow trips E-Stop; vehicle
+    moving state updates do not clear E-Stop."""
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x01")
 
     for _ in range(gateway.MAX_TX_RATE_PER_SEC):
         gateway.validate_and_transmit(frame)
 
-    with pytest.raises(SafetyError):
-        gateway.validate_and_transmit(frame)
+    # Drive the rejection streak up to the E-Stop threshold
+    for _ in range(gateway.RATE_ESTOP_AFTER):
+        with pytest.raises(SafetyError):
+            gateway.validate_and_transmit(frame)
     assert estop.is_engaged is True
 
     gateway.update_vehicle_speed(50.0)
@@ -1077,7 +1088,7 @@ def test_tier3_rate_budget_exhausted_and_moving_vehicle() -> None:
 def test_tier3_secret_provider_rotation_during_active_estop_challenge() -> None:
     """Tier 3.8: SecretProvider key rotation invalidates tokens computed with old secret key."""
     provider = InMemorySecretProvider({"ESTOP_KEY": b"initial_secret_key_32_bytes_len!"})
-    estop = EmergencyStopSystem(reset_secret=provider.get_secret("ESTOP_KEY"))
+    estop = EmergencyStopSystem(reset_secret=provider.get_secret("ESTOP_KEY"), allow_self_reset=True)
 
     estop.trigger(EStopTriggerSource.USER_UI_BUTTON, reason="Test rotation")
     old_token = estop.compute_reset_token()
@@ -1150,8 +1161,8 @@ def test_tier3_multi_channel_gateway_with_isolated_estop_and_whitelist() -> None
     """Tier 3.12: Multiple independent gateways with distinct whitelists maintain isolated state."""
     bus1 = MockMemoryBus("bus1")
     bus2 = MockMemoryBus("bus2")
-    estop1 = EmergencyStopSystem()
-    estop2 = EmergencyStopSystem()
+    estop1 = EmergencyStopSystem(allow_self_reset=True)
+    estop2 = EmergencyStopSystem(allow_self_reset=True)
 
     gw1 = TxSafetyGateway(bus=bus1, estop=estop1, whitelist_ids={0x100})
     gw2 = TxSafetyGateway(bus=bus2, estop=estop2, whitelist_ids={0x200})
@@ -1190,7 +1201,7 @@ def test_tier4_scenario1_full_diagnostic_session_stationary_vehicle() -> None:
     """
     bus = MockMemoryBus()
     secret_provider = InMemorySecretProvider({"ESTOP_HMAC_KEY": os.urandom(32)})
-    estop = EmergencyStopSystem(reset_secret=secret_provider.get_secret("ESTOP_HMAC_KEY"))
+    estop = EmergencyStopSystem(reset_secret=secret_provider.get_secret("ESTOP_HMAC_KEY"), allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
     gateway.update_vehicle_speed(0.0)
 
@@ -1259,7 +1270,7 @@ def test_tier4_scenario2_estop_triggered_mid_session_and_hmac_recovery() -> None
     """
     bus = MockMemoryBus()
     secret = b"top_secret_hmac_key_for_estop_2026"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     frame = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x22\xf1\x90")
@@ -1302,7 +1313,7 @@ def test_tier4_scenario3_high_speed_driving_critical_security_rejection() -> Non
     5. Zero race conditions under concurrent transmission attempts.
     """
     bus = MockMemoryBus()
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, whitelist_ids={0x7E0})
 
     gateway.update_vehicle_speed(120.0)  # 120 km/h
@@ -1334,7 +1345,7 @@ def test_tier4_scenario4_malicious_can_replay_attack_simulation() -> None:
     5. E-Stop remains securely engaged.
     """
     secret = b"resilient_anti_replay_secret_32b"
-    estop = EmergencyStopSystem(reset_secret=secret)
+    estop = EmergencyStopSystem(reset_secret=secret, allow_self_reset=True)
 
     # Transaction 1
     estop.trigger(EStopTriggerSource.KEEPALIVE_TIMEOUT, reason="Heartbeat dropped")
@@ -1367,7 +1378,7 @@ def test_tier4_scenario5_multithreaded_telemetry_and_diagnostic_concurrency() ->
     """
     bus = MockMemoryBus()
     supervisor = SafetySupervisor(initial_state=SafetyState.ARMED_TX)
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, supervisor=supervisor, whitelist_ids={0x7E0, 0x18F00400})
 
     errors: list[Exception] = []
@@ -1440,7 +1451,7 @@ def test_tier4_scenario6_emergency_firmware_flashing_interrupted_by_bus_off() ->
     """
     bus = MockMemoryBus()
     supervisor = SafetySupervisor(initial_state=SafetyState.ARMED_TX)
-    estop = EmergencyStopSystem()
+    estop = EmergencyStopSystem(allow_self_reset=True)
     gateway = TxSafetyGateway(bus=bus, estop=estop, supervisor=supervisor, whitelist_ids={0x7E0})
 
     frame_download = CanFrame.create(channel_id="c0", arbitration_id=0x7E0, data=b"\x34\x00\x44\x00\x00\x10\x00")

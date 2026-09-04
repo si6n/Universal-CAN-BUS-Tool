@@ -159,8 +159,32 @@ class IsoTpTransport:
             return []
 
         # ------------------------------------------------------------------
-        # 1. CAN-FD Extended Single Frame (up to 62 bytes)
+        # 1. Single Frame
         # ------------------------------------------------------------------
+        # P2-5: CAN_DL <= 8 (payload <= 7 bytes) uses the CLASSIC nibble
+        # form on both classic CAN and FD — the escape form is only valid
+        # for SF_DL >= 8 (CAN_DL > 8). Short FD payloads previously went
+        # out as `00 02 10 03` which conformant ECUs silently discard.
+        if data_len <= 7:
+            sf_raw = bytes([(PCI_SINGLE_FRAME << 4) | (data_len & 0x0F)]) + data
+            if is_fd:
+                dlc = length_to_dlc(max(len(sf_raw), 12) if len(sf_raw) > 8 else 8)
+                padded_data = pad_payload(sf_raw, dlc, pad_byte=self.pad_byte if self.pad_byte is not None else 0xCC)
+            else:
+                dlc = 8
+                padded_data = pad_payload(sf_raw, 8, pad_byte=self.pad_byte if self.pad_byte is not None else 0xCC)
+            return [
+                CanFrame(
+                    channel_id=self.channel_id,
+                    arbitration_id=self.tx_id,
+                    dlc=dlc,
+                    data=padded_data,
+                    is_extended=self.tx_id > 0x7FF,
+                    is_fd=is_fd,
+                    direction="tx",
+                )
+            ]
+
         if is_fd and data_len <= 62:
             sf_raw = bytes([0x00, data_len]) + data
             dlc = length_to_dlc(len(sf_raw))
@@ -348,11 +372,16 @@ class IsoTpTransport:
                 if not frame.is_fd:
                     return None, None
 
-                # CAN-FD Extended Single Frame (SF_DL <= 62)
+                # P2-5: the escape form requires CAN_DL > 8 — an 8-byte FD
+                # frame carrying 00 xx is malformed and must be dropped.
+                if len(frame.data) <= 8:
+                    return None, None
+
+                # CAN-FD Extended Single Frame (SF_DL 8..62)
                 if len(frame.data) < 2:
                     return None, None
                 sf_len = frame.data[1]
-                if sf_len == 0 or sf_len > 62:
+                if sf_len < 8 or sf_len > 62:
                     return None, None
                 if sf_len <= (len(frame.data) - 2):
                     self._rx_session = None
@@ -580,37 +609,47 @@ class IsoTpSender:
         N_As (ISO 15765-2 §4.6.1) bounds the time for the network layer to
         complete a single frame transmission after the request. A TxPort
         that blocks longer than n_as_timeout_s is treated as a timeout.
+
+        P2-9: cancelling a `run_in_executor` future does NOT stop the
+        underlying thread — the frame can still hit the bus AFTER the
+        caller has given up and retried, interleaving with the new
+        attempt. After a timeout we therefore DRAIN the in-flight task to
+        completion before raising, so a late frame either lands before the
+        error surfaces (and the caller knows the exchange is dead) or the
+        send itself failed. The bus ordering stays consistent with the
+        session state either way.
         """
         send_task: asyncio.Future[None] = asyncio.ensure_future(self.tx_port.send(frame))
-        elapsed = 0.0
         start = self.clock.now_monotonic()
-        while True:
-            remaining = self.n_as_timeout_s - (self.clock.now_monotonic() - start)
-            if remaining <= 0:
-                if not send_task.done():
-                    send_task.cancel()
+        try:
+            await asyncio.wait_for(asyncio.shield(send_task), timeout=self.n_as_timeout_s)
+            return
+        except asyncio.TimeoutError:
+            # P2-9: wait (bounded) for the executor thread to finish so no
+            # frame slips onto the wire after we raise. Give the driver a
+            # short grace period beyond N_As before abandoning the drain.
+            try:
+                await asyncio.wait_for(asyncio.shield(send_task), timeout=self.n_as_timeout_s)
+                # The frame DID go out — but too late for the protocol
+                # timing; the session is invalid, surface the timeout.
+                raise IsoTpTimeoutError(
+                    f"N_As timeout ({self.n_as_timeout_s * 1000:.0f}ms) transmitting ISO-TP frame (late completion)",
+                    timeout_type="N_As",
+                    elapsed_ms=(self.clock.now_monotonic() - start) * 1000.0,
+                    limit_ms=self.n_as_timeout_s * 1000.0,
+                )
+            except asyncio.TimeoutError:
+                # Still stuck after the grace drain: cancel and let the
+                # executor thread finish on its own — nothing we can do,
+                # but we never overlap a retry with this attempt because
+                # the caller must treat this session as dead.
+                send_task.cancel()
                 raise IsoTpTimeoutError(
                     f"N_As timeout ({self.n_as_timeout_s * 1000:.0f}ms) transmitting ISO-TP frame",
                     timeout_type="N_As",
-                    elapsed_ms=elapsed * 1000.0,
+                    elapsed_ms=(self.clock.now_monotonic() - start) * 1000.0,
                     limit_ms=self.n_as_timeout_s * 1000.0,
-                )
-            try:
-                await asyncio.wait_for(asyncio.shield(send_task), timeout=remaining)
-                return
-            except asyncio.TimeoutError:
-                elapsed = self.clock.now_monotonic() - start
-                if elapsed >= self.n_as_timeout_s:
-                    send_task.cancel()
-                    raise IsoTpTimeoutError(
-                        f"N_As timeout ({self.n_as_timeout_s * 1000:.0f}ms) transmitting ISO-TP frame",
-                        timeout_type="N_As",
-                        elapsed_ms=elapsed * 1000.0,
-                        limit_ms=self.n_as_timeout_s * 1000.0,
-                    ) from None
-                # Shield raced with completion; re-check
-                if send_task.done() and not send_task.cancelled() and send_task.exception() is None:
-                    return
+                ) from None
 
     async def _apply_st_min(self, st_min_byte: int) -> None:
         """Execute STmin pacing delay via sleep or high-precision spin-wait."""
@@ -666,9 +705,14 @@ class IsoTpSender:
             return
 
         # 1. Single Frame Check
-        if not self.is_fd and data_len <= 7:
+        # P2-5: ISO 15765-2:2016 SF encoding rules — CAN_DL <= 8 uses the
+        # classic nibble form (even on an FD-configured sender); the escape
+        # form [0x00, SF_DL] is ONLY valid when SF_DL >= 8 (CAN_DL > 8).
+        # The old code emitted `00 02 10 03` for a 2-byte payload on FD,
+        # which every conformant ECU silently discards.
+        if data_len <= 7:
             sf_raw = bytes([(PCI_SINGLE_FRAME << 4) | (data_len & 0x0F)]) + payload
-            frame = self._build_frame(sf_raw, is_fd=False)
+            frame = self._build_frame(sf_raw, is_fd=self.is_fd)
             await self._send_with_n_as(frame)
             return
 
@@ -836,7 +880,16 @@ class IsoTpReceiver:
                             pci_type=PCI_SINGLE_FRAME,
                             raw_data=frame.data,
                         )
-                    # CAN-FD Extended SF
+                    # P2-5: escape form requires CAN_DL > 8 — an escape
+                    # header on an 8-byte FD frame is malformed (the SF_DL
+                    # nibble must be used there); reject loudly.
+                    if len(frame.data) <= 8:
+                        raise IsoTpInvalidPduError(
+                            f"CAN-FD escape SF with CAN_DL {len(frame.data)} (must be > 8)",
+                            pci_type=PCI_SINGLE_FRAME,
+                            raw_data=frame.data,
+                        )
+                    # CAN-FD Extended SF (SF_DL 8..62 per P2-5)
                     if len(frame.data) < 2:
                         raise IsoTpInvalidPduError(
                             "Malformed CAN-FD Extended SF header",
@@ -844,9 +897,15 @@ class IsoTpReceiver:
                             raw_data=frame.data,
                         )
                     sf_len = frame.data[1]
-                    if sf_len == 0 or sf_len > 62 or sf_len > (len(frame.data) - 2):
+                    if sf_len < 8 or sf_len > 62:
                         raise IsoTpInvalidPduError(
                             f"Invalid CAN-FD SF length {sf_len}",
+                            pci_type=PCI_SINGLE_FRAME,
+                            raw_data=frame.data,
+                        )
+                    if sf_len > (len(frame.data) - 2):
+                        raise IsoTpInvalidPduError(
+                            f"CAN-FD SF length {sf_len} exceeds frame data",
                             pci_type=PCI_SINGLE_FRAME,
                             raw_data=frame.data,
                         )
@@ -878,7 +937,11 @@ class IsoTpReceiver:
                     header_len = 6
                 else:
                     total_len = ((frame.data[0] & 0x0F) << 8) | frame.data[1]
-                    if total_len < 8 and not self.is_fd and not frame.is_fd:
+                    # P2-10: FF_DL < 8 is invalid in classic CAN; on FD the
+                    # payload must exceed what an SF could have carried
+                    # (> CAN_DL - 2), otherwise this is a malformed/hostile
+                    # frame that must not become a fake "completed" message.
+                    if total_len < 8:
                         raise IsoTpInvalidPduError(
                             f"Standard First Frame length ({total_len}) must be >= 8",
                             pci_type=PCI_FIRST_FRAME,
@@ -914,8 +977,37 @@ class IsoTpReceiver:
                 block_count = 0
 
                 # Consecutive Frames loop
+                # P2-2: N_Cr is measured from the LAST VALID CF — an
+                # irrelevant frame on a shared rx_sub must NOT restart the
+                # timer, and the outer timeout_s must bound the whole
+                # reassembly (a silent ECU used to block receive() forever).
+                clock_now = self.clock.now_monotonic()
+                deadline_cr = clock_now + self.n_cr_timeout_s
+                deadline_outer = (
+                    start_time + timeout_s if timeout_s is not None else None
+                )
+
                 while len(buffer) < total_len:
-                    cf_frame = await self.rx_sub.recv(timeout_s=self.n_cr_timeout_s)
+                    now_mono = self.clock.now_monotonic()
+                    # Outer deadline caps the entire exchange
+                    if deadline_outer is not None and now_mono >= deadline_outer:
+                        raise TimeoutError(
+                            f"Timeout ({timeout_s:.2f}s) during ISO-TP reassembly "
+                            f"({len(buffer)}/{total_len} bytes)"
+                        )
+                    remaining_cr = deadline_cr - now_mono
+                    if remaining_cr <= 0:
+                        raise IsoTpTimeoutError(
+                            f"N_Cr timeout ({self.n_cr_timeout_s * 1000:.0f}ms) awaiting Consecutive Frame",
+                            timeout_type="N_Cr",
+                            elapsed_ms=self.n_cr_timeout_s * 1000.0,
+                            limit_ms=self.n_cr_timeout_s * 1000.0,
+                        )
+                    recv_timeout = remaining_cr
+                    if deadline_outer is not None:
+                        recv_timeout = min(recv_timeout, deadline_outer - now_mono)
+                    cf_frame = await self.rx_sub.recv(timeout_s=max(recv_timeout, 0.001))
+
                     if cf_frame is None:
                         raise IsoTpTimeoutError(
                             f"N_Cr timeout ({self.n_cr_timeout_s * 1000:.0f}ms) awaiting Consecutive Frame",
@@ -927,6 +1019,7 @@ class IsoTpReceiver:
                     # P-b: < 2 (not < 1) — a CF needs the PCI byte AND at least
                     # one payload byte; a lone 1-byte frame matches SF/FF paths'
                     # rejection and cannot contribute session data.
+                    # P2-2: irrelevant frames do NOT refresh the N_Cr deadline.
                     if cf_frame.arbitration_id != self.rx_id or len(cf_frame.data) < 2:
                         continue
 
@@ -949,6 +1042,9 @@ class IsoTpReceiver:
                     avail = len(cf_frame.data) - 1
                     c_len = min(needed, avail)
                     buffer.extend(cf_frame.data[1 : 1 + c_len])
+
+                    # Valid CF received — N_Cr restarts from here (ISO 15765-2)
+                    deadline_cr = self.clock.now_monotonic() + self.n_cr_timeout_s
 
                     expected_sn = (expected_sn + 1) & 0x0F
                     block_count += 1

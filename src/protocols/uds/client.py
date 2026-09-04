@@ -252,14 +252,29 @@ class UdsClient:
         frame: CanFrame,
         is_critical_command: bool,
         user_confirmed: bool,
+        budget_category: str = "protocol_burst",
     ) -> None:
-        """Send one frame through the gateway TxPort choke-point."""
+        """Send one frame through the gateway TxPort choke-point.
+
+        P1-9: ISO-TP frames (FF + CF trains) travel on the 'protocol_burst'
+        lane by default — a 256-byte 0x36 block is ~37 CFs which would
+        otherwise slam into the 100 msg/s default-lane wall and, pre-P1-9,
+        engage a permanent E-Stop (self-DoS mid-flash).
+        """
         if hasattr(self.tx_port, "validate_and_transmit"):
             self.tx_port.validate_and_transmit(
                 frame,
                 is_critical_command=is_critical_command,
                 user_confirmed=user_confirmed,
+                budget_category=budget_category,
             )
+        elif hasattr(self.tx_port, "send_sync") and not hasattr(self.tx_port, "validate_and_transmit"):
+            # TxSafetyGateway-shaped port: honour the category-aware lane.
+            try:
+                self.tx_port.send_sync(frame, budget_category=budget_category)  # type: ignore[call-arg]
+            except TypeError:
+                # Plain TxPort (send_sync(frame) only) — fall back.
+                self.tx_port.send_sync(frame)
         else:
             self.tx_port.send_sync(frame)
 

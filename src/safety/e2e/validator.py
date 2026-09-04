@@ -9,6 +9,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass
+from typing import ClassVar
 
 from src.core.models.can_frame import CanFrame
 from src.safety.e2e.profiles import (
@@ -74,6 +75,11 @@ class StreamRxState:
 class E2ESafetyValidator:
     """Thread-safe, stateful E2E validation engine."""
 
+    # P2-14: bounded stream table — an ID-scanning node on the bus can
+    # otherwise grow the per-ID state dict without limit (GBs/hour).
+    # Oldest-last-seen streams are evicted first.
+    MAX_TRACKED_STREAMS: ClassVar[int] = 1024
+
     def __init__(self) -> None:
         self._lock = threading.RLock()
         self._streams: dict[tuple[str, int], StreamRxState] = {}
@@ -104,6 +110,11 @@ class E2ESafetyValidator:
 
         with self._lock:
             if stream_key not in self._streams:
+                # P2-14: enforce the stream-table ceiling; evict the least
+                # recently seen stream to make room for the new one.
+                if len(self._streams) >= self.MAX_TRACKED_STREAMS:
+                    oldest_key = min(self._streams, key=lambda k: self._streams[k].last_timestamp_ns)
+                    self._streams.pop(oldest_key, None)
                 self._streams[stream_key] = StreamRxState(
                     channel_id=channel_id,
                     arbitration_id=arbitration_id,

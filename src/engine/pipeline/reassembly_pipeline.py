@@ -81,6 +81,11 @@ class IsoTpSession:
     is_extended: bool = False
     source_address: int | None = None
     target_address: int | None = None
+    # P2-3: explicit quota bucket key — set at session creation and reused
+    # verbatim on release/reap. The old `source_address or key[0]` fallback
+    # mis-bucketed SA=0 sessions (falsy 0 → raw arbitration ID) and
+    # permanently leaked quota for engine ECUs at address 0x00.
+    quota_key: str | None = None
 
 
 def decode_vin_payload(data: bytes) -> str:
@@ -135,6 +140,9 @@ class ReassemblyPipeline:
         clock_provider: ClockProvider | None = None,
         tx_port: TxPort | None = None,
         my_j1939_address: int = 0xF9,
+        # P2-1: our J1939 ISO-TP target address (the DA byte in 0x18DA
+        # frames). Only FFs addressed to this value are answered with FC.
+        my_isotp_address: int = 0xF1,
         isotp_rx_ids: set[int] | list[int] | None = None,
         auto_subscribe_router: bool = True,
         channel_id: str | None = None,
@@ -150,6 +158,7 @@ class ReassemblyPipeline:
         self.clock: ClockProvider = clock_provider or SystemClockProvider()
         self.tx_port = tx_port
         self.my_j1939_address = my_j1939_address
+        self.my_isotp_address = my_isotp_address
         self.channel_id = channel_id
         self.route_synthetic_frames = route_synthetic_frames
         self.decode_single_frames = decode_single_frames
@@ -232,10 +241,12 @@ class ReassemblyPipeline:
 
         with self._lock:
             # 1. Reap J1939 Transport sessions
-            if hasattr(self.j1939_transport, "_reap_stale_sessions"):
-                # Count before and after
+            # P2-8: go through the transport's own lock-holding public API —
+            # reaching into `_reap_stale_sessions` under only the pipeline
+            # lock races concurrent RX threads mutating the same dicts.
+            if hasattr(self.j1939_transport, "reap_stale_sessions_public"):
                 before_j1939 = len(getattr(self.j1939_transport, "_rx_sessions", {}))
-                self.j1939_transport._reap_stale_sessions(now=curr_time)
+                self.j1939_transport.reap_stale_sessions_public()
                 after_j1939 = len(getattr(self.j1939_transport, "_rx_sessions", {}))
                 reaped_count += max(0, before_j1939 - after_j1939)
 
@@ -250,13 +261,33 @@ class ReassemblyPipeline:
                 if sess is not None:
                     reaped_count += 1
                     self._dropped_or_timeout_count += 1
-                    sa_key = str(sess.source_address or key[0])
-                    if self._isotp_per_sa_sessions[sa_key] <= 1:
-                        self._isotp_per_sa_sessions.pop(sa_key, None)
-                    else:
-                        self._isotp_per_sa_sessions[sa_key] -= 1
+                    self._decrement_sa_quota(sess, key)
 
         return reaped_count
+
+    @staticmethod
+    def _resolve_quota_key(sess: IsoTpSession, key: tuple[int, str]) -> str:
+        """P2-3: canonical quota bucket for a session.
+
+        Order of precedence: the explicit `quota_key` captured at session
+        creation (the correct key even for SA=0), then a non-None
+        source_address, then the session's rx arbitration ID. The old
+        `source_address or key[0]` treated SA=0 as missing and debited a
+        bogus bucket, permanently leaking quota for engine ECUs.
+        """
+        if sess.quota_key is not None:
+            return sess.quota_key
+        if sess.source_address is not None:
+            return str(sess.source_address)
+        return str(key[0])
+
+    def _decrement_sa_quota(self, sess: IsoTpSession, key: tuple[int, str]) -> None:
+        """Release one per-SA session slot (idempotent per session)."""
+        sa_key = self._resolve_quota_key(sess, key)
+        if self._isotp_per_sa_sessions[sa_key] <= 1:
+            self._isotp_per_sa_sessions.pop(sa_key, None)
+        else:
+            self._isotp_per_sa_sessions[sa_key] -= 1
 
     # --------------------------------------------------------------------------
     # Frame Ingestion & Processing
@@ -268,6 +299,12 @@ class ReassemblyPipeline:
         Intercepts J1939 TP and ISO-TP streams, reassembles complete payloads,
         synthesizes canonical CanFrames, decodes DBC signals, and dispatches to listeners.
         """
+        # P2-11: frames synthesized by THIS pipeline and routed back through
+        # the router must not be re-processed — that double-decodes signals
+        # and corrupts time-series data.
+        if getattr(frame, "source", None) == "synthetic":
+            return None
+
         with self._lock:
             self._total_frames_processed += 1
             # Periodically reap stale sessions on high activity
@@ -323,6 +360,13 @@ class ReassemblyPipeline:
         # Dispatch response frame (e.g. CTS, EndOfMsgACK, or Conn_Abort)
         if resp_frame is not None:
             self._dispatch_tx_frame(resp_frame)
+
+        # P2-4: drain the transport's overflow queue (collision CTS, DT
+        # window batches) — without this, queued protocol responses rot in
+        # the list and RTS spam grows it without bound.
+        if hasattr(self.j1939_transport, "take_pending_tx_frames"):
+            for extra_frame in self.j1939_transport.take_pending_tx_frames():
+                self._dispatch_tx_frame(extra_frame)
 
         if completed_msg is None:
             return None
@@ -421,17 +465,31 @@ class ReassemblyPipeline:
         session_key = (frame.arbitration_id, frame.channel_id)
         now = self._get_now()
 
-        # Derive matching TX ID for Flow Control
-        if frame.is_extended:
+        # Derive matching TX ID for Flow Control.
+        # P2-1: an OBSERVER must only ever answer frames ADDRESSED TO IT.
+        # No tx_port = passive mode: no FC can be sent, so none is derived.
+        # 11-bit: only diagnostic RESPONSE IDs (0x7E8..0x7EF) get an FC —
+        # a request ID (0x7E0..0x7E7 / 0x7DF) is someone else's tester
+        # traffic; answering it impersonates the ECU. 29-bit: the DA byte
+        # must equal our configured J1939 ISO-TP address, otherwise this
+        # FF belongs to a different tester pair and replying would emit an
+        # unauthorized-ID TX that trips the gateway's E-Stop (self-DoS).
+        if self.tx_port is None:
+            tx_id = None
+        elif frame.is_extended:
             target = (frame.arbitration_id >> 8) & 0xFF
             source = frame.arbitration_id & 0xFF
-            tx_id = 0x18DA0000 | (source << 8) | target
+            if target != self.my_isotp_address:
+                # Not addressed to us — passive reassembly only, no FC.
+                tx_id = None
+            else:
+                tx_id = 0x18DA0000 | (source << 8) | target
         elif frame.arbitration_id in range(0x7E8, 0x7F0):
+            # Response ID (ECU -> tester): we may flow-control as the tester.
             tx_id = frame.arbitration_id - 8
-        elif frame.arbitration_id in range(0x7E0, 0x7E8):
-            tx_id = frame.arbitration_id + 8
         else:
-            tx_id = frame.arbitration_id
+            # Request IDs and everything else: observe silently.
+            tx_id = None
 
         # ----------------------------------------------------------------------
         # 1. Single Frame (SF)
@@ -470,6 +528,9 @@ class ReassemblyPipeline:
         # 2. First Frame (FF)
         # ----------------------------------------------------------------------
         if pci_type == PCI_FIRST_FRAME:
+            # P2-10: without a TX path we cannot answer this FF at all —
+            # fall through to passive reassembly without creating a session
+            # that would wait for CFs we have no way to grant.
             if len(frame.data) >= 6 and frame.data[0] == 0x10 and frame.data[1] == 0x00:
                 # Extended 32-bit First Frame
                 total_len = int.from_bytes(frame.data[2:6], byteorder="big")
@@ -479,12 +540,18 @@ class ReassemblyPipeline:
             else:
                 # Standard 12-bit First Frame
                 total_len = ((frame.data[0] & 0x0F) << 8) | frame.data[1]
+                # P2-10: FF_DL < 8 is invalid per ISO 15765-2 — a malformed
+                # 10 00 frame must not materialize as a fake "completed"
+                # (even empty) message upstairs.
+                if total_len < 8:
+                    return None
                 header_len = 2
 
             if total_len > self.MAX_PAYLOAD_SIZE:
                 # Send Flow Control OVERFLOW
-                fc_ovfl = self._build_fc_frame(frame, tx_id, FS_OVERFLOW)
-                self._dispatch_tx_frame(fc_ovfl)
+                if tx_id is not None:
+                    fc_ovfl = self._build_fc_frame(frame, tx_id, FS_OVERFLOW)
+                    self._dispatch_tx_frame(fc_ovfl)
                 return None
 
             first_chunk = frame.data[header_len:]
@@ -504,10 +571,18 @@ class ReassemblyPipeline:
                     arbitration_id=frame.arbitration_id,
                 )
 
+            # P2-1: with no FC path (not addressed to us / passive mode) the
+            # stream is reassembled PASSIVELY — sessions still track the CF
+            # train (the ECU will retry with its own flow control), but no
+            # FC is transmitted and per-SA quota still applies.
             with self._lock:
                 # Session quota and collision management
                 self._release_isotp_session(session_key)
 
+                # P2-3: quota key derived ONCE here and stored explicitly on
+                # the session — the release path reuses the same key instead
+                # of recomputing from a falsy-able source_address (SA=0 used
+                # to fall back to the raw arbitration ID and leak quota).
                 sa_key = str(frame.arbitration_id & 0xFF if frame.is_extended else frame.arbitration_id)
                 if self._isotp_per_sa_sessions[sa_key] >= self.MAX_SESSIONS_PER_SA:
                     logger.warning("ISO-TP per-SA session quota exceeded", extra={"sa": sa_key})
@@ -527,13 +602,14 @@ class ReassemblyPipeline:
                     last_activity_time=now,
                     is_fd=frame.is_fd,
                     is_extended=frame.is_extended,
-                    source_address=frame.arbitration_id & 0xFF if frame.is_extended else None,
+                    quota_key=sa_key,
                 )
                 self._isotp_per_sa_sessions[sa_key] += 1
 
-            # Emit Flow Control CTS
-            fc_cts = self._build_fc_frame(frame, tx_id, FS_CTS)
-            self._dispatch_tx_frame(fc_cts)
+            # Emit Flow Control CTS — only when an FC path exists (P2-1).
+            if tx_id is not None:
+                fc_cts = self._build_fc_frame(frame, tx_id, FS_CTS)
+                self._dispatch_tx_frame(fc_cts)
             return None
 
         # ----------------------------------------------------------------------
@@ -587,14 +663,10 @@ class ReassemblyPipeline:
         return None
 
     def _release_isotp_session(self, key: tuple[int, str]) -> None:
-        """Remove an ISO-TP session and decrement its per-SA quota."""
+        """Remove an ISO-TP session and decrement its per-SA quota (P2-3)."""
         sess = self._isotp_sessions.pop(key, None)
         if sess is not None:
-            sa_key = str(sess.source_address or key[0])
-            if self._isotp_per_sa_sessions[sa_key] <= 1:
-                self._isotp_per_sa_sessions.pop(sa_key, None)
-            else:
-                self._isotp_per_sa_sessions[sa_key] -= 1
+            self._decrement_sa_quota(sess, key)
 
     def _build_fc_frame(self, rx_frame: CanFrame, tx_id: int, flow_status: int) -> CanFrame:
         """Construct standard ISO-TP Flow Control frame."""
@@ -647,6 +719,9 @@ class ReassemblyPipeline:
             is_fd=synth_fd,
             direction="rx",
             timestamp_ns=msg.timestamp_ns,
+            # P2-11: mark the frame as pipeline-synthesized so the router
+            # round-trip cannot re-process it (double decode/dispatch).
+            source="synthetic",
         )
         msg.synthetic_frame = synth_frame
 
@@ -753,21 +828,32 @@ class ReassemblyPipeline:
                 logger.error("Error in on_synthetic_frame callback", extra={"error": str(exc)})
 
     def _dispatch_tx_frame(self, frame: CanFrame) -> None:
-        if self.tx_port is not None:
-            try:
-                self.tx_port.send_sync(frame)
-            except Exception as exc:  # noqa: BLE001
-                # E5: a rejected protocol response (whitelist miss, E-Stop,
-                # rate budget) must be visible — debug-level swallowing hid
-                # policy violations during normal protocol operation.
-                logger.warning(
-                    "Protocol response frame rejected by TX policy",
-                    extra={
-                        "arbitration_id": hex(frame.arbitration_id),
-                        "channel_id": frame.channel_id,
-                        "error": str(exc),
-                    },
-                )
+        """Send a protocol-generated frame through the TX choke-point.
+
+        P2-12: `on_tx_frame` observers fire ONLY after a successful
+        gateway dispatch — a rejected frame (E-Stop, whitelist, budget)
+        never enters the audit trail as "transmitted". `tx_port=None`
+        means passive mode: no TX is possible, so no TX observer either.
+        """
+        if self.tx_port is None:
+            # Passive observer mode — do not fabricate a TX trail.
+            return
+
+        try:
+            self.tx_port.send_sync(frame)
+        except Exception as exc:  # noqa: BLE001
+            # E5: a rejected protocol response (whitelist miss, E-Stop,
+            # rate budget) must be visible — debug-level swallowing hid
+            # policy violations during normal protocol operation.
+            logger.warning(
+                "Protocol response frame rejected by TX policy",
+                extra={
+                    "arbitration_id": hex(frame.arbitration_id),
+                    "channel_id": frame.channel_id,
+                    "error": str(exc),
+                },
+            )
+            return  # P2-12: rejected — not transmitted, observers not notified
 
         with self._lock:
             callbacks = list(self._on_tx_frame_callbacks)
@@ -826,12 +912,17 @@ class ReassemblyPipeline:
             }
 
     def reset(self) -> None:
-        """Reset all active sessions and metrics."""
+        """Reset all active sessions and metrics.
+
+        P2-13: the J1939 transport state is cleared through its own
+        lock-holding `reset_sessions()` — the previous direct `clear()` on
+        `_rx_sessions`/`_per_sa_sessions` raced concurrent RX threads
+        (RuntimeError during iteration / quota skew). The public API also
+        clears TX sessions and the pending queue the old path missed.
+        """
         with self._lock:
-            if hasattr(self.j1939_transport, "_rx_sessions"):
-                self.j1939_transport._rx_sessions.clear()
-            if hasattr(self.j1939_transport, "_per_sa_sessions"):
-                self.j1939_transport._per_sa_sessions.clear()
+            if hasattr(self.j1939_transport, "reset_sessions"):
+                self.j1939_transport.reset_sessions()
             self._isotp_sessions.clear()
             self._isotp_per_sa_sessions.clear()
             self._total_frames_processed = 0

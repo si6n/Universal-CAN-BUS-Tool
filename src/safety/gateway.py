@@ -80,6 +80,10 @@ class TxSafetyGateway:
     SPEED_NOISE_THRESHOLD_KMH: ClassVar[float] = 0.5  # Permitted sensor jitter / noise threshold
     SPEED_VALIDITY_TIMEOUT_NS: ClassVar[int] = 1_000_000_000  # 1.0 second speed freshness timeout
     RATE_LIMIT_WINDOW_NS: ClassVar[int] = 1_000_000_000  # 1.0 second sliding window (nanoseconds)
+    # P1-9: consecutive default-lane rejections tolerated before escalating
+    # to an E-Stop. A single burst = backpressure; a sustained pattern =
+    # runaway sender and must fail hard.
+    RATE_ESTOP_AFTER: ClassVar[int] = 5
 
     # Per-category token buckets (F-18): protocol bursts such as a J1939 BAM
     # transfer (<=255 packets) must fit inside a single burst budget.
@@ -122,6 +126,8 @@ class TxSafetyGateway:
         self._whitelist_bypass_for_testing: bool = False
 
         self._tx_timestamps: "collections.deque[tuple[int, int, int]]" = collections.deque()
+        # P1-9: consecutive-rejection counter for sustained-overload detection
+        self._rate_overload_streak: int = 0
         # HIGH-1: monotonically increasing per-call sequence number. Combined
         # with the thread id it makes every stamp uniquely identifiable, so a
         # rollback removes EXACTLY the caller's own reservation — never the
@@ -358,12 +364,30 @@ class TxSafetyGateway:
                         break
 
                 if len(self._tx_timestamps) >= self.MAX_TX_RATE_PER_SEC:
-                    logger.error("TX Rate limit exceeded! Triggering E-Stop.")
-                    self.estop.trigger(
-                        EStopTriggerSource.RATE_LIMIT_OVERFLOW,
-                        f"Exceeded max TX rate ({self.MAX_TX_RATE_PER_SEC} msg/s)",
-                    )
+                    # P1-9: a legitimate protocol burst (e.g. ISO-TP CF train
+                    # on the uncategorised TxPort lane) used to slam the
+                    # system into a PERMANENT E-Stop — self-DoS. Now the
+                    # first overloads are plain rejects (backpressure), and
+                    # only a SUSTAINED violation pattern (RATE_ESTOP_AFTER
+                    # consecutive rejections within one window) escalates
+                    # to an E-Stop as evidence of a runaway/blocked loop.
+                    self._rate_overload_streak += 1
+                    if self._rate_overload_streak >= self.RATE_ESTOP_AFTER:
+                        logger.critical(
+                            "TX rate limit sustained violation pattern — triggering E-Stop",
+                            extra={"streak": self._rate_overload_streak},
+                        )
+                        self.estop.trigger(
+                            EStopTriggerSource.RATE_LIMIT_OVERFLOW,
+                            f"Sustained TX rate overload ({self._rate_overload_streak} consecutive rejections)",
+                        )
+                    else:
+                        logger.warning(
+                            "TX rate limit exceeded — frame rejected (backpressure)",
+                            extra={"streak": self._rate_overload_streak},
+                        )
                     raise RateLimitExceededError("Transmission rate limit exceeded (100 msg/s)")
+                self._rate_overload_streak = 0
 
                 # HIGH-1: identity-carrying stamp — (now_ns, thread_id, seq).
                 # The seq counter guarantees uniqueness even when one thread
@@ -414,13 +438,16 @@ class TxSafetyGateway:
         # D8: privileged dispatch through the explicit gateway port — no
         # more duck-typed reach into the driver's private _send_raw
         #
-        # CRITICAL-1 (E-Stop TOCTOU): the dispatch is FENCED. The send lock
-        # makes [fence re-verification + privileged_send] atomic with respect
-        # to E-Stop state transitions (trigger/reset bump the fence generation
-        # under the estop lock before the dispatcher can acquire the fence).
-        # A frame validated against generation N is dispatched only if the
-        # generation is still N when the send lock is granted — an E-Stop
-        # fired mid-send invalidates the frame, so NOT EVEN ONE frame leaks.
+        # CRITICAL-1 (E-Stop fence): the dispatch is FENCED. The send lock
+        # serializes SENDERS against each other and the fence check closes
+        # the validate-then-send window against a trigger+reset pair (any
+        # completed state transition bumps the generation). Honest limits
+        # (P1-10): trigger() itself does NOT take this lock, so a single
+        # engagement CAN land between the fence check and the bus write —
+        # at most the frame already in the driver queue may still exit the
+        # wire. The fence guarantees "no frame validated before a
+        # COMPLETED transition survives"; driver-level flush/abort is the
+        # HAL's responsibility, documented in estop callbacks.
         # -----------------------------------------------------------------
         with self.estop.tx_send_lock:
             if fence_snapshot != self.estop.tx_fence or self.estop.is_engaged:
@@ -460,9 +487,15 @@ class TxSafetyGateway:
             if budget_consumed and budget is not None:
                 budget.refund()
 
-    def send_sync(self, frame: CanFrame) -> None:
-        """Synchronously transmit frame conforming to TxPort protocol."""
-        self.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False)
+    def send_sync(self, frame: CanFrame, budget_category: str = "default") -> None:
+        """Synchronously transmit frame conforming to TxPort protocol.
+
+        P1-9: the optional budget_category lets protocol engines use their
+        dedicated lanes (e.g. 'protocol_burst' for ISO-TP CF trains) instead
+        of colliding with the 100 msg/s default-lane wall. Defaults to the
+        uncategorised 'default' lane for plain TxPort callers.
+        """
+        self.validate_and_transmit(frame, is_critical_command=False, user_confirmed=False, budget_category=budget_category)
 
     async def send(self, frame: CanFrame) -> None:
         """Asynchronously transmit without blocking the running event loop (F-26/E-12).

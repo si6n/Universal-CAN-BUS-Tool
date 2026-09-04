@@ -88,20 +88,107 @@ def test_replay_safety_filter_sequence() -> None:
 
 
 def test_dm4_dm5_correct_pgn_values_blocked() -> None:
-    """D4: DM4=65229 / DM5=65230 must be blocked (old table blocked the wrong
-    PGNs — 65235/65234 — and so never stopped the freeze-frame clear path)."""
+    """D4/P1-3: the DM clear-family PGNs must be blocked with the CORRECT hex.
+
+    The old table wrote 0x0FED5/0x0FED6/0x0FEDA next to DM4/DM5/DM11 decimal
+    comments — but those hex values are 65237/65238/65242 (SOFT etc.), so
+    the actual DM3/DM4/DM5/DM11 clear paths were never blocked while
+    harmless ET1 (0x0FEEE) was. This test pins decimal → hex derivations.
+    """
     f = ReplaySafetyFilter()
 
-    dm4 = CanFrame.create(channel_id="can0", arbitration_id=0x18FED500, data=b"\x00" * 8, is_extended=True)
-    dm5 = CanFrame.create(channel_id="can0", arbitration_id=0x18FED600, data=b"\x00" * 8, is_extended=True)
-    dm11 = CanFrame.create(channel_id="can0", arbitration_id=0x18FEDA00, data=b"\x00" * 8, is_extended=True)
+    # Decimal↔hex derivation pin (P1-3 permanent evidence):
+    assert 0x0FECB == 65227 and 0x0FECC == 65228 and 0x0FECD == 65229
+    assert 0x0FECE == 65230 and 0x0FED3 == 65235
+    assert 0x0FEEE == 65262  # ET1 — must NOT be blocked
+    assert 0x0FEDA == 65242  # SOFT — not a DM clear path
 
+    dm2 = CanFrame.create(channel_id="can0", arbitration_id=0x18FECB00, data=b"\x00" * 8, is_extended=True)
+    dm3 = CanFrame.create(channel_id="can0", arbitration_id=0x18FECC00, data=b"\x00" * 8, is_extended=True)
+    dm4 = CanFrame.create(channel_id="can0", arbitration_id=0x18FECD00, data=b"\x00" * 8, is_extended=True)
+    dm5 = CanFrame.create(channel_id="can0", arbitration_id=0x18FECE00, data=b"\x00" * 8, is_extended=True)
+    dm11 = CanFrame.create(channel_id="can0", arbitration_id=0x18FED300, data=b"\x00" * 8, is_extended=True)
+
+    ok2, r2 = f.is_frame_safe(dm2)
+    ok3, r3 = f.is_frame_safe(dm3)
     ok4, r4 = f.is_frame_safe(dm4)
     ok5, r5 = f.is_frame_safe(dm5)
     ok11, r11 = f.is_frame_safe(dm11)
+    assert not ok2 and "BLOCKED_J1939_PGN" in r2
+    assert not ok3 and "BLOCKED_J1939_PGN" in r3
     assert not ok4 and "BLOCKED_J1939_PGN" in r4
     assert not ok5 and "BLOCKED_J1939_PGN" in r5
     assert not ok11 and "BLOCKED_J1939_PGN" in r11
+
+
+def test_tsc1_xbr_actuation_pgns_blocked() -> None:
+    """P1-2: TSC1 (PGN 0) and XBR (PGN 1024) physically command the vehicle —
+    replay of either must be blocked under the default actuator gate."""
+    f = ReplaySafetyFilter()
+
+    # TSC1: priority 6, PGN 0, destination 0 (engine #1), source 0x09
+    tsc1 = CanFrame.create(channel_id="can0", arbitration_id=0x18000009, data=b"\x00" * 8, is_extended=True)
+    # XBR: priority 6, PGN 1024 (0x0400), broadcast, source 0x03
+    xbr = CanFrame.create(channel_id="can0", arbitration_id=0x180403FF, data=b"\x00" * 8, is_extended=True)
+
+    ok_t, r_t = f.is_frame_safe(tsc1)
+    ok_x, r_x = f.is_frame_safe(xbr)
+    assert not ok_t and "BLOCKED_ACTUATION_PGN" in r_t
+    assert not ok_x and "BLOCKED_ACTUATION_PGN" in r_x
+
+    # Explicit opt-out still allows them (the flag is now a real gate)
+    f_off = ReplaySafetyFilter(block_actuator_routines=False)
+    assert f_off.is_frame_safe(tsc1)[0] is True
+    assert f_off.is_frame_safe(xbr)[0] is True
+
+
+def test_et1_engine_temperature_not_blocked() -> None:
+    """P1-3 regression: the old table blocked 0x0FEEE (ET1, 65262) as 'DM2';
+    live engine-temperature telemetry must pass the replay filter."""
+    f = ReplaySafetyFilter()
+    et1 = CanFrame.create(channel_id="can0", arbitration_id=0x18FEEE09, data=b"\x00" * 8, is_extended=True)
+    ok, _ = f.is_frame_safe(et1)
+    assert ok is True
+
+
+def test_fd_sf_escape_and_ff_escape_sid_extraction() -> None:
+    """P1-4: CAN-FD ISO-TP escape formats must yield the true SID.
+
+    Old code read data[1] for SF (the SF_DL byte in escape format) and
+    data[2] for FF (a length byte in escape format) — prohibited services
+    slipped through the filter on FD buses.
+    """
+    f = ReplaySafetyFilter()
+
+    # FD SF escape: 00 0A | 2E F1 90 ... → WriteDataByIdentifier (0x2E) at data[2]
+    sf_escape = CanFrame.create(
+        channel_id="can0",
+        arbitration_id=0x7E0,
+        data=bytes([0x00, 0x0A, 0x2E, 0xF1, 0x90, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07]),
+        is_fd=True,
+    )
+    assert f.is_frame_safe(sf_escape) == (False, "PROHIBITED_11BIT_UDS_SID: 0x2E")
+
+    # FD FF escape: 10 00 | 32-bit FF_DL | SID 0x36 at data[6]
+    ff_escape = CanFrame.create(
+        channel_id="can0",
+        arbitration_id=0x7E0,
+        data=bytes([0x10, 0x00, 0x00, 0x00, 0x04, 0x00, 0x36, 0x01, 0x02, 0x03, 0x04, 0x05]),
+        is_fd=True,
+    )
+    assert f.is_frame_safe(ff_escape) == (False, "PROHIBITED_11BIT_UDS_SID: 0x36")
+
+    # Classic SF still reads data[1]: 02 10 03 → SID 0x10
+    classic = CanFrame.create(
+        channel_id="can0", arbitration_id=0x7E0, data=bytes([0x02, 0x10, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00])
+    )
+    assert f.is_frame_safe(classic) == (False, "PROHIBITED_11BIT_UDS_SID: 0x10")
+
+    # IOControl (0x2F) on classic CAN — now blocked as an actuator service
+    io_ctrl = CanFrame.create(
+        channel_id="can0", arbitration_id=0x7E0, data=bytes([0x04, 0x2F, 0xF1, 0x90, 0x03, 0x00, 0x00, 0x00])
+    )
+    assert f.is_frame_safe(io_ctrl) == (False, "PROHIBITED_11BIT_UDS_SID: 0x2F")
 
 
 def test_transport_tunnel_pgn_blocked_by_default() -> None:

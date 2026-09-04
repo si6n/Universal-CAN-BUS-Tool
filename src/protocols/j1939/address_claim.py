@@ -192,7 +192,10 @@ class AddressClaimEngine:
             self._address_table[source_address] = other_name
 
             # If claim is from another SA, no collision with our current SA
-            if source_address != self.current_address:
+            # P2-7: a Null Address (254) Cannot-Claim broadcast is never a
+            # contention against our working address — other nodes are in
+            # distress, not competing for this SA.
+            if source_address != self.current_address or source_address == NULL_ADDRESS:
                 return None
 
             # Contention detected on our address! Compare 64-bit NAMEs
@@ -221,6 +224,12 @@ class AddressClaimEngine:
                 for candidate_sa in self.FALLBACK_ADDRESS_RANGE:
                     if candidate_sa not in self._address_table:
                         self.current_address = candidate_sa
+                        # P2-7: a fallback claim is a FRESH claim — the state
+                        # must return to CLAIMING so is_address_claimed stays
+                        # False until the 250 ms contention window confirms.
+                        # (The old code left state==CLAIMED, allowing TX on an
+                        # unconfirmed address — a J1939-81 violation.)
+                        self.state = AddressClaimState.CLAIMING
                         can_id = 0x18EEFF00 | (self.current_address & 0xFF)
                         logger.info("Attempting next fallback address", extra={"new_sa": candidate_sa})
                         # The fallback claim is a fresh claim: it needs its own
