@@ -238,14 +238,17 @@ class RP1210Client:
                 1 if block else 0,
             )
 
-            # RP1210 error codes start at 128, so only 1..127 can be a genuine
-            # byte count; ret >= 128 is an error code, not data length.
-            if 0 < ret < 128:
+            # REVIEW.md 2.1: per TMC RP1210C, a POSITIVE return value is the
+            # number of bytes read (up to the buffer size); errors are
+            # NEGATIVE RP1210 error codes. The old `0 < ret < 128` guard
+            # misread any packet >= 128 bytes (J1939 TP / ISO-TP responses)
+            # as an "error code" and crashed the diagnostic session.
+            if ret > 0:
                 return bytes(rx_buffer.raw[:ret])
             if ret == 0:
                 return None  # Queue empty
 
-            # Error code returned (ret < 0 or ret >= 128)
+            # Error code returned (negative)
             err_code = abs(ret)
             if err_code == RP1210ErrorCode.ERR_RX_QUEUE_FULL:
                 logger.warning("RP1210 RX Queue is full; frame drops may occur")

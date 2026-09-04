@@ -70,13 +70,25 @@ class CloudConfig:
 
     @staticmethod
     def _is_loopback(url: str) -> bool:
-        """True when the http:// authority targets a loopback host."""
+        """True when the http:// authority targets a loopback host.
+
+        L-5 (3FABLE): parse with urlsplit + ipaddress instead of manual
+        splitting — the old parser rejected `http://[::1]:8000` (IPv6
+        brackets broke the naive split) and treated 0.0.0.0 as loopback.
+        """
         try:
-            authority = url.split("http://", 1)[1].split("/", 1)[0]
-            host = authority.rsplit("@", 1)[-1].split(":", 1)[0].strip("[]")
-        except IndexError:
+            import ipaddress
+            from urllib.parse import urlsplit
+
+            hostname = urlsplit(url).hostname
+            if not hostname:
+                return False
+            try:
+                return ipaddress.ip_address(hostname).is_loopback
+            except ValueError:
+                return hostname == "localhost"
+        except Exception:  # noqa: BLE001 — malformed URL is not loopback
             return False
-        return host in {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
 
     def endpoint(self, path: str, *, health_endpoint: bool = False) -> str:
         """Build a full URL; health endpoints live outside the api prefix."""
@@ -113,6 +125,29 @@ class CloudClient:
     ) -> None:
         self.config = config or CloudConfig()
         self._secrets = secret_provider or get_default_secret_provider()
+
+    def set_base_url(self, url: str) -> None:
+        """Change the API base URL — re-validated (3FABLE-H2).
+
+        Assigning `client.config.base_url = url` bypassed CloudConfig's
+        __post_init__ scheme check (dataclass attribute assignment never
+        re-runs it), letting a WebView script point the DPAPI-stored
+        session cookie at an arbitrary plain-HTTP host. This setter
+        reconstructs the config so the HTTPS/loopback validation always
+        runs; an invalid URL raises before any state changes.
+        """
+        new_config = CloudConfig(
+            base_url=url.rstrip("/"),
+            api_prefix=self.config.api_prefix,
+            timeout_seconds=self.config.timeout_seconds,
+            upload_timeout_seconds=self.config.upload_timeout_seconds,
+            max_retries=self.config.max_retries,
+            retry_backoff_seconds=self.config.retry_backoff_seconds,
+            user_agent=self.config.user_agent,
+            require_https=self.config.require_https,
+        )
+        # Only swap after the constructor validated the new URL.
+        self.config = new_config
 
     # ------------------------------------------------------------------
     # Credential storage (DPAPI-backed)

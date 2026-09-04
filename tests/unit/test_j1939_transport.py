@@ -504,22 +504,46 @@ def test_j1939_start_tp_bam_and_start_tp_cm_dt_segmentation() -> None:
     assert completed_bam.data == payload
 
     # 2. CMDT Point-to-Point roundtrip
+    # REVIEW.md 3.5: start_tp_cm_dt now returns ONLY the RTS — SAE J1939-21
+    # §5.10.1 forbids sending TP.DT packets before the receiver's CTS grant.
     cmdt_frames = tp_tx.start_tp_cm_dt(target_address=0xF9, pgn=65227, data=payload, channel_id="ch0")
-    assert len(cmdt_frames) == 1 + ((len(payload) + 6) // 7)
+    assert len(cmdt_frames) == 1
     assert cmdt_frames[0].data[0] == TP_CTRL_RTS
 
-    # RTS
+    # RTS -> receiver answers CTS
     _, cts = tp_rx.handle_rx_frame(cmdt_frames[0])
     assert cts is not None
     assert cts.data[0] == TP_CTRL_CTS
 
+    # The sender then uses the proper windowed flow (start_cmdt_transfer +
+    # handle_rx_frame). Reset the receiver so the new RTS registers a
+    # fresh session instead of colliding with the one opened above.
+    tp_rx.reset_sessions()
+    dt_frames: list[CanFrame] = []
+    rts_seed = tp_tx.start_cmdt_transfer(0xF9, 65227, payload, channel_id="ch0")
+    _, cts2 = tp_rx.handle_rx_frame(rts_seed)
+    assert cts2 is not None and cts2.data[0] == TP_CTRL_CTS
+    out, first_dt = tp_tx.handle_rx_frame(cts2)
+    if first_dt is not None:
+        dt_frames.append(first_dt)
+    dt_frames.extend(tp_tx.take_pending_tx_frames())
+
     completed_cmdt = None
     last_ack = None
-    for f in cmdt_frames[1:]:
-        m, ack = tp_rx.handle_rx_frame(f)
-        if m:
-            completed_cmdt = m
-            last_ack = ack
+    while dt_frames:
+        nxt: list[CanFrame] = []
+        for f in dt_frames:
+            m, ack = tp_rx.handle_rx_frame(f)
+            if m:
+                completed_cmdt = m
+                last_ack = ack
+            elif ack is not None and ack.data[0] == TP_CTRL_CTS:
+                # receiver wants more — feed the next window
+                _m, first_dt2 = tp_tx.handle_rx_frame(ack)
+                if first_dt2 is not None:
+                    nxt.append(first_dt2)
+                nxt.extend(tp_tx.take_pending_tx_frames())
+        dt_frames = nxt
 
     assert completed_cmdt is not None
     assert completed_cmdt.pgn == 65227

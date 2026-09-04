@@ -7,6 +7,7 @@ import hashlib
 import sys
 import time
 from collections.abc import Callable
+from typing import ClassVar
 
 from src.core.errors import SecurityError
 from src.core.logging import get_logger
@@ -65,25 +66,40 @@ class AntiTamperGuard:
 
         return False
 
+    # REVIEW.md 5.1: 200 SHA-256 digests in 50 ms was wildly optimistic —
+    # power-throttled rugged tablets, old Celeron workshop laptops and
+    # VM CPU-steal routinely exceed it, falsely labelling legitimate users
+    # as tampered. 250 ms tolerates the slowest real hardware while still
+    # catching single-stepping (which lands in the seconds range).
+    TIMING_THRESHOLD_MS: ClassVar[float] = 250.0
+
     @classmethod
-    def detect_timing_anomaly(cls, threshold_ms: float = 50.0) -> bool:
-        """Measure SHA-256 probe timing to detect single-stepping instrumentation."""
-        t0 = time.perf_counter_ns()
-        for _ in range(200):
-            hashlib.sha256(b"tamper_probe").digest()
-        elapsed_ms = (time.perf_counter_ns() - t0) / 1e6
-        if elapsed_ms > threshold_ms:
-            logger.warning(
-                "Timing anomaly detected! Possible debugger single-stepping.", extra={"elapsed_ms": elapsed_ms}
-            )
-            return True
-        return False
+    def detect_timing_anomaly(cls, threshold_ms: float | None = None) -> bool:
+        """Measure SHA-256 probe timing to detect single-stepping instrumentation.
+
+        REVIEW.md 5.1 / SEC-2: requires TWO consecutive threshold breaches —
+        a one-off GC pause, antivirus scan burst, or scheduler hiccup must
+        not trip the anti-tamper path.
+        """
+        effective_threshold = cls.TIMING_THRESHOLD_MS if threshold_ms is None else threshold_ms
+        for _ in range(2):
+            t0 = time.perf_counter_ns()
+            for _ in range(200):
+                hashlib.sha256(b"tamper_probe").digest()
+            elapsed_ms = (time.perf_counter_ns() - t0) / 1e6
+            if elapsed_ms <= effective_threshold:
+                return False
+        logger.warning(
+            "Sustained timing anomaly (2 consecutive probes above threshold)! Possible debugger single-stepping.",
+            extra={"elapsed_ms": elapsed_ms, "threshold_ms": effective_threshold},
+        )
+        return True
 
     @classmethod
     def enforce(
         cls,
         on_violation: Callable[[str], None] | None = None,
-        timing_threshold_ms: float = 50.0,
+        timing_threshold_ms: float | None = None,
     ) -> None:
         """Run all tamper probes; on violation invoke the injected action or fail closed."""
         violations: list[str] = []

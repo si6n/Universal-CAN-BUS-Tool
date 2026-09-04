@@ -7,12 +7,14 @@ Enforces CORE_SAFETY_FLOOR, dual-confirmation, and full UDS download sequence
 
 from __future__ import annotations
 
+import math
+import threading
 import time
 import zlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from src.core.errors import ProtocolError, SafetyError
 from src.core.logging import get_logger
@@ -51,6 +53,11 @@ class FlashingConfig:
     block_size: int = 256  # 64, 128, 256, 512, 1024, 4096 bytes
     security_level: int = 1
     security_key: bytes | None = None
+    # P-1 (3FABLE): ISO 14229 seed-key is a CHALLENGE-RESPONSE — the key is
+    # derived from the ECU's fresh seed, never a static value. Callers pass
+    # a derivation callable (e.g. an OEM algorithm or a tool-side KDF);
+    # `security_key` remains only for genuinely fixed-key ECUs.
+    key_derivation: Callable[[bytes, int], bytes] | None = None
     # P1-5: ISO 14229 re-locks security on session transitions — the
     # programming session typically requires its own (usually higher)
     # security level. Defaults to security_level when not set.
@@ -176,13 +183,22 @@ class EcuFlashingEngine:
 
         # Speed interlock: gateway exposes the freshest speed telemetry.
         last_update_ns = getattr(self.gateway, "_last_speed_update_ns", None)
-        if last_update_ns == 0:
+        if not isinstance(last_update_ns, int) or last_update_ns == 0:
             raise SafetyError("Hız telemetrisi yok/taze değil — hareketli araçta flashing reddedildi.")
         speed = getattr(self.gateway, "_current_vehicle_speed_kmh", 0.0)
         threshold = getattr(self.gateway, "SPEED_NOISE_THRESHOLD_KMH", 0.5)
-        if speed is not None and speed > threshold:
+        # REVIEW.md 3.4: strict numeric guards — MagicMock doubles from
+        # integration tests and NaN telemetry must raise a clean
+        # SafetyError, never a TypeError ('>' not supported).
+        if not isinstance(speed, (int, float)) or isinstance(speed, bool):
+            raise SafetyError("Hız telemetrisi geçersiz (non-numeric) — flashing reddedildi.")
+        if math.isnan(float(speed)) or math.isinf(float(speed)):
+            raise SafetyError("Hız telemetrisi geçersiz (NaN/Inf) — flashing reddedildi.")
+        if not isinstance(threshold, (int, float)) or isinstance(threshold, bool):
+            threshold = 0.5
+        if float(speed) > float(threshold):
             raise SafetyError(
-                f"Araç hareket halinde ({speed:.1f} km/s > {threshold} km/s) — flashing reddedildi."
+                f"Araç hareket halinde ({float(speed):.1f} km/s > {float(threshold)} km/s) — flashing reddedildi."
             )
 
     def _log(self, message: str, level: str = "info") -> None:
@@ -225,6 +241,28 @@ class EcuFlashingEngine:
         if self.on_progress:
             self.on_progress(progress)
 
+    # REVIEW.md 3.3: S3 tester-present cadence. ISO 14229 S3 is 5 s; send at
+    # 2 s so one lost/deferred TesterPresent never drops the session during
+    # long erase/key-computation gaps.
+    TESTER_PRESENT_INTERVAL_S: ClassVar[float] = 2.0
+
+    def _tester_present_loop(self, stop_event: threading.Event, config: FlashingConfig) -> None:
+        """Background keep-alive: TesterPresent 0x3E (suppress) while flashing.
+
+        REVIEW.md 3.3: in extended/programming sessions the ECU runs the S3
+        timer (2-5 s). A 0x36 block whose erase cycle stalls the bus for a
+        few seconds otherwise returns the ECU to the default session, and
+        the NEXT TransferData gets rejected with NRC 0x7E — a half-written
+        flash. This loop keeps the session alive for the whole sequence.
+        """
+        while not stop_event.wait(self.TESTER_PRESENT_INTERVAL_S):
+            try:
+                # suppressPosResponse bit (0x80): fire-and-forget, no reply
+                # is expected and none is waited for.
+                self.uds_client.tester_present(suppress_response=True)
+            except Exception as exc:  # noqa: BLE001 — keep-alive must never kill the flash
+                logger.debug("TesterPresent keep-alive failed (retrying)", extra={"error": str(exc)})
+
     def execute_flash(self, config: FlashingConfig) -> bool:
         """Execute full end-to-end ECU flashing cycle synchronously."""
         self._is_cancelled = False
@@ -236,6 +274,31 @@ class EcuFlashingEngine:
         crc32_val = zlib.crc32(config.data) & 0xFFFFFFFF
         crc_hex = f"0x{crc32_val:08X}"
 
+        # REVIEW.md 3.3: start the S3 keep-alive before the first session
+        # control frame; stop it on completion, failure, or cancellation.
+        keepalive_stop = threading.Event()
+        keepalive_thread = threading.Thread(
+            target=self._tester_present_loop,
+            args=(keepalive_stop, config),
+            daemon=True,
+            name="uds_tester_present",
+        )
+        keepalive_thread.start()
+
+        try:
+            return self._execute_flash_inner(config, start_time, crc32_val, crc_hex)
+        finally:
+            keepalive_stop.set()
+            keepalive_thread.join(timeout=self.TESTER_PRESENT_INTERVAL_S * 2)
+
+    def _execute_flash_inner(
+        self,
+        config: FlashingConfig,
+        start_time: float,
+        crc32_val: int,
+        crc_hex: str,
+    ) -> bool:
+        total_bytes = len(config.data)
         self._log(
             f"🚀 Flashing Başlatılıyor: Boyut={total_bytes} bayt, Hedef Adres=0x{config.memory_address:08X}, CRC32={crc_hex}",
             "info",
@@ -281,14 +344,37 @@ class EcuFlashingEngine:
 
             # 4. Security Access inside the programming session (optional/if configured)
             self._emit_progress(FlashingStep.SECURITY_ACCESS, 4, 0, total_bytes, start_time, crc_hex)
-            if config.security_key is not None:
+            if config.key_derivation is not None or config.security_key is not None:
                 sec_level = config.effective_programming_security_level
                 self._log(f"Adım 4/10: Güvenlik Erişimi (0x27 Level {sec_level}) doğrulanıyor...", "info")
                 self._check_cancelled()
                 seed_resp = self.uds_client.security_access_request_seed(level=sec_level)
                 if not seed_resp.is_positive:
                     raise ProtocolError(f"Güvenlik tohumu alınamadı: {seed_resp.nrc_description_tr}")
-                key_resp = self.uds_client.security_access_send_key(level=sec_level, key=config.security_key)
+
+                seed = bytes(getattr(seed_resp, "data", b"") or b"")
+                if config.key_derivation is not None:
+                    # P-1: derive the key from the FRESH seed (ISO 14229
+                    # challenge-response); repeated wrong-key attempts put
+                    # the ECU into NRC 0x36/0x37 lockout (up to 10 min).
+                    if not seed:
+                        raise ProtocolError(
+                            "ECU boş seed döndü — anahtar türetmesi yapılamaz (0x27 yanıtı bozuk)",
+                        )
+                    try:
+                        derived_key = config.key_derivation(seed, sec_level)
+                    except Exception as derive_exc:  # noqa: BLE001
+                        raise ProtocolError(
+                            f"Seed'den anahtar türetilemedi (key_derivation hatası): {derive_exc}",
+                        ) from derive_exc
+                    key_bytes = derived_key
+                else:
+                    # Fixed-key ECU path (documented limitation): the static
+                    # config key is only correct for ECUs that do not bind
+                    # the key to the seed.
+                    key_bytes = config.security_key or b""
+
+                key_resp = self.uds_client.security_access_send_key(level=sec_level, key=key_bytes)
                 if not key_resp.is_positive:
                     raise ProtocolError(f"Güvenlik anahtarı reddedildi: {key_resp.nrc_description_tr}")
                 self._log("Güvenlik kilidi başarıyla açıldı.", "info")
@@ -429,24 +515,55 @@ class EcuFlashingEngine:
     def _best_effort_recovery(self, config: FlashingConfig) -> None:
         """Attempt to return the ECU to a safe state after a failed flash.
 
-        The incomplete transfer is deliberately NOT finalized (no 0x37); a hard
-        reset (0x11 0x01) lets the bootloader validate/discard the uncommitted
-        image on its own. Recovery failures are logged and swallowed so they
-        never mask the original error.
+        REVIEW.md 3.2 (bricking): a Hard Reset (0x11 0x01) after a partial
+        0x36 transfer can leave the microcontroller booting into an
+        application image with a truncated/absent signature or vector
+        table — a PERMANENTLY bricked ECU with no bootloader access. The
+        recovery ladder therefore NEVER hard-resets as a first move:
+
+        1. Try RequestTransferExit (0x37) so the ECU's own flash manager
+           marks the transfer uncommitted and exits the programming
+           sequence cleanly.
+        2. Fall back to Default Session (0x10 0x01) — the safest non-reset
+           retreat: the ECU stays powered and communicable for a re-flash.
+        3. Hard Reset is NOT attempted automatically. The operator is
+           explicitly warned to keep ignition ON and re-flash.
+
+        Recovery failures are logged and swallowed so they never mask the
+        original error.
 
         K-08: the operator confirmation flows from the flashing config —
-        recovery never grants dual-confirmation on its own. (Recovery is only
-        reachable from an already operator-confirmed flashing sequence, but
-        the gateway must see the original confirmation, not a synthetic one.)
+        recovery never grants dual-confirmation on its own.
         """
-        self._log("Kurtarma: ECU güvenli duruma döndürülmeye çalışılıyor (Hard Reset)...", "warning")
+        self._log(
+            "Kurtarma: ECU güvenli duruma döndürülüyor (Hard Reset ATILMAZ — yarım yazılım brick riski)...",
+            "warning",
+        )
+
+        # 1. Cleanest exit: let the ECU finalize/close the transfer itself.
         try:
-            resp = self.uds_client.ecu_reset(
-                reset_type=0x01, user_confirmed=config.user_confirmed
-            )
+            resp = self.uds_client.request_transfer_exit()
             if resp.is_positive:
-                self._log("Kurtarma: ECU Hard Reset kabul edildi.", "info")
+                self._log("Kurtarma: RequestTransferExit (0x37) kabul edildi — transfer ECU tarafından kapatıldı.", "info")
+                self._log("⚠️ Yazılım YARIM KALDI! Kontağı KAPATMAYIN, yazılımı yeniden yükleyin.", "warning")
+                return
+            self._log(f"Kurtarma: 0x37 reddedildi: {resp.nrc_description_tr}", "warning")
+        except Exception as exit_exc:  # noqa: BLE001
+            self._log(f"Kurtarma: 0x37 denemesi başarısız: {exit_exc}", "warning")
+
+        # 2. Retreat to the default session — no reset, ECU stays reachable.
+        try:
+            resp = self.uds_client.change_session(0x01)  # defaultSession
+            if resp.is_positive:
+                self._log("Kurtarma: ECU Default Session'a (0x10 0x01) döndürüldü — oturum güvenli.", "info")
             else:
-                self._log(f"Kurtarma: ECU Hard Reset reddedildi: {resp.nrc_description_tr}", "warning")
-        except Exception as recovery_exc:  # noqa: BLE001
-            self._log(f"Kurtarma başarısız (ECU olduğu durumda bırakıldı): {recovery_exc}", "error")
+                self._log(f"Kurtarma: Default Session reddedildi: {resp.nrc_description_tr}", "warning")
+        except Exception as session_exc:  # noqa: BLE001
+            self._log(f"Kurtarma: Default Session denemesi başarısız: {session_exc}", "warning")
+
+        # 3. NEVER auto hard-reset a partially flashed ECU.
+        self._log(
+            "⚠️ OTOMATİK HARD RESET YAPILMADI: yarım yazılımla reset brick riski taşır. "
+            "Kontağı AÇIK tutun ve yazılımı yeniden yükleyin.",
+            "warning",
+        )

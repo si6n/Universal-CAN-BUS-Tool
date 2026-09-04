@@ -791,23 +791,40 @@ class TestJ1939CollisionStormsAndEdgeCases:
 
     @pytest.mark.parametrize("payload_len", [1, 7, 8, 1785])
     def test_j1939_extreme_payload_lengths_roundtrip(self, payload_len: int) -> None:
-        """Verify segmentation and reassembly for 1B, 7B, 8B, and max 1785B payloads."""
+        """Verify segmentation and reassembly for 1B, 7B, 8B, and max 1785B payloads.
+
+        REVIEW.md 3.5: start_tp_cm_dt returns ONLY the RTS (SAE J1939-21
+        forbids DTs before CTS); the roundtrip drives the windowed
+        start_cmdt_transfer + handle_rx_frame(CTS) flow.
+        """
         tp_sender = J1939TransportProtocol(my_address=0x10)
         tp_receiver = J1939TransportProtocol(my_address=0xF9)
 
         payload = bytes((i % 251) for i in range(payload_len))
-        frames = tp_sender.start_tp_cm_dt(target_address=0xF9, pgn=0xFEEE, data=payload)
 
-        # Receiver processes RTS
-        _, cts = tp_receiver.handle_frame(frames[0])
+        rts = tp_sender.start_cmdt_transfer(0xF9, 0xFEEE, payload)
+        _, cts = tp_receiver.handle_frame(rts)
         assert cts is not None
 
-        # Receiver processes DT frames
         completed: CompletedMessage | None = None
-        for dt in frames[1:]:
-            msg, _ = tp_receiver.handle_frame(dt)
-            if msg is not None:
-                completed = msg
+        dt_frames: list[CanFrame] = []
+        out, first_dt = tp_sender.handle_rx_frame(cts)
+        if first_dt is not None:
+            dt_frames.append(first_dt)
+        dt_frames.extend(tp_sender.take_pending_tx_frames())
+
+        while dt_frames and completed is None:
+            nxt: list[CanFrame] = []
+            for f in dt_frames:
+                msg, resp = tp_receiver.handle_frame(f)
+                if msg is not None:
+                    completed = msg
+                elif resp is not None and resp.data[0] == 0x11:  # TP_CTRL_CTS
+                    _m, next_dt = tp_sender.handle_rx_frame(resp)
+                    if next_dt is not None:
+                        nxt.append(next_dt)
+                    nxt.extend(tp_sender.take_pending_tx_frames())
+            dt_frames = nxt
 
         assert completed is not None
         assert completed.data == payload

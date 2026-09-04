@@ -652,18 +652,24 @@ class IsoTpSender:
                 ) from None
 
     async def _apply_st_min(self, st_min_byte: int) -> None:
-        """Execute STmin pacing delay via sleep or high-precision spin-wait."""
+        """Execute STmin pacing delay (all variants yield to the event loop).
+
+        4.3 (REVIEW.md): the old 100-900 us range used a busy spin-wait
+        (`while ... pass`) INSIDE the async sender — that froze every other
+        coroutine on the thread (timers, UI pushes, FC readers) during high
+        frequency transfers. Yielding costs at most one event-loop tick of
+        scheduling latency (~1 ms), which is within STmin tolerance.
+        """
         if st_min_byte == 0x00:
             return
         elif 0x01 <= st_min_byte <= 0x7F:
             delay_s = st_min_byte / 1000.0
             await asyncio.sleep(delay_s)
         elif 0xF1 <= st_min_byte <= 0xF9:
-            # 100..900 us high-precision spin wait
-            delay_ns = (st_min_byte - 0xF0) * 100_000
-            start_ns = time.perf_counter_ns()
-            while (time.perf_counter_ns() - start_ns) < delay_ns:
-                pass
+            # 100..900 us: cooperative sleep; the loop may round up to its
+            # tick granularity — accepted trade-off documented above.
+            delay_s = (st_min_byte - 0xF0) * 100_000 / 1e9
+            await asyncio.sleep(max(delay_s, 0.001))
         else:
             # Reserved range clamped to 127 ms
             await asyncio.sleep(0.127)

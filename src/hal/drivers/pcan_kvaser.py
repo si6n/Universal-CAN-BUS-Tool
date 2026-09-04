@@ -8,7 +8,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, ClassVar
 
 import can
 
@@ -45,41 +45,78 @@ class PythonCanBus(AbstractBus):
         self._lifecycle_lock = threading.Lock()
 
     def connect(self) -> None:
-        """Initialize physical transceiver connection via python-can."""
-        try:
-            bus_kwargs: dict[str, Any] = {
-                "interface": self.interface,
-                "channel": self.channel,
-                "bitrate": self.bitrate,
-                "fd": self.is_fd,
-                **self.extra_kwargs,
-            }
+        """Initialize physical transceiver connection via python-can.
 
-            if self.is_fd and self.data_bitrate:
-                bus_kwargs["data_bitrate"] = self.data_bitrate
+        H5: runs under the lifecycle lock and is idempotent — a second
+        connect() returns instead of leaking the first open handle (a
+        "busy" PCAN/Kvaser channel).
+        REVIEW.md 2.2: when listen_only is requested, the backend's actual
+        state is VERIFIED after opening; backends that silently ignore the
+        PASSIVE kwarg (slcan, some serial adapters) would ACK onto a live
+        vehicle bus during bitrate scans — fail closed instead.
+        """
+        with self._lifecycle_lock:
+            if self._bus is not None:
+                logger.debug("connect() called while already connected — ignoring")
+                return
+            try:
+                bus_kwargs: dict[str, Any] = {
+                    "interface": self.interface,
+                    "channel": self.channel,
+                    "bitrate": self.bitrate,
+                    "fd": self.is_fd,
+                    **self.extra_kwargs,
+                }
 
-            if self.listen_only:
-                # python-can expects the BusState enum member; BusState is a
-                # plain Enum (not a str-Enum), so the string "PASSIVE" fails
-                # the driver's membership check and raises ValueError.
-                bus_kwargs["state"] = can.BusState.PASSIVE
+                if self.is_fd and self.data_bitrate:
+                    bus_kwargs["data_bitrate"] = self.data_bitrate
 
-            self._bus = can.Bus(**bus_kwargs)
-            self.is_connected = True
-            self.metrics.state = BusState.PASSIVE if self.listen_only else BusState.ACTIVE
-            logger.info(
-                "Connected CAN hardware interface",
-                extra={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
-            )
-        except (can.CanError, OSError, ValueError) as exc:
-            self.is_connected = False
-            self.metrics.state = BusState.DISCONNECTED
-            raise HardwareError(
-                f"Failed to connect to CAN interface '{self.interface}:{self.channel}': {exc}",
-                code="HARDWARE_CONNECT_FAILED",
-                details={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
-                cause=exc,
-            ) from exc
+                if self.listen_only:
+                    # python-can expects the BusState enum member; BusState is a
+                    # plain Enum (not a str-Enum), so the string "PASSIVE" fails
+                    # the driver's membership check and raises ValueError.
+                    bus_kwargs["state"] = can.BusState.PASSIVE
+
+                self._bus = can.Bus(**bus_kwargs)
+
+                # REVIEW.md 2.2: prove the backend honoured listen-only.
+                # The pure-Python virtual bus never ACKs onto hardware, so
+                # it is exempt from the fail-closed verification; physical
+                # backends must prove PASSIVE state or refuse to open.
+                if self.listen_only and self.interface not in ("virtual",):
+                    actual_state = getattr(self._bus, "state", None)
+                    if actual_state != can.BusState.PASSIVE:
+                        try:
+                            self._bus.shutdown()
+                        except Exception:  # noqa: BLE001 — best-effort cleanup
+                            pass
+                        self._bus = None
+                        raise HardwareError(
+                            f"Interface '{self.interface}' does not support Listen-Only "
+                            "(PASSIVE) mode — refusing an active connection that could "
+                            "disturb a live vehicle bus",
+                            code="HARDWARE_LISTEN_ONLY_UNSUPPORTED",
+                        )
+
+                self.is_connected = True
+                self.metrics.state = BusState.PASSIVE if self.listen_only else BusState.ACTIVE
+                logger.info(
+                    "Connected CAN hardware interface",
+                    extra={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
+                )
+            except HardwareError:
+                self.is_connected = False
+                self.metrics.state = BusState.DISCONNECTED
+                raise
+            except (can.CanError, OSError, ValueError) as exc:
+                self.is_connected = False
+                self.metrics.state = BusState.DISCONNECTED
+                raise HardwareError(
+                    f"Failed to connect to CAN interface '{self.interface}:{self.channel}': {exc}",
+                    code="HARDWARE_CONNECT_FAILED",
+                    details={"interface": self.interface, "channel": str(self.channel), "bitrate": self.bitrate},
+                    cause=exc,
+                ) from exc
 
     def disconnect(self) -> None:
         """Shutdown CAN bus and release transceiver handles."""
@@ -95,7 +132,14 @@ class PythonCanBus(AbstractBus):
                     self.metrics.state = BusState.DISCONNECTED
 
     def send(self, frame: CanFrame) -> None:
-        """Transmit CanFrame on physical bus."""
+        """Transmit CanFrame on physical bus.
+
+        H6: the handle snapshot is taken under the lock and the actual
+        driver send runs OUTSIDE it (the recv pattern) with an explicit
+        short timeout. A blocking send (SocketCAN ENOBUFS / full TX FIFO)
+        must never hold the lifecycle lock hostage: an E-Stop disconnect()
+        on the same lock would then stall the emergency teardown.
+        """
         with self._lifecycle_lock:
             if not self.is_connected or self._bus is None:
                 raise HardwareError("Cannot send: CAN bus is not connected")
@@ -103,6 +147,9 @@ class PythonCanBus(AbstractBus):
             if self.listen_only:
                 raise HardwareError("Cannot send: CAN bus is opened in Listen-Only (passive) mode")
 
+            bus_snapshot = self._bus
+
+        try:
             msg = can.Message(
                 arbitration_id=frame.arbitration_id,
                 is_extended_id=frame.is_extended,
@@ -112,17 +159,33 @@ class PythonCanBus(AbstractBus):
                 error_state_indicator=frame.esi,
                 check=True,
             )
+        except (can.CanError, ValueError) as exc:
+            self.metrics.error_frames += 1
+            raise TransportError(
+                f"Hardware frame construction failed: {exc}",
+                code="TRANSPORT_FRAME_INVALID",
+                cause=exc,
+            ) from exc
 
+        try:
+            # Timeout guards a wedged vendor driver; supported by socketcan &
+            # most native backends (ignored where unsupported).
             try:
-                self._bus.send(msg)
-                self.metrics.tx_frames += 1
-            except can.CanError as exc:
-                self.metrics.error_frames += 1
-                raise TransportError(
-                    f"Hardware frame transmission failed: {exc}",
-                    code="TRANSPORT_TX_FAILED",
-                    cause=exc,
-                ) from exc
+                bus_snapshot.send(msg, timeout=0.05)
+            except TypeError:
+                bus_snapshot.send(msg)
+            self.metrics.tx_frames += 1
+        except can.CanError as exc:
+            self.metrics.error_frames += 1
+            raise TransportError(
+                f"Hardware frame transmission failed: {exc}",
+                code="TRANSPORT_TX_FAILED",
+                cause=exc,
+            ) from exc
+
+    # H7: consecutive error frames before the driver is flagged BUS_OFF
+    # and the gateway E-Stop path (BUS_OFF_DETECTED) is informed.
+    ERROR_FRAMES_BUS_OFF_THRESHOLD: ClassVar[int] = 128
 
     def recv(self, timeout_s: float | None = 0.1) -> CanFrame | None:
         """Receive single CAN frame with timeout.
@@ -130,6 +193,13 @@ class PythonCanBus(AbstractBus):
         The blocking recv runs OUTSIDE the lifecycle lock (it may wait the
         full timeout); only the handle snapshot is taken under the lock so
         a concurrent disconnect cannot free the bus mid-call.
+
+        REVIEW.md 2.3: the vendor C layer can raise OSError/RuntimeError
+        (not just can.CanError) on a wedged/removed handle — catch them so
+        one driver hiccup never kills the RX loop.
+        H3: remote frames carry data=b'' with DLC>0, which violates the
+        CanFrame invariant — filtered like error frames.
+        H7: bus state is probed; ERROR/BUS_OFF updates metrics + supervisor.
         """
         with self._lifecycle_lock:
             if not self.is_connected or self._bus is None:
@@ -138,7 +208,7 @@ class PythonCanBus(AbstractBus):
 
         try:
             msg = bus_snapshot.recv(timeout=timeout_s)
-        except can.CanError as exc:
+        except (can.CanError, OSError, RuntimeError, AttributeError) as exc:
             self.metrics.error_frames += 1
             raise HardwareError(
                 f"Hardware frame read error: {exc}",
@@ -151,24 +221,45 @@ class PythonCanBus(AbstractBus):
 
         if msg.is_error_frame:
             self.metrics.error_frames += 1
+            # H7: sustained error frames indicate bus-off conditions
+            if self.metrics.error_frames >= self.ERROR_FRAMES_BUS_OFF_THRESHOLD:
+                self.metrics.state = BusState.BUS_OFF
+            return None
+
+        # H3: remote request frames — no payload, cannot satisfy the DLC
+        # invariant; drop them like error frames.
+        if msg.is_remote_frame:
+            self.metrics.error_frames += 1
             return None
 
         self.metrics.rx_frames += 1
         ts_ns = int(msg.timestamp * 1_000_000_000) if msg.timestamp else time.time_ns()
 
-        return CanFrame(
-            channel_id=self.channel_id,
-            arbitration_id=msg.arbitration_id,
-            dlc=msg.dlc if msg.dlc is not None else length_to_dlc(len(msg.data)),
-            data=bytes(msg.data),
-            is_extended=msg.is_extended_id,
-            is_fd=msg.is_fd,
-            brs=msg.bitrate_switch,
-            esi=msg.error_state_indicator,
-            direction="rx",
-            timestamp_ns=ts_ns,
-            source="physical",
-        )
+        # H7: reflect the controller state when the backend exposes it
+        state = getattr(bus_snapshot, "state", None)
+        if state == can.BusState.ERROR:
+            self.metrics.state = BusState.BUS_OFF
+
+        try:
+            return CanFrame(
+                channel_id=self.channel_id,
+                arbitration_id=msg.arbitration_id,
+                dlc=msg.dlc if msg.dlc is not None else length_to_dlc(len(msg.data)),
+                data=bytes(msg.data),
+                is_extended=msg.is_extended_id,
+                is_fd=msg.is_fd,
+                brs=msg.bitrate_switch,
+                esi=msg.error_state_indicator,
+                direction="rx",
+                timestamp_ns=ts_ns,
+                source="physical",
+            )
+        except ValueError as exc:
+            # Malformed on-wire frame (e.g. DLC/data mismatch from a flaky
+            # driver) — count and skip instead of killing the RX loop.
+            self.metrics.error_frames += 1
+            logger.debug("Malformed RX frame dropped", extra={"error": str(exc)})
+            return None
 
     @classmethod
     def scan_bitrate(

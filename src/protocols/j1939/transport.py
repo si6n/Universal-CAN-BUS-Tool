@@ -215,10 +215,14 @@ class J1939TransportProtocol:
                 if has_tx_session or frame.data[0] != TP_CTRL_ABORT:
                     dt_frames, err_frame = self._handle_tx_cm(frame, sa, da)
                     if dt_frames:
-                        # First frame rides the single response slot; the rest queue
-                        self._pending_tx_frames.extend(dt_frames[1:])
-                        if err_frame is not None:
-                            self._pending_tx_frames.append(err_frame)
+                        # First frame rides the single response slot; the rest
+                        # queue. M-6 (3FABLE): the queue mutation is under
+                        # _sessions_lock — the RX thread and the
+                        # take_pending_tx_frames drain must not interleave.
+                        with self._sessions_lock:
+                            self._pending_tx_frames.extend(dt_frames[1:])
+                            if err_frame is not None:
+                                self._pending_tx_frames.append(err_frame)
                         return None, dt_frames[0]
                     if err_frame is not None:
                         return None, err_frame
@@ -648,7 +652,16 @@ class J1939TransportProtocol:
     def start_tp_cm_dt(
         self, target_address: int, pgn: int, data: bytes, channel_id: str | None = None
     ) -> list[CanFrame]:
-        """Segment data into J1939 CMDT peer-to-peer frames (TP.CM_RTS followed by TP.DT packets)."""
+        """DEPRECATED (REVIEW.md 3.5): returns ONLY the TP.CM_RTS frame.
+
+        SAE J1939-21 §5.10.1 forbids sending TP.DT packets before the
+        receiver's TP.CM_CTS grant. The old behaviour emitted RTS + ALL DTs
+        as one list; callers broadcasting that list bombarded the receiver
+        before it allocated its buffer (instant Conn_Abort). Use
+        `start_cmdt_transfer` + `handle_rx_frame(CTS)` for the proper
+        windowed flow; this helper now returns just the RTS so existing
+        callers cannot violate the protocol by accident.
+        """
         if not (1 <= len(data) <= 1785):
             raise ValueError(f"J1939 TP data length must be 1..1785 bytes, got {len(data)}")
 
@@ -656,7 +669,6 @@ class J1939TransportProtocol:
         total_bytes = len(data)
         total_packets = (total_bytes + 6) // 7
 
-        # 1. TP.CM_RTS frame (DA = target_address, SA = my_address)
         rts_data = bytearray(8)
         rts_data[0] = TP_CTRL_RTS
         rts_data[1:3] = total_bytes.to_bytes(2, byteorder="little")
@@ -665,7 +677,7 @@ class J1939TransportProtocol:
         rts_data[5:8] = pgn.to_bytes(3, byteorder="little")
 
         can_id_cm = 0x18EC0000 | ((target_address & 0xFF) << 8) | (self.my_address & 0xFF)
-        frames: list[CanFrame] = [
+        return [
             CanFrame.create(
                 channel_id=ch,
                 arbitration_id=can_id_cm,
@@ -674,27 +686,6 @@ class J1939TransportProtocol:
                 direction="tx",
             )
         ]
-
-        # 2. TP.DT packets (DA = target_address, SA = my_address)
-        can_id_dt = 0x18EB0000 | ((target_address & 0xFF) << 8) | (self.my_address & 0xFF)
-        for seq in range(1, total_packets + 1):
-            chunk = data[(seq - 1) * 7 : seq * 7]
-            dt_data = bytearray(8)
-            dt_data[0] = seq
-            dt_data[1 : 1 + len(chunk)] = chunk
-            for i in range(1 + len(chunk), 8):
-                dt_data[i] = 0xFF
-            frames.append(
-                CanFrame.create(
-                    channel_id=ch,
-                    arbitration_id=can_id_dt,
-                    data=bytes(dt_data),
-                    is_extended=True,
-                    direction="tx",
-                )
-            )
-
-        return frames
 
     def start_cmdt_transfer(
         self,

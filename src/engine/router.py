@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import queue
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import ClassVar
@@ -35,12 +36,23 @@ class FrameRouter:
 
     MAX_QUEUE_SIZE: ClassVar[int] = 10_000
 
+    # M-7 (3FABLE): a synchronous callback running longer than this budget
+    # is demoted — a WARN is emitted and the subscriber is moved to
+    # queue-only dispatch so one slow consumer (UI, AI copilot) can never
+    # HOL-block the RX thread and trip protocol timers (N_Cr, T1).
+    CALLBACK_BUDGET_MS: ClassVar[float] = 20.0
+    # E-2: rate-limited drop logging — one summary per subscriber per second.
+    _DROP_LOG_INTERVAL_S: ClassVar[float] = 1.0
+
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._subscriptions: dict[int, Subscription] = {}
         self._next_sub_id: int = 1
         self._total_routed: int = 0
         self._total_dropped: int = 0
+        # E-2: (sub_id, monotonic-second) of the last drop log per subscriber
+        self._last_drop_log: dict[int, float] = {}
+        self._drop_counts_since_log: dict[int, int] = {}
 
     def subscribe(
         self,
@@ -98,8 +110,11 @@ class FrameRouter:
 
             matched_count += 1
 
-            # Dispatch to callback
+            # M-7: dispatch to callback with a time budget; overspending
+            # subscribers are demoted to queue-only so they stop stalling
+            # the RX thread.
             if sub.callback is not None:
+                t0 = time.monotonic()
                 try:
                     sub.callback(frame)
                 except Exception as exc:  # noqa: BLE001
@@ -107,6 +122,25 @@ class FrameRouter:
                         "Error in FrameRouter subscriber callback",
                         extra={"sub_id": sub.sub_id, "error": str(exc)},
                     )
+                elapsed_ms = (time.monotonic() - t0) * 1000.0
+                if elapsed_ms > self.CALLBACK_BUDGET_MS:
+                    logger.warning(
+                        "Slow FrameRouter callback demoted to queue-only dispatch",
+                        extra={
+                            "sub_id": sub.sub_id,
+                            "elapsed_ms": round(elapsed_ms, 2),
+                            "budget_ms": self.CALLBACK_BUDGET_MS,
+                        },
+                    )
+                    with self._lock:
+                        if sub.sub_id in self._subscriptions:
+                            self._subscriptions[sub.sub_id].callback = None
+                            if self._subscriptions[sub.sub_id].frame_queue is None:
+                                # No queue either — create one so the demoted
+                                # subscriber keeps receiving frames.
+                                self._subscriptions[sub.sub_id].frame_queue = queue.Queue(
+                                    maxsize=self.MAX_QUEUE_SIZE
+                                )
 
             # Dispatch to queue (non-blocking with drop on full)
             if sub.frame_queue is not None:
@@ -115,10 +149,26 @@ class FrameRouter:
                 except queue.Full:
                     with self._lock:
                         self._total_dropped += 1
-                    logger.warning(
-                        "FrameRouter subscriber queue full, dropping frame",
-                        extra={"sub_id": sub.sub_id, "arbitration_id": hex(frame.arbitration_id)},
-                    )
+                        self._drop_counts_since_log[sub.sub_id] = (
+                            self._drop_counts_since_log.get(sub.sub_id, 0) + 1
+                        )
+                        now = time.monotonic()
+                        should_log = (now - self._last_drop_log.get(sub.sub_id, 0.0)) >= self._DROP_LOG_INTERVAL_S
+                        if should_log:
+                            burst = self._drop_counts_since_log.pop(sub.sub_id, 0)
+                            self._last_drop_log[sub.sub_id] = now
+                    # E-2: log at most one summary per subscriber per second —
+                    # per-frame WARNINGs at bus rate flooded the log disk I/O
+                    # and slowed the RX thread further (positive feedback).
+                    if should_log:
+                        logger.warning(
+                            "FrameRouter subscriber queue full; frames dropped",
+                            extra={
+                                "sub_id": sub.sub_id,
+                                "dropped_in_window": burst,
+                                "arbitration_id_last": hex(frame.arbitration_id),
+                            },
+                        )
 
         return matched_count
 

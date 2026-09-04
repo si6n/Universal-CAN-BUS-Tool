@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import queue
+from collections import deque
 from typing import Any
 
 from src.core.errors import HardwareError
@@ -13,6 +14,10 @@ from src.hal.base import AbstractBus, BusState
 class VirtualBus(AbstractBus):
     """Thread-safe in-memory virtual CAN bus for unit testing and simulations."""
 
+    # M-11 (3FABLE): bounded TX transcript — the old unbounded list grew for
+    # the whole life of long simulations (GBs at 60 FPS sim rates).
+    MAX_SENT_FRAMES: int = 10_000
+
     def __init__(
         self,
         channel_id: str = "virtual_0",
@@ -21,7 +26,9 @@ class VirtualBus(AbstractBus):
         **kwargs: Any,
     ) -> None:
         super().__init__(channel_id=channel_id, bitrate=bitrate, is_fd=is_fd)
-        self.sent_frames: list[CanFrame] = []
+        # M-11: deque with maxlen — assertions use indexing/membership which
+        # behave identically; the oldest entries fall off beyond 10k frames.
+        self.sent_frames: deque[CanFrame] = deque(maxlen=self.MAX_SENT_FRAMES)
         self._rx_queue: queue.Queue[CanFrame] = queue.Queue()
 
     def connect(self) -> None:

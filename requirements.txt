@@ -16,7 +16,6 @@ zstandard>=0.22.0
 
 # Desktop GUI & Qt Framework
 pywebview>=5.0.0
-PySide6>=6.6.0
 
 # Packaging & Standalone Executable
 pyinstaller>=6.0.0

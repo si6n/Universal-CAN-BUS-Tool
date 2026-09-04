@@ -128,7 +128,15 @@ class RP1210Bus(AbstractBus):
                 "RP1210 classic CAN adapters do not support CAN-FD frames",
                 code="HARDWARE_FRAME_REJECTED",
             )
-        data = bytes(frame.data[: self.MAX_CLASSIC_PAYLOAD])
+        # L-4 (FABLE): oversized frames are REJECTED, never silently
+        # truncated — a cropped frame would corrupt the message on the wire.
+        if len(frame.data) > self.MAX_CLASSIC_PAYLOAD:
+            raise HardwareError(
+                f"Classic CAN frame payload exceeds {self.MAX_CLASSIC_PAYLOAD} bytes "
+                f"(got {len(frame.data)}) — frame rejected",
+                code="HARDWARE_FRAME_REJECTED",
+            )
+        data = bytes(frame.data)
 
         if frame.is_extended or self._uses_extended_id_layout:
             # 29-bit identifier path — J1939 PDU1/PDU2 and ISO 15765-4.

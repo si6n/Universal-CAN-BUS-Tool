@@ -117,13 +117,19 @@ class LicenseValidator:
                 expected_mac = hmac.new(self._hwm_key, ts_part.encode("utf-8"), hashlib.sha256).hexdigest()
                 if not hmac.compare_digest(hmac_str, expected_mac):
                     self._recover_lost_hwm_key()
-                    # Post-recovery: do NOT trust the unverifiable file's
-                    # values — an attacker could have planted them. The HWM
-                    # floor stays at the machine clock; only the plain-text
-                    # sync anchor is kept as a grace-period courtesy.
-                    sync_val = int(sync_str)
-                    if 0 < sync_val <= self.last_known_clock_ts:
-                        self.last_online_sync_ts = sync_val
+                    # H4 (3FABLE): adopt NOTHING from the unverifiable file —
+                    # including the sync anchor. The old "grace-period
+                    # courtesy" let an attacker who rolled the clock back and
+                    # planted `<hwm>:<sync>.<garbage>` keep a chosen offline
+                    # grace anchor past a license expiry. The grace window
+                    # now restarts from a conservative floor: now minus the
+                    # maximum allowed offline grace (or zero when unknown).
+                    conservative_floor = 0
+                    if self.MAX_OFFLINE_GRACE_SEC > 0:
+                        conservative_floor = max(
+                            0, int(time.time()) - self.MAX_OFFLINE_GRACE_SEC
+                        )
+                    self.last_online_sync_ts = conservative_floor
                     return
                 ts_val = int(hwm_str)
                 sync_val = int(sync_str)

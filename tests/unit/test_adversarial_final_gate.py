@@ -288,6 +288,9 @@ def test_hwid_powershell_subcommand_adversarial_outputs() -> None:
 
 def test_hwid_fingerprint_uniqueness_across_varied_hardware() -> None:
     """Generate 100 unique hardware profiles and verify zero hash collisions."""
+    # SEC-3: the public fingerprint is cached per-process — clear it so
+    # each patched hardware matrix is actually recomputed.
+    generate_hardware_fingerprint.cache_clear()
     hashes: set[str] = set()
     for i in range(100):
         with (
@@ -296,9 +299,13 @@ def test_hwid_fingerprint_uniqueness_across_varied_hardware() -> None:
             patch("src.security.hwid.collector.collect_disk_serial", return_value=f"DISK-{i * 7}"),
             patch("src.security.hwid.collector.collect_bios_serial", return_value=f"BIOS-{i * 13}"),
         ):
+            # SEC-3: the cache is per-process — clear INSIDE the loop so
+            # each patched hardware matrix is recomputed.
+            generate_hardware_fingerprint.cache_clear()
             fp = generate_hardware_fingerprint()
             assert len(fp) == 64
             hashes.add(fp)
+    generate_hardware_fingerprint.cache_clear()  # don't leak into other tests
 
     assert len(hashes) == 100
 

@@ -71,11 +71,11 @@ jobs:
 
       - name: Run Bandit Security Lint
         run: |
-          bandit -r src/ -ll -q --exit-zero
+          bandit -r src/ -ll -q
 
       - name: Run pip-audit Dependency Scan
         run: |
-          pip-audit --skip-editable || true
+          pip-audit --skip-editable
 
   test-linux-vcan:
     name: PyTest on Linux with vcan0 (SocketCAN)
@@ -152,9 +152,9 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@5ba2889ada762081db2c4f32a729827dce632c7b # v3 (SHA-pinned, L-7)
         with:
           languages: python, javascript-typescript
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@5ba2889ada762081db2c4f32a729827dce632c7b # v3 (SHA-pinned, L-7)

@@ -61,6 +61,10 @@ def test_listen_only_passes_busstate_enum_to_driver(monkeypatch: pytest.MonkeyPa
     captured: dict[str, object] = {}
 
     class _FakeBus:
+        # REVIEW.md 2.2: the driver verifies the backend honoured PASSIVE —
+        # expose the state the pcan driver would report.
+        state = can_module.BusState.PASSIVE
+
         def shutdown(self) -> None:
             pass
 

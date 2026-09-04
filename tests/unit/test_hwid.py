@@ -127,6 +127,9 @@ def test_run_powershell_exception_handling(exc_type: Exception) -> None:
 
 
 def test_non_win32_platform_fingerprint() -> None:
+    # SEC-3: the fingerprint is cached per-process — clear between tests
+    # so patched collectors are honoured.
+    generate_hardware_fingerprint.cache_clear()
     """Non-Windows platforms return a deterministic platform hash (SEC-H-002:
     the fallback mixes in the primary MAC for clone resistance)."""
     with patch.object(sys, "platform", "linux"):

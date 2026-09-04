@@ -5,6 +5,7 @@ Matches NO-GO Remediation Plan (v1.0 Release Blockers).
 
 from __future__ import annotations
 
+import queue
 from typing import TYPE_CHECKING, ClassVar
 
 from src.hal.base import AbstractBus
@@ -45,8 +46,17 @@ class SafeMultiplexedBus(AbstractBus):
 
     @is_connected.setter
     def is_connected(self, value: bool) -> None:
-        """Compatibility setter for base class."""
-        self._is_connected = bool(value)
+        """S-2 (3FABLE): the old setter wrote a dead `_is_connected` field the
+        getter never read. The base class assigns `is_connected = False`
+        during __init__; the only meaningful delegation is to the physical
+        bus's own flag (the router subscription is managed by
+        connect/disconnect lifecycle methods)."""
+        if self.physical_bus is not None:
+            try:
+                self.physical_bus.is_connected = value
+            except AttributeError:
+                # read-only property on the driver — nothing to sync
+                pass
 
     def connect(self) -> None:
         """Physical bus connection is managed externally (e.g. by main UI)."""
@@ -87,8 +97,6 @@ class SafeMultiplexedBus(AbstractBus):
         A `None` timeout falls back to the bounded default (F-23) — the queue
         never blocks forever, so callers stay responsive.
         """
-        import queue
-
         if self.rx_queue is None:
             return None
 

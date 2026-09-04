@@ -156,72 +156,65 @@ def test_flash_full_happy_path_sequence() -> None:
 
 
 def test_flash_negative_transfer_data_triggers_recovery_and_raises() -> None:
-    """A rejected 0x36 block aborts, attempts recovery reset, and raises."""
+    """A rejected 0x36 block aborts; recovery runs the non-bricking ladder."""
     client = _RecordingUdsClient()
     client.replies["transfer_data"] = [
         _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x71")
     ]
     with pytest.raises(ProtocolError, match="Blok"):
         _run(client, _config())
-    # Recovery must have issued exactly one hard reset
-    resets = [c for c in client.calls if c[0] == "ecu_reset"]
-    assert len(resets) == 1
-    assert resets[0][1]["reset_type"] == 0x01
+    # REVIEW.md 3.2: 0x37-first ladder, never an automatic hard reset
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
 
 
 def test_flash_recovery_propagates_operator_confirmation_k08() -> None:
-    """K-08 regression: the recovery reset carries the config's confirmation
-    flag — never a synthetic user_confirmed=True."""
+    """K-08 + REVIEW.md 3.2: recovery follows the 0x37 -> default-session
+    ladder and NEVER issues an operator-confirmed hard reset."""
     client = _RecordingUdsClient()
     client.replies["transfer_data"] = [
         _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x71")
     ]
-    # The flash sequence itself was confirmed; recovery must reuse that
-    # confirmation, not fabricate one.
+    # 0x37 also rejected -> ladder proceeds to the default-session retreat
+    client.replies["request_transfer_exit"] = [
+        _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x24")
+    ]
     with pytest.raises(ProtocolError):
         _run(client, _config(user_confirmed=True))
-    reset_call = next(c for c in client.calls if c[0] == "ecu_reset")
-    assert reset_call[1]["user_confirmed"] is True
-
-    # And with a False flag (defensive), recovery must pass False too.
-    client2 = _RecordingUdsClient()
-    client2.replies["transfer_data"] = [
-        _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x71")
-    ]
-    # Bypass the earlier dual-confirmation gate by confirming, then force
-    # the recovery path — recovery reads config.user_confirmed.
-    with pytest.raises(ProtocolError):
-        _run(client2, _config(user_confirmed=True, verify_checksum=False))
-    # (config.user_confirmed=True here; see the negative variant below)
+    # Ladder step 1: RequestTransferExit attempted
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
+    # Ladder step 2: default session retreat attempted
+    assert any(c[0] == "change_session" and c[1].get("session_type") == 1 for c in client.calls)
+    # NEVER a hard reset on a partially flashed ECU
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
 
 
 def test_flash_recovery_never_fabricates_confirmation() -> None:
-    """K-08 strict variant: inject a config whose confirmation is True, then
-    verify recovery forwards the ORIGINAL flag object (identity), not True."""
+    """K-08 strict variant: with the 0x37/0x10-0x01 ladder, recovery never
+    transmits ANY dual-confirmation-gated command (no ecu_reset at all)."""
     client = _RecordingUdsClient()
     client.replies["transfer_data"] = [
         _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x72")
     ]
     with pytest.raises(ProtocolError):
         engine = EcuFlashingEngine(uds_client=client, gateway=_StubGateway(engaged=False))
-        # Manually flip the config flag AFTER construction semantics:
-        # recovery uses the config instance passed to execute_flash.
         cfg = _config(user_confirmed=True)
-        cfg.user_confirmed = True  # ensure truthy for the flash gate
         engine.execute_flash(cfg)
-    reset_call = next(c for c in client.calls if c[0] == "ecu_reset")
-    assert reset_call[1]["user_confirmed"] is cfg.user_confirmed
+    # No confirmation-gated call is ever issued during recovery
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
 
 
 def test_flash_checksum_rejection_triggers_recovery() -> None:
-    """A failed 0x31 checksum routine aborts with recovery reset."""
+    """A failed 0x31 checksum routine aborts with the non-bricking ladder."""
     client = _RecordingUdsClient()
     client.replies["start_routine"] = [
         _UdsResponse(is_positive=False, nrc_description_tr="NRC 0x31")
     ]
     with pytest.raises(ProtocolError, match="0x31"):
         _run(client, _config(verify_checksum=True))
-    assert any(c[0] == "ecu_reset" for c in client.calls)
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
 
 
 def test_flash_security_access_after_programming_session_p1_5() -> None:
@@ -288,8 +281,9 @@ def test_flash_missing_max_block_length_fails_closed_p1_6() -> None:
     with pytest.raises(ProtocolError, match="maxNumberOfBlockLength"):
         _run(client, _config())
     assert not any(c[0] == "transfer_data" for c in client.calls)
-    # Recovery reset still attempted (session was opened)
-    assert any(c[0] == "ecu_reset" for c in client.calls)
+    # Recovery ladder attempted (session was opened); no hard reset (3.2)
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
 
 
 def test_flash_empty_checksum_result_fails_closed_p1_7() -> None:
@@ -300,11 +294,10 @@ def test_flash_empty_checksum_result_fails_closed_p1_7() -> None:
 
     with pytest.raises(ProtocolError, match="fail-closed|boş"):
         _run(client, _config(verify_checksum=True))
-    # Recovery reset from the failed sequence is fine; but no post-checksum
-    # "verified" reset may appear in the normal step-9 slot: the exception
-    # aborts before step 9, so exactly one reset (recovery) exists.
-    resets = [c for c in client.calls if c[0] == "ecu_reset"]
-    assert len(resets) == 1
+    # The exception aborts before the step-9 success reset; recovery runs
+    # the non-bricking ladder — no ecu_reset is EVER issued (3.2)
+    assert any(c[0] == "request_transfer_exit" for c in client.calls)
+    assert not any(c[0] == "ecu_reset" for c in client.calls)
 
 
 def test_flash_preflight_rejects_moving_vehicle_p1_8() -> None:

@@ -21,13 +21,16 @@ from src.core.logging import get_logger
 from src.core.models.can_frame import CanFrame, length_to_dlc
 from src.engine.ai.diagnostic_copilot import AiDiagnosticCopilot
 from src.engine.buffer.ring_buffer import BinaryRingBuffer
+from src.engine.pipeline.reassembly_pipeline import j1939_protocol_response_masks
 from src.engine.router import FrameRouter
 from src.hal.drivers.pcan_kvaser import PythonCanBus
 from src.protocols.j1939.diagnostics import J1939DiagnosticService
 from src.protocols.j1939.transport import J1939TransportProtocol
 from src.protocols.nmea2000.fast_packet import Nmea2000FastPacketDecoder
+from src.protocols.uds.client import UdsClient
 from src.safety.estop import EmergencyStopSystem, EStopResetAuthority, EStopTriggerSource
 from src.safety.gateway import TxSafetyGateway
+from src.safety.multiplexer import SafeMultiplexedBus
 from src.safety.secret_provider import get_default_secret_provider
 from src.safety.state_machine import SafetyState, SafetySupervisor
 from src.safety.watchdog import TxWatchdogSupervisor
@@ -67,7 +70,14 @@ class DesktopApiBridge:
         return self.app.query_copilot(query)
 
     def export_logs(self, fmt: str) -> bool:
-        return True
+        """M-10 (3FABLE): the old stub returned True WITHOUT exporting —
+        the UI showed "exported" and the operator might delete the session
+        believing the evidence was safely on disk (data loss). Return
+        False honestly until a real exporter is wired."""
+        logger.warning(
+            "export_logs requested but no exporter is wired yet (fmt=%s)", fmt
+        )
+        return False
 
     def save_settings(self, settings: dict[str, Any]) -> None:
         self.app.update_settings(settings)
@@ -98,7 +108,7 @@ class DesktopApiBridge:
     def cloud_test_connection(self, url: str | None = None, session_token: str | None = None) -> dict[str, Any]:
         try:
             if url:
-                self.app.cloud_client.config.base_url = url.rstrip("/")
+                self.app.cloud_client.set_base_url(url)
             resp = self.app.cloud_client.request("GET", "/health", health_endpoint=True)
             if resp.status == 200:
                 user_info = None
@@ -120,7 +130,7 @@ class DesktopApiBridge:
     def cloud_save_config(self, url: str, session_token: str | None = None) -> dict[str, Any]:
         try:
             if url:
-                self.app.cloud_client.config.base_url = url.rstrip("/")
+                self.app.cloud_client.set_base_url(url)
             if session_token is not None:
                 if session_token.strip():
                     self.app.cloud_client.store_session_token(session_token.strip())
@@ -156,7 +166,11 @@ class DesktopApiBridge:
                 "baseUrl": self.app.cloud_client.config.base_url,
                 "hasSessionToken": has_session,
                 "hasDeviceToken": bool(device_token),
-                "hwid": hwid,
+                # UI-2 (3FABLE): expose only a display prefix — the full HWID
+                # is a license-cloning input; the validator already treats it
+                # as secret-grade (log-truncated). The full value stays in
+                # the Python/DPAPI layer.
+                "hwid": hwid[:8] + "…" if len(hwid) > 8 else hwid,
                 "license": license_claims,
             }
         except Exception as exc:
@@ -260,11 +274,20 @@ class UniversalCanDesktopApp:
         self.estop_reset_authority = EStopResetAuthority(self.estop)
         self.supervisor = SafetySupervisor(initial_state=SafetyState.STARTUP)
         self.watchdog = TxWatchdogSupervisor(supervisor=self.supervisor, estop=self.estop, timeout_ms=800.0)
+        # REVIEW.md 1.1: the gateway previously started with NO whitelist,
+        # so the fail-closed Stage 3 rejected every single frame — the app
+        # could never transmit at all. Seed it with the legitimate diagnostic
+        # surface: the OBD functional broadcast, the physical UDS request
+        # IDs, and our J1939 response masks (TP.CM/TP.DT/ISO-TP frames
+        # sourced from our tool address 0xF9).
+        _diag_ids: set[int] = {0x7DF} | set(range(0x7E0, 0x7F0))
         self.gateway = TxSafetyGateway(
             bus=self.bus,
             estop=self.estop,
             supervisor=self.supervisor,
             watchdog=self.watchdog,
+            whitelist_ids=_diag_ids,
+            whitelist_masks=list(j1939_protocol_response_masks(0xF9)),
         )
         self.copilot = AiDiagnosticCopilot()
         self._secret_provider = get_default_secret_provider()
@@ -307,6 +330,7 @@ class UniversalCanDesktopApp:
         self._current_rpm = 0.0
         self._current_boost = 0.0
         self._current_temp = 0.0
+        self._current_speed_kmh = 0.0
         self._pack_voltage = 398.4
         self._battery_soc = 78.4
         self._pack_current = 42.5
@@ -351,6 +375,21 @@ class UniversalCanDesktopApp:
         with self._ui_state_lock:
             for key, value in kwargs.items():
                 setattr(self, key, value)
+
+    def create_uds_client(self, tx_id: int = 0x7E0, rx_id: int = 0x7E8) -> UdsClient:
+        """Create a UDS client that cannot steal frames from the telemetry loop.
+
+        REVIEW.md 3.1: the synchronous UDSClient path used to be handed the
+        raw physical bus, racing the telemetry thread's `bus.recv()` for the
+        same hardware queue — responses were randomly lost to timeouts. This
+        factory wires the client through a SafeMultiplexedBus instead: RX
+        comes from the client's own router subscription queue (fed by the
+        single telemetry reader), TX goes through the TxSafetyGateway.
+        """
+        safe_bus = SafeMultiplexedBus(
+            physical_bus=self.bus, gateway=self.gateway, router=self.router
+        )
+        return UdsClient(bus=safe_bus, tx_port=self.gateway, tx_id=tx_id, rx_id=rx_id)
 
     def trigger_estop(self) -> None:
         self._set_ui_state(_is_estop=True, _is_simulating=False, _bus_load=0)
@@ -501,7 +540,7 @@ class UniversalCanDesktopApp:
             self._secret_provider.store_secret("GEMINI_API_KEY", settings["apiKey"].encode("utf-8"))
             self.copilot.set_key_provider(self._secret_provider)
         if "cloudBaseUrl" in settings and settings["cloudBaseUrl"]:
-            self.cloud_client.config.base_url = settings["cloudBaseUrl"].rstrip("/")
+            self.cloud_client.set_base_url(settings["cloudBaseUrl"])
         if "cloudSessionToken" in settings:
             tok = settings["cloudSessionToken"]
             if tok and str(tok).strip():
@@ -562,6 +601,17 @@ class UniversalCanDesktopApp:
             if pf == 0xF0 and ps == 0x04 and len(data) >= 5:
                 raw_rpm = data[3] | (data[4] << 8)
                 self._current_rpm = raw_rpm * 0.125
+            # CCVS (PGN 65265 / PF=0xFE, PS=0xF1): vehicle speed (SPN 84)
+            # REVIEW.md 1.2: the gateway's speed interlock requires FRESH
+            # speed telemetry before any critical command; without this feed
+            # the first 0x11/0x34/0x2E latched a SPEED_INTERLOCK E-Stop even
+            # on a stationary vehicle. 1/256 km/h per bit, byte 1..2.
+            elif pf == 0xFE and ps == 0xF1 and len(data) >= 3:
+                raw_speed = data[1] | (data[2] << 8)
+                speed_kmh = raw_speed / 256.0
+                if speed_kmh <= 250.0:  # 0xFFFF/256 ≈ 255.99 → error sentinel
+                    self._current_speed_kmh = speed_kmh
+                    self.gateway.update_vehicle_speed(speed_kmh)
             # ET1 (PGN 65249 / PF=0xFE, PS=0xE1): coolant temperature
             elif pf == 0xFE and ps == 0xE1 and len(data) >= 1:
                 self._current_temp = float(data[0]) - 40.0
@@ -600,6 +650,11 @@ class UniversalCanDesktopApp:
                     dlc=length_to_dlc(len(synth_data)),
                     data=synth_data,
                     is_extended=True,
+                    # REVIEW.md 4.2: reassembled J1939 payloads (VIN, DM1,
+                    # component ID...) are 9-1785 bytes; without is_fd the
+                    # classic-CAN DLC cap rejected every one of them and
+                    # the telemetry thread silently dropped the message.
+                    is_fd=len(synth_data) > 8,
                 )
             except ValueError as exc:
                 logger.debug("Synthetic reassembly frame rejected", extra={"error": str(exc)})
@@ -693,6 +748,10 @@ class UniversalCanDesktopApp:
             self._sim_time += 0.05 * self._speed_mult
             t = self._sim_time
             self._bump_stat("_total_packets", 1)
+            # REVIEW.md 1.2: keep the gateway's speed interlock fed even in
+            # DEMO mode — a stationary simulated vehicle must not latch a
+            # SPEED_INTERLOCK E-Stop on the first critical command.
+            self.gateway.update_vehicle_speed(0.0)
 
             rpm = 2381.0 + 80.0 * math.sin(t * 0.8) + 30.0 * math.cos(t * 1.5)
             boost = 1.66 + 0.12 * math.sin(t * 0.5) + 0.05 * math.cos(t * 1.1)

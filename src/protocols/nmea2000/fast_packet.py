@@ -101,6 +101,16 @@ class Nmea2000FastPacketDecoder:
                 )
                 return None
 
+            # M-5 (3FABLE): a First Frame MUST carry the full 8 bytes
+            # (header, size, 6 payload). Short DLC frames silently shift
+            # every subsequent CF's alignment and reassemble WRONG content.
+            if len(frame.data) != 8:
+                logger.warning(
+                    "N2K Fast Packet First Frame with DLC != 8 dropped (alignment risk)",
+                    extra={"dlc": len(frame.data), "pgn": pgn, "sa": source_address},
+                )
+                return None
+
             payload = frame.data[2:8]  # First 6 bytes
             session = FastPacketSession(
                 source_address=source_address,
@@ -125,6 +135,18 @@ class Nmea2000FastPacketDecoder:
             logger.warning(
                 "N2K Fast Packet sequence mismatch",
                 extra={"expected": session.expected_frame_index, "got": frame_index, "pgn": pgn},
+            )
+            self._sessions.pop(session_key, None)
+            return None
+
+        # M-5 (3FABLE): intermediate CF frames must be full-width too —
+        # only the FINAL CF of a transfer may be short. We cannot know
+        # which CF is final before counting, so require 8 bytes until the
+        # assembled length reaches the declared total.
+        if len(frame.data) != 8 and len(session.received_bytes) + 7 < session.total_bytes:
+            logger.warning(
+                "N2K Fast Packet intermediate CF with DLC != 8 dropped (alignment risk)",
+                extra={"dlc": len(frame.data), "pgn": pgn, "sa": source_address, "frame_index": frame_index},
             )
             self._sessions.pop(session_key, None)
             return None

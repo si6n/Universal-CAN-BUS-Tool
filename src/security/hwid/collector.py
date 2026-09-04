@@ -11,6 +11,7 @@ These components are hashed together to produce a stable, deterministic hardware
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import platform
 import re
@@ -100,8 +101,16 @@ def collect_cpu_id() -> str:
 
 
 def collect_disk_serial() -> str:
-    """Collect system disk serial from the boot drive (PhysicalDrive0)."""
-    serial = _run_powershell("(Get-CimInstance -ClassName Win32_DiskDrive | Select-Object -First 1).SerialNumber")
+    """Collect system disk serial from the boot drive (PhysicalDrive0).
+
+    SEC-1 (3FABLE): `Select-Object -First 1` returns whichever disk the
+    CIM enumeration happens to list first — plugging a USB stick reorders
+    it, silently changing the fingerprint and locking the license. Filter
+    strictly by Index=0 (PhysicalDrive0).
+    """
+    serial = _run_powershell(
+        "(Get-CimInstance -ClassName Win32_DiskDrive -Filter 'Index=0').SerialNumber"
+    )
     return serial.strip() if serial else "UNKNOWN_DISK"
 
 
@@ -121,7 +130,7 @@ def collect_primary_mac() -> str:
     return ":".join(f"{(node >> i) & 0xFF:02X}" for i in range(40, -8, -8))
 
 
-def generate_hardware_fingerprint() -> str:
+def _compute_hardware_fingerprint() -> str:
     """Generate a deterministic SHA-256 hardware fingerprint from 4 components.
 
     Returns:
@@ -160,3 +169,13 @@ def generate_hardware_fingerprint() -> str:
     )
 
     return fingerprint
+
+
+# SEC-3 (3FABLE): the fingerprint is stable for the process lifetime — the
+# collector spawns 4-5 PowerShell subprocesses (10 s timeouts each), and
+# every cloud_get_status bridge call used to re-spawn them all, stalling
+# the UI for tens of seconds. Compute once, serve from memory.
+@functools.lru_cache(maxsize=1)
+def generate_hardware_fingerprint() -> str:
+    """Cached per-process wrapper around the fingerprint computation."""
+    return _compute_hardware_fingerprint()

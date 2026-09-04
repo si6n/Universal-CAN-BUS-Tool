@@ -153,8 +153,10 @@ def test_uds_flashing_failure_triggers_best_effort_recovery() -> None:
         engine.execute_flash(config)
 
     assert engine.current_step == FlashingStep.FAILED
-    # Exactly one reset call — the best-effort recovery, not a success-path reset
-    mock_client.ecu_reset.assert_called_once()
+    # REVIEW.md 3.2: recovery NEVER hard-resets a partially flashed ECU —
+    # it runs the 0x37 / default-session ladder instead.
+    mock_client.ecu_reset.assert_not_called()
+    mock_client.request_transfer_exit.assert_called()
 
 
 def test_uds_flashing_pre_session_failure_skips_recovery() -> None:
