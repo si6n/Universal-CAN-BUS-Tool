@@ -1,0 +1,1817 @@
+﻿DTC Kodu,Başlık,Alt Sistem,Öncelik,Neden Sayısı,Adım Sayısı
+P0101,Kütle Hava Akış (MAF) Sensörü Devre Aralığı / Performansı (MAF Circuit Range/Performance),"Yakıt & Hava Ölçümü (MAF, MAP Sensörleri)",MEDIUM,4,3
+P0128,Soğutma Suyu Termostatı Çalışma Sıcaklığının Altında (Coolant Thermostat Below Regulating Temp),Motor Soğutma & Termal Yönetim,LOW,4,3
+P0171,Sistem Çok Fakir - Bank 1 (System Too Lean - Bank 1),Yakıt Ölçümü & Karışım Kontrolü,MEDIUM,5,3
+P0172,Sistem Çok Zengin - Bank 1 (System Too Rich - Bank 1),Yakıt Ölçümü & Karışım Kontrolü,MEDIUM,5,3
+P0300,Rastgele / Çoklu Silindir Tekleme Tespiti (Random/Multiple Cylinder Misfire Detected),Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0420,Katalizör Sistem Verimliliği Eşik Değerin Altında - Bank 1 (Catalyst Efficiency Below Threshold),Yardımcı Emisyon Kontrolleri (Katalizör Sistemi),MEDIUM,4,3
+P0442,EVAP Yakıt Buharı Emisyon Kontrol Sistemi Küçük Kaçak (EVAP Small Leak Detected),Yardımcı Emisyon Kontrolleri (EVAP Yakıt Buhar Deposu),LOW,4,3
+P0500,Araç Hız Sensörü 'A' Arızası (Vehicle Speed Sensor 'A' Malfunction),"Araç Hızı, Rölanti Kontrolü & Yardımcı Girişler",MEDIUM,4,3
+P0700,Şanzıman Kontrol Sistemi Arıza İkazı (Transmission Control System Malfunction),Otomatik Şanzıman & Hidrolik Kontrol Sistemi,MEDIUM,3,3
+U0100,Motor Kontrol Modülü (ECM/PCM 'A') ile İletişim Kaybı (Lost Communication With ECM/PCM),CAN Veri Yolu & Ağ İletişimi (Network),CRITICAL_STOP,4,3
+P0010,"""A"" Camshaft Position Actuator Circuit (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,2
+P0011,"""A"" Camshaft Position - Timing Over-Advanced or System Performance (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0014,"""B"" Camshaft Position - Timing Over-Advanced or System Performance (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0016,Crankshaft Position - Camshaft Position Correlation (Bank 1 Sensor A),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0030,HO2S Heater Control Circuit B1S1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+U0001,High Speed CAN Communication Bus,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,4
+U0002,P0002 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0003,P0003 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0004,P0004 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0005,P0005 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0006,P0006 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0007,P0007 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0008,P0008 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0009,P0009 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0010,P0010 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0011,P0011 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0012,P0012 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0013,P0013 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0014,P0014 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0015,P0015 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P0001,Fuel Volume Regulator Control Circuit/Open,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,2,3
+P0002,Fuel Volume Regulator Control Circuit Range/Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,2,3
+P0003,Fuel Volume Regulator Control Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,2,3
+P0004,Fuel Volume Regulator Control Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,2,3
+P0005,Fuel Shutoff Valve A Control Circuit/Open,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0006,"Fuel Shutoff Valve ""A"" Control Circuit Low",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0007,"Fuel Shutoff Valve ""A"" Control Circuit High",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0008,Engine Positions System Performance Bank 1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0009,Engine Positions System Performance Bank 2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0012,"""A"" Camshaft Position - Timing Over-Retarded (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0013,"""B"" Camshaft Position Actuator Circuit (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,3,3
+P0015,"""B"" Camshaft Position - Timing Over-Retarded (Bank 1)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0017,Crankshaft Position - Camshaft Position Correlation (Bank 1 Sensor B),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0018,Crankshaft Position - Camshaft Position Correlation (Bank 2 Sensor A),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0019,Crankshaft Position - Camshaft Position Correlation (Bank 2 Sensor B),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+C0001,P0001 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0002,P0002 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0003,P0003 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0004,P0004 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0005,P0005 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0006,P0006 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0007,P0007 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0008,P0008 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0009,P0009 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0010,P0010 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0011,P0011 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0012,P0012 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0013,P0013 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0014,P0014 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0015,P0015 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0001,Body Code DTC,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0002,Body Code DTC,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0003,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0004,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0005,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0006,P0006 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0007,P0007 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0008,P0008 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0009,P0009 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0010,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0011,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0012,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0013,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0014,P0014 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0015,P0015 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+U0016,P0016 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0017,P0017 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0018,P0018 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0019,P0019 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0020,P0020 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0021,P0021 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0022,P0022 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0023,P0023 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0024,P0024 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0025,P0025 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0026,P0026 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0027,P0027 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0028,P0028 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0029,P0029 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0030,P0030 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0031,P0031 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0032,P0032 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0033,P0033 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0034,P0034 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0035,P0035 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0036,P0036 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0037,P0037 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0038,P0038 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0039,P0039 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0040,P0040 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0041,P0041 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0042,P0042 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0043,P0043 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0044,P0044 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0045,P0045 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P2000,NOx Trap Efficiency Below Threshold Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2001,NOx Trap Efficiency Below Threshold Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2002,Diesel Particulate Filter Efficiency Below Threshold B1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2003,Diesel Particulate Filter Efficiency Below Threshold B2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2004,Intake Manifold Runner Control Stuck Open Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2005,Intake Manifold Runner Control Stuck Open Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2006,Intake Manifold Runner Control Stuck Closed Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2007,Intake Manifold Runner Control Stuck Closed Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2008,Intake Manifold Runner Circuit Open Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2009,Intake Manifold Runner Control Circuit Low Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2010,Intake Manifold Runner Control Circuit High Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2011,Intake Manifold Runner Circuit Open Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2012,Intake Manifold Runner Control Circuit Low Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2013,Intake Manifold Runner Control Circuit High Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2014,Intake Manifold Runner Position Sensor / Switch Circuit Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2015,Intake Manifold Runner Position Sensor / Switch Circuit Range Perf Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2016,Intake Manifold Runner Position Sensor / Switch Circuit Low Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2017,Intake Manifold Runner Position Sensor / Switch Circuit High Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2018,Intake Manifold Runner Position Sensor / Switch Circuit Intermittent Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2019,Intake Manifold Runner Position Sensor / Switch Circuit Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2020,Intake Manifold Runner Position Sensor / Switch Circuit Range Perf Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2021,Intake Manifold Runner Position Sensor / Switch Circuit Low Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2022,Intake Manifold Runner Position Sensor / Switch Circuit High Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2023,Intake Manifold Runner Position Sensor / Switch Circuit Intermittent Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2024,EVAP Fuel Vapor Temp Sensor Circuit,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2025,EVAP Fuel Vapor Temp Sensor Range,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2026,EVAP Fuel Vapor Temp Sensor Circuit Low,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2027,EVAP Fuel Vapor Temp Sensor Circuit High,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2028,EVAP Fuel Vapor Temp Sensor Circuit Intermittent,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2029,Fuel Fired Heater Disabled,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",CRITICAL_STOP,5,3
+P0020,"""B"" Camshaft Position Actuator Circuit (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,2
+P0021,"""A"" Camshaft Position - Timing Over-Advanced or System Performance (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0022,"""A"" Camshaft Position - Timing Over-Retarded (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0023,"""B"" Camshaft Position Actuator Circuit (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,3,3
+P0024,"""B"" Camshaft Position - Timing Over-Advanced or System Performance (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0025,"""B"" Camshaft Position - Timing Over-Retarded (Bank 2)",Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,3
+P0026,Intake Valve Control Solenoid Circuit Range/Perf. B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0027,Exhaust Valve Control Solenoid Circuit Range/Perf. B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0028,Intake Valve Control Solenoid Circuit Range/Perf. B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0029,Exhaust Valve Control Solenoid Circuit Range/Perf. B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,5,3
+P0031,Oxygen (A/F) Sensor Heater Control Circuit Low (Bank 1 Sensor 1),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0032,Oxygen (A/F) Sensor Heater Control Circuit High (Bank 1 Sensor 1),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0033,Turbo Charger Bypass Valve Control Circuit,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0034,Turbo Charger Bypass Valve Control Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0035,Turbo Charger Bypass Valve Control Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0036,Heated Oxygen Sensor Control Circuit B1S2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0037,HO2S Heater Control Circuit Low B1S2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0038,HO2S Heater Control Circuit High (Bank 1 Sensor 2),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0039,Turbo Charger Bypass Valve Control Circuit Range Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0040,O2 Sensor Signals Swapped Bank 1 Bank 2 Sensor 1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0041,O2 Sensor Signals Swapped Bank 1 Bank 2 Sensor 2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0042,Heated Oxygen Sensor Control Circuit B1S3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0043,HO2S Heater Control Circuit Low B1S3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0044,HO2S Heater Control Circuit High (Bank 1 Sensor 3),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0045,Turbo/Supercharger Boost Control A Circuit Open,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0046,Turbo/Supercharger Boost Control A Circuit Range Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0047,Turbo/Supercharger Boost Control A Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0048,Turbo/Supercharger Boost Control A Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0049,Turbo / Supercharger Turbine Overspeed,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0050,HO2S Heater Control Circuit B2S1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+C0016,P0016 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0017,P0017 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0018,P0018 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0019,P0019 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0020,P0020 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0021,P0021 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0022,P0022 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0023,P0023 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0024,P0024 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0025,P0025 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0026,P0026 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0027,P0027 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0028,P0028 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0029,P0029 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0030,P0030 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0031,P0031 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0032,P0032 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0033,P0033 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0034,P0034 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0035,P0035 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0036,P0036 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0037,P0037 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0038,P0038 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0039,P0039 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0040,P0040 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0041,P0041 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0042,P0042 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0043,P0043 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0044,P0044 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0045,P0045 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0016,P0016 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0017,P0017 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0018,P0018 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0019,P0019 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0020,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0021,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0022,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0023,P0023 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0024,P0024 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0025,P0025 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0026,P0026 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0027,P0027 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0028,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0029,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0030,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0031,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0032,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0033,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0034,P0034 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0035,P0035 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0036,P0036 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0037,P0037 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0038,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0039,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0040,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0041,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0042,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0043,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0044,P0044 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0045,P0045 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+U0046,P0046 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0047,P0047 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0048,P0048 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0049,P0049 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0050,P0050 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0051,P0051 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0052,P0052 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0053,P0053 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0054,P0054 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0055,P0055 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0056,P0056 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0057,P0057 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0058,P0058 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0059,P0059 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0060,P0060 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0061,P0061 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0062,P0062 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0063,P0063 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0064,P0064 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0065,P0065 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0066,P0066 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0067,P0067 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0068,P0068 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0069,P0069 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0070,P0070 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0071,P0071 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0072,P0072 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0073,Control Module Communication Bus A Off,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0076,P0076 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0077,P0077 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0078,P0078 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0079,P0079 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0080,P0080 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0081,P0081 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0082,P0082 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0083,P0083 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0084,P0084 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0085,P0085 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0086,P0086 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0087,P0087 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0088,P0088 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0089,P0089 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0090,P0090 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0091,P0091 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0092,P0092 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0093,P0093 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0094,P0094 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0095,P0095 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0096,P0096 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0097,P0097 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0098,P0098 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0099,P0099 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0101,Lost Communication with Transmission Control Module (TCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0102,Lost Communication with Transfer Case Control Module (TCCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0103,Lost Communication with Gear Shift Control (GSC) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0104,Lost Communication with Cruise Control Module (CCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0105,Lost Communication with Fuel Injector Control Module (FICM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0106,Lost Communication with Glow Plug Control Module (GPCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+P2030,Fuel Fired Heater Performance,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",CRITICAL_STOP,5,3
+P2031,Exhaust Gas Temperature EGT Sensor Circuit Bank 1 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2032,Exhaust Gas Temperature EGT Sensor Circuit Low Bank 1 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2033,Exhaust Gas Temperature EGT Sensor Circuit High Bank 1 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2034,Exhaust Gas Temperature EGT Sensor Circuit Low Bank 2 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2035,Exhaust Gas Temperature EGT Sensor Circuit Low Bank 2 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2036,Exhaust Gas Temperature EGT Sensor Circuit High Bank 2 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2037,Reductant Injection Air Pressure Sensor A Circuit,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2038,Reductant Injection Air Pressure Sensor A Circuit Range/Performance,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2039,Reductant Injection Air Pressure Sensor A Circuit Low,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2040,Reductant Injection Air Pressure Sensor A Circuit High,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2041,Reductant Injection Air Pressure Sensor A Circuit Intermittent,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2042,Reductant Temperature Sensor Circuit,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2043,Reductant Temperature Sensor Circuit Range/Performance,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2044,Reductant Temperature Sensor Circuit Low,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2045,Reductant Temperature Sensor Circuit High,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2046,Reductant Temperature Sensor Circuit Intermittent,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2047,Reductant Injection Valve Circuit/Open Bank 1 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2048,Reductant Injection Valve Circuit Low Bank 1 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2049,Reductant Injection Valve Circuit High Bank 1 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2050,Reductant Injection Valve Circuit/Open Bank 2 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2051,Reductant Injection Valve Circuit Low Bank 2 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2052,Reductant Injection Valve Circuit High Bank 2 Unit 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2053,Reductant Injection Valve Circuit/Open Bank 1 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2054,Reductant Injection Valve Circuit Low Bank 1 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2055,Reductant Injection Valve Circuit High Bank 1 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2056,Reductant Injection Valve Circuit/Open Bank 2 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2057,Reductant Injection Valve Circuit Low Bank 2 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2058,Reductant Injection Valve Circuit High Bank 2 Unit 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,1
+P2059,Reductant Injection Air Pump Control Circuit/Open,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2060,Reductant Injection Air Pump Control Circuit Low,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2061,Reductant Injection Air Pump Control Circuit High,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,4,3
+P2062,Reductant/Regeneration Supply Control Circuit/Open,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2063,Reductant/Regeneration Supply Control Circuit Low,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2064,Reductant/Regeneration Supply Control Circuit High,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2065,Fuel Level Sensor B Circuit Malfunction,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2066,Fuel Level Sensor B Circuit Range/Performance,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2067,Fuel Level Sensor B Circuit Low Input,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2068,Fuel Level Sensor B Circuit High Input,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2069,Fuel Level Sensor B Circuit Intermittent,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2070,Intake Manifold Tuning (IMT) Valve Stuck Open Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2071,Intake Manifold Tuning (IMT) Valve Stuck Closed Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,3
+P2072,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2073,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2074,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2075,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2076,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2077,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2078,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2079,OBD Code,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,3,3
+P2080,EGT Sensor Circ Performance Bank 1 Sensor 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2081,Exhaust Gas Temperature EGT Sensor Circuit Intermittent Bank 1 Sensor 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2082,EGT Sensor Circ Performance Bank 2 Sensor 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2083,Exhaust Gas Temperature EGT Sensor Circuit Intermittent Bank 2 Sensor 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2084,EGT Sensor Circ Performance Bank 1 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2085,Exhaust Gas Temperature EGT Sensor Circuit Intermittent Bank 1 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2086,EGT Sensor Circ Performance Bank 2 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2087,Exhaust Gas Temperature EGT Sensor Circuit Intermittent Bank 2 Sensor 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,4
+P2088,A Camshaft Position Actuator Control Circuit Low Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2089,A Camshaft Position Actuator Control Circuit High Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P0051,Oxygen (A/F) Sensor Heater Control Circuit Low (Bank 2 Sensor 1),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0052,Oxygen (A/F) Sensor Heater Control Circuit High (Bank 2 Sensor 1),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0053,HO2S Heater Resistance Bank 1 Sensor 1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0054,HO2S Heater Resistance Bank 1 Sensor 2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0055,HO2S Heater Resistance Bank 1 Sensor 3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0056,Heated Oxygen Sensor Control Circuit B1S2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0057,HO2S Heater Control Circuit Low B2S2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0058,HO2S Heater Control Circuit High (Bank 2 Sensor 2),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0059,HO2S Heater Resistance Bank 2 Sensor 1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0060,HO2S Heater Resistance Bank 2 Sensor 2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0061,HO2S Heater Resistance Bank 2 Sensor 3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,2
+P0062,HO2S Heater Control Circuit B2S3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0063,HO2S Heater Control Circuit Low B2S3,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0064,HO2S Heater Control Circuit High (Bank 2 Sensor 3),Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0065,Air Assisted Injector Control Range Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0066,Air Assisted Injector Control Circuit Or Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0069,Manifold Absolute Pressure - Barometric Pressure Correlation,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0070,Ambient Air Temperature Sensor Circuit,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0071,Ambient Air Temperature Sensor Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0072,Ambient Air Temperature Sensor Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0073,Ambient Air Temperature Sensor Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0074,Ambient Air Temperature Sensor Circuit Intermittent,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0075,Intake Valve Control Solenoid Circuit B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0076,Intake Valve Control Solenoid Circuit Low B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0077,Intake Valve Control Solenoid Circuit High B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0078,Exhaust Valve Control Solenoid Circuit B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0079,Exhaust Valve Control Solenoid Circuit Low B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0080,Exhaust Valve Control Solenoid Circuit High B1,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0081,Intake Valve Control Solenoid Circuit B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0082,Intake Valve Control Solenoid Circuit Low B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0083,Exhaust Valve Control Solenoid Circuit High B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0084,Exhaust Valve Control Solenoid Circuit B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0085,Exhaust Valve Control Solenoid Circuit Low B2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,3,3
+P0086,Exhaust Valve Control Solenoid Circuit High Bank 2,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0088,Fuel Rail/System Pressure - Too High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0089,Fuel Pressure Regulator 1 Performance,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0090,Fuel Pressure Regulator 1 Control Circuit Open,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0091,Fuel Pressure Regulator 1 Control Circuit Low,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0092,Fuel Pressure Regulator 1 Control Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,4
+P0093,Fuel System Large Leak Detected,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,4
+P0094,Fuel System Small Leak Detected,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,LOW,4,2
+P0095,IAT Sensor 2 Circuit Malfunction,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0096,IAT Sensor 2 Circuit Malfunction,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,4,3
+P0097,IAT Sensor 2 Circuit Low Input,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0098,IAT Sensor 2 Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0099,IAT Circuit Sensor 2 Intermittent,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,1
+P0100,MAF Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0102,Mass Air Flow MAF Circuit Low,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0103,Mass Air Flow MAF Circuit High,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0104,Mass Air Flow MAF Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0105,MAP Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0106,MAP/Barometric Pressure Circuit Range/Performance Problem,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0107,Manifold Absolute Pressure/Barometric Pressure Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0108,MAP Pressure Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0109,MAP / Baro Pressure Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0110,IAT Sensor 1 Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0111,IAT Sensor 1 Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0112,Intake Air Temperature Sensor 1 Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+C0046,P0046 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0047,P0047 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0048,P0048 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0049,P0049 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0050,P0050 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0051,P0051 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0052,P0052 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0053,P0053 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0054,P0054 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0055,P0055 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0056,P0056 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0057,P0057 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0058,P0058 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0059,P0059 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0060,P0060 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0061,P0061 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0062,P0062 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0063,P0063 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0064,P0064 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0065,P0065 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0066,P0066 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0067,P0067 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0068,P0068 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0069,P0069 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0070,P0070 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0071,P0071 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0072,P0072 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0073,P0073 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0074,P0074 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0075,P0075 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0076,P0076 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0077,P0077 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0078,P0078 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0079,P0079 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0080,P0080 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0081,P0081 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0082,P0082 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0083,P0083 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0084,P0084 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0085,P0085 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0086,P0086 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0087,P0087 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0088,P0088 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0089,P0089 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0090,P0090 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0091,P0091 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0092,P0092 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0093,P0093 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0094,P0094 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0095,P0095 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0096,P0096 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0097,P0097 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0098,P0098 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0099,P0099 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0100,P0100 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0101,P0101 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0102,P0102 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0103,P0103 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0104,P0104 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0105,P0105 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0046,P0046 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0047,P0047 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0048,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0049,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0050,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0051,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0052,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0053,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0054,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0055,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0056,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0057,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0058,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0059,P0059 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0060,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0061,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0062,P0062 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0063,P0063 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0064,P0064 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0065,P0065 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0066,P0066 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0067,P0067 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0068,P0068 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0069,P0069 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0070,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0071,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0072,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0073,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0074,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0075,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0076,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0077,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0078,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0079,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0080,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0081,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0082,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0083,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0084,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0085,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0086,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0087,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0088,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0089,P0089 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0090,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0091,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0092,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,4
+B0093,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0094,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0095,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0096,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0097,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0098,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0099,Body DTC Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0100,P0100 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0101,P0101 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0102,P0102 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0103,P0103 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0104,P0104 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0105,P0105 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+U0074,Control Module Communication Bus B Off,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0075,P0075 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0107,Lost Communication with Throttle Actuator Control (TAC) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0108,Lost Communication with Alternate Fuel Control Module (AFCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0109,Lost Communication with Fuel Pump Control Module (FPCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0110,Lost Communication with Drive Motor Control Module (DMCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0111,Lost Communication with Battery Energy Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0114,Lost Communication with Four-Wheel Drive Clutch Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0115,"Lost Communication With ECM/PCM ""B""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0116,Lost Communication with Coolant Temperature Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0117,Lost Communication with PTO Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0118,Lost Communication with Fuel Additive Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0119,Lost Communication with Fuel Cell Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0120,Lost Communication with Starter Generator Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0121,Lost Communication With Anti-Lock Brake System (ABS) Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,CRITICAL_STOP,5,3
+U0122,Lost Communication With Vehicle Dynamics Control (VDC) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0123,Lost Communication With Yaw Rate Sensor (YRS) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0124,Lost Communication With Lateral Acceleration Sensor (LAS) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0125,Lost Communication With Multi-Axis Acceleration Sensor (MAS) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0127,Lost Communication with Tire Pressure Monitor Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0128,Lost Communication with Park Brake Control Module (PBCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,CRITICAL_STOP,5,3
+U0129,Lost Communication with Brake System Control Module (BSCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,CRITICAL_STOP,5,3
+U0130,Lost Communication with Steering Effort Control Module (SECM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0131,Lost Communication with Power Steering Control Module (PSCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0132,Lost Communication with Ride Level Control Module (RLCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0133,Lost Communication with Active Roll Control Module (ARCM),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0134,Lost Communication with Rear Power Steering Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0135,Lost Communication with Front Differential Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0136,Lost Communication with Rear Differential Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0137,Lost Communication with Trailer Brake Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,CRITICAL_STOP,5,3
+U0138,Lost Communication with All Terrain Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0139,Lost Communication with Suspension Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0140,Lost Communication With Body Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0141,"Lost Communication With Body Control Module ""A""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0142,"Lost Communication With Body Control Module ""B""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0143,"Lost Communication With Body Control Module ""C""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0144,"Lost Communication With Body Control Module ""D""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0145,"Lost Communication With Body Control Module ""E""",CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0146,Lost Communication With Gateway A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0147,Lost Communication With Gateway B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0148,Lost Communication With Gateway C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0149,Lost Communication With Gateway D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0150,Lost Communication With Gateway E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0151,Lost Communication with Restraints Control (RCM) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0152,Lost Communication with Side Restraints Control Module (Left),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0153,Lost Communication with Side Restraints Control Module (Right),CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0154,Lost Communication with Restraints Occupant Sensing Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0155,Lost Communication with Instrument Panel Control (IPC) Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0156,Lost Communication With Information Center A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0157,Lost Communication With Information Center B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0158,Lost Communication With Head Up Display,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0159,Lost Communication With Park Assist Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0160,Lost Communication With Audible Alert Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0161,Lost Communication With Compass Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0162,Lost Communication With Navigation Display Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0163,Lost Communication With Navigation Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0164,Lost Communication With HVAC Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0165,Lost Communication With Rear HVAC Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0166,Lost Communication With Auxiliary Heater Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0167,Lost Communication With Vehicle Immobilizer Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0168,Lost Communication With Vehicle Security Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0169,Lost Communication With Sunroof Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0170,Lost Communication With Restraints System Sensor A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0171,Lost Communication With Restraints System Sensor B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0172,Lost Communication With Restraints System Sensor C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0173,Lost Communication With Restraints System Sensor D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0174,Lost Communication With Restraints System Sensor E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0175,Lost Communication With Restraints System Sensor F,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0176,Lost Communication With Restraints System Sensor G,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0177,Lost Communication With Restraints System Sensor H,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0178,Lost Communication With Restraints System Sensor I,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0179,Lost Communication With Restraints System Sensor J,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0180,Lost Communication With Automatic Lighting Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0181,Lost Communication With Dynamic Headlight Leveling Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0182,Lost Communication With Lighting Control Module - Front,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0183,Lost Communication With Lighting Control Module - Rear,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0184,Lost Communication With Radio,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0185,Lost Communication With Antenna Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+P2090,B Camshaft Position Actuator Control Circuit Low Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2091,B Camshaft Position Actuator Control Circuit High Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2092,A Camshaft Position Actuator Control Circuit Low Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2093,A Camshaft Position Actuator Control Circuit High Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2094,B Camshaft Position Actuator Control Circuit Low Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2095,B Camshaft Position Actuator Control Circuit High Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",LOW,5,4
+P2096,Post Catalyst Fuel Trim System Too Lean Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",CRITICAL_STOP,5,4
+P2097,Post Catalyst Fuel Trim System Too Rich Bank 1,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,2
+P2098,Post Catalyst Fuel Trim System Too Lean Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",CRITICAL_STOP,5,4
+P2099,Post Catalyst Fuel Trim System Too Rich Bank 2,"Yakıt, Emisyon & SCR / AdBlue Dozaj Sistemi",MEDIUM,5,2
+P2100,Throttle Actuator A Control Motor Circuit Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2103,Throttle Actuator A Control Motor Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2104,Throttle Actuator Control System - Forced Idle,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2105,Throttle Actuator Control System - Forced Engine Shutdown,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2106,Throttle Actuator Control System - Forced Limited Power,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2107,Throttle Actuator Control Module Processor,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2108,Throttle Actuator Control Module Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2109,Throttle/Pedal Position Sensor A Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2111,Throttle Actuator Control System Stuck Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2112,Throttle Actuator Control System Stuck Closed,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2113,Throttle/Pedal Position Sensor B Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2114,Throttle/Pedal Position Sensor C Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2115,Throttle/Pedal Position Sensor D Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2116,Throttle/Pedal Position Sensor E Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2117,Throttle/Pedal Position Sensor F Minimum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2118,Throttle Actuator Control Motor Current Range,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2119,Throttle Actuator Control Throttle Body Range,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2120,Throttle Position Sensor/Swith C Circuit Malfunction,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2121,Throttle Position Sensor D Circuit Range/Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2122,Throttle Position Sensor D Circuit Low Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,4
+P2123,Throttle Position Sensor/Switch D Circuit High Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,1
+P2124,Throttle Position Sensor/Switch D Circuit Intermittent,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,2
+P2126,Throttle Position Sensor E Circuit Range/Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2127,Throttle Position Sensor E Circuit Low Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,4
+P2128,Throttle Position Sensor/Switch E Circuit High Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,1
+P2129,Throttle Position Sensor/Switch E Circuit Intermittent,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,2
+P2130,Throttle Position Sensor/Swith F Circuit Malfunction,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2131,Throttle Position Sensor F Circuit Range/Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2132,Throttle Position Sensor F Circuit Low Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,4
+P2133,Throttle Position Sensor/Switch F Circuit High Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,1
+P2134,Throttle Position Sensor/Switch F Circuit Intermittent,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,2
+P2135,TPS Sensor Voltage Correlation DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2136,Throttle Pedal Sensor Voltage Correlation DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2137,Throttle/Pedal Sensor Voltage Correlation Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2138,Throttle/Pedal Pos Sensor Voltage Correlation DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2139,Throttle/Pedal Pos Sensor Voltage Correlation DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2140,Throttle/Pedal Pos Sensor Voltage Correlation DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2141,EGR Throttle Position Control Circuit A Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2142,EGR Throttle Position Control Circuit A High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2143,Exhaust Gas Recirculation Vent Control Circuit /Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2144,Exhaust Gas Recirculation Vent Control Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2145,Exhaust Gas Recirculation Vent Control Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2146,Fuel Injector Group A Circuit/Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2147,Fuel Injector Group A Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2148,Fuel Injector Group A Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2149,Fuel Injector Group B Circuit/Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2153,Fuel Injector Group C Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2154,Fuel Injector Group C Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2155,Fuel Injector Group D Circuit/Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2156,Fuel Injector Group D Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2157,Fuel Injector Group D Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2158,Vehicle Speed Sensor B VSS Malfunction,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2159,Vehicle Speed Sensor B Range/Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2160,Vehicle Speed Sensor B Low Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,2
+P2161,Vehicle Speed Sensor B Intermittent,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,2
+P2162,Output Speed Sensor A/B Correlation,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2163,Throttle/Pedal Position Sensor A Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2164,Throttle/Pedal Position Sensor B Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2165,Throttle/Pedal Position Sensor C Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2166,Throttle/Pedal Position Sensor D Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2167,Throttle/Pedal Position Sensor E Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2168,Throttle/Pedal Position Sensor F Maximum Stop Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2169,OBD Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P0067,Air Assisted Injector Control Circuit High,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,CRITICAL_STOP,5,3
+P0068,MAP/MAF - Throttle Position Correlation,Yakıt Ölçümü & Hava Emiş / Kam Mili Zamanlaması,MEDIUM,5,3
+P0113,IAT Sensor 1 Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0114,IAT Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,1
+P0115,Engine Coolant Temperature Sensor Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0116,ECT Sensor Circuit Range/Performance,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0117,ECT Sensor Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",CRITICAL_STOP,5,3
+P0118,Engine Coolant Temperature Sensor Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+U0112,Lost Communication with Battery Energy Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0113,Lost Communication with Variable Valve Event and Lift Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0186,Lost Communication With Audio Amplifier A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0187,Lost Communication With Digital Disc Player/Changer Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0188,Lost Communication With Digital Disc Player/Changer Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0189,Lost Communication With Digital Disc Player/Changer Module C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0190,Lost Communication With Digital Disc Player/Changer Module D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0191,Lost Communication With Television,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0192,Lost Communication With Personal Computer,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0193,Lost Communication With Digital Audio Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0194,Lost Communication With Digital Audio Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0195,Lost Communication With Subscription Entertainment Receiver Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0196,Lost Communication With Rear Seat Entertainment Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0197,Lost Communication With Telephone Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0198,Lost Communication With Telematic Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0199,Lost Communication With Door Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0200,Lost Communication With Door Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0201,Lost Communication With Door Control Module C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0202,Lost Communication With Door Control Module D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0203,Lost Communication With Door Control Module E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0204,Lost Communication With Door Control Module F,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0205,Lost Communication With Door Control Module G,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0206,Lost Communication With Folding Top Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0207,Lost Communication With Movable Roof Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0208,Lost Communication With Seat Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0209,Lost Communication With Seat Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0210,Lost Communication With Seat Control Module C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0211,Lost Communication With Seat Control Module D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0212,Lost Communication With Steering Column Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0213,Lost Communication With Mirror Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0214,Lost Communication With Remote Function Actuation,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0215,Lost Communication With Door Switch A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0216,Lost Communication With Door Switch B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0217,Lost Communication With Door Switch C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0218,Lost Communication With Door Switch D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0219,Lost Communication With Door Switch E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0220,Lost Communication With Door Switch F,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0221,Lost Communication With Door Switch G,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0222,Lost Communication With Door Window Motor A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0223,Lost Communication With Door Window Motor B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0224,Lost Communication With Door Window Motor C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0225,Lost Communication With Door Window Motor D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0226,Lost Communication With Door Window Motor E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0227,Lost Communication With Door Window Motor F,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0228,Lost Communication With Door Window Motor G,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0229,Lost Communication With Heated Steering Wheel Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0230,Lost Communication With Rear Gate Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0231,Lost Communication With Rain Sensing Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0232,Lost Communication With Obstacle Detection Control Module - Left,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0233,Lost Communication With Obstacle Detection Control Module - Right,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0234,Lost Communication With Convenience Recall Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0235,Lost Communication With Cruise Control Front Distance Range Sensor,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0236,Lost Communication With Column Lock Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0237,Lost Communication With Digital Audio Control Module C,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0238,Lost Communication With Digital Audio Control Module D,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0239,Lost Communication With Entrapment Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0240,Lost Communication With Entrapment Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0241,Lost Communication With Headlamp Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0242,Lost Communication With Headlamp Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0243,Lost Communication With Park Assist Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0244,Lost Communication With Running Board Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0245,Lost Communication With Entertainment Control Module Front,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0246,Lost Communication With Seat Control Module E,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0247,Lost Communication With Seat Control Module F,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0248,Lost Communication With Remote Accessory Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0249,Lost Communication With Entertainment Control Module Rear B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0250,Lost Communication With Impact Classification System Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0251,Lost Communication With Running Board Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0252,Lost Communication With Lighting Control Module Rear B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0253,Lost Communication With Accessory Protocol Interface Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0254,Lost Communication With Remote Start Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0255,P0255 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0256,P0256 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0257,P0257 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0258,Lost Communication With Radio Transceiver,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0259,Lost Communication With Special Purpose Vehicle Control Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0260,Lost Communication With Seat Control Switch Module A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0261,Lost Communication With Seat Control Switch Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0262,Lost Communication With Audio Amplifier B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0263,Lost Communication With Speech Recognition Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+P2101,Throttle Actuator A Control Motor Circuit Range Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2102,Throttle Actuator A Control Motor Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2110,Throttle Actuator Control System - Forced Limited RPM,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2125,Throttle Position Sensor/Swith E Circuit Malfunction,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2150,Fuel Injector Group B Circuit Low,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2151,Fuel Injector Group B Circuit High,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2152,Fuel Injector Group C Circuit/Open,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2170,OBD Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2171,OBD Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2172,Throttle Actuator Control System - Sudden High Air Flow Detected,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,3
+P2173,Throttle Actuator Control System - High Air Flow Detected,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,4,3
+P2174,Throttle Actuator Control System - Sudden Low Air Flow Detected,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,3,3
+P2175,Throttle Actuator Control System - Low Air Flow Detected,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,3,3
+P2176,Throttle Actuator Control System - Idle Position Not Learned,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2177,System Too Lean Off Idle Bank 1,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2178,System Too Rich Off Idle Bank 1,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2179,System Too Lean Off Idle Bank 2,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2180,System Too Rich Off Idle Bank 2,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2181,Cooling System Performance Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2182,Engine Coolant Temperature Sensor 2 Circuit Malfunction,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2183,ECT Sensor #2 Circuit Range/Performance,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2184,ECT Sensor #2 Circuit Low Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,3
+P2185,Engine Coolant Temperature Sensor #2 Circuit High Input,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2186,Engine Coolant Temperature Sensor #2 Circuit Intermittent,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,4,3
+P2187,System Too Lean at Idle (Bank 1) DTC,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2188,System Too Rich Off Idle Bank 1,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2189,System Too Lean at Idle (Bank 2) Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,CRITICAL_STOP,5,4
+P2190,System Too Rich Off Idle Bank 2,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2191,System Too Lean At Higher Load Bank 1,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2192,System Too Rich At Higher Load Bank 1,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2193,System Too Lean At Higher Load Bank 2,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2194,System Too Rich At Higher Load Bank 2,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,3,4
+P2195,O2 Sensor Signal Biased/Stuck Lean (Bank 1 Sensor 1) Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2196,O2 Sensor Signal Biased/Stuck Rich (Bank 1 Sensor 1) Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2197,O2 Sensor Signal Biased/Stuck Lean (Bank 2 Sensor 1) Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2198,O2 Sensor Signal Biased/Stuck Rich (Bank 2 Sensor 1) Code,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,3
+P2199,Intake Air Temperature Sensor 1/2 Correlation,Elektronik Gaz Kelebeği & Yakıt Enjeksiyonu,MEDIUM,5,4
+P2200,NOx Sensor Circuit Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2201,NOx Sensor Circuit Range/Performance Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2202,NOx Sensor Circuit Low Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2203,NOx Sensor Circuit High Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2204,NOx Sensor Circuit Intermittent Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2205,NOx Sensor Heater Control Circuit/Open Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2206,NOx Sensor Heater Control Circuit Low Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2207,NOx Sensor Heater Control Circuit High Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2208,NOx Sensor Heater Sense Circuit Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2209,NOx Sensor Heater Sense Circuit Range/Performance Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2210,NOx Sensor Heater Sense Circuit Low Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2211,NOx Sensor Heater Sense Circuit High Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2212,NOx Sensor Heater Sense Circuit Intermittent Bank 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2213,NOx Sensor Circuit Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2214,NOx Sensor Circuit Range/Performance Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2215,NOx Sensor Circuit Low Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2216,NOx Sensor Circuit High Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2217,NOx Sensor Circuit Intermittent Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2218,NOx Sensor Heater Control Circuit/Open Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2219,NOx Sensor Heater Control Circuit Low Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2220,NOx Sensor Heater Control Circuit High Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2221,NOx Sensor Heater Sense Circuit Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2222,NOx Sensor Heater Sense Circuit Range/Performance Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2223,NOx Sensor Heater Sense Circuit Low Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2224,NOx Sensor Heater Sense Circuit High Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2225,NOx Sensor Heater Sense Circuit Intermittent Bank 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,3
+P2226,Barometric Pressure Sensor A,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2227,Barometric Pressure Sensor A Range/Performance,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2228,Barometric Pressure Sensor A Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2229,Barometric Pressure Sensor A High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2230,Barometric Pressure Sensor A Intermittent/Erratic,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2231,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2232,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 1 Sensor 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2233,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 1 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2234,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2235,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 2 Sensor 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2236,O2 Sensor Signal Circuit Shorted to Heater Circuit Bank 2 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2237,O2 Sensor Positive Current Control Circuit/Open Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2238,O2 Sensor Positive Current Control Circuit Low Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2239,O2 Sensor Positive Current Control Circuit High Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2240,O2 Sensor Positive Current Control Circuit/Open Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2241,O2 Sensor Positive Current Control Circuit Low Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2242,O2 Sensor Positive Current Control Circuit High Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P0119,Engine Coolant Temperature Sensor Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0120,TPS A Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0121,Throttle Position Sensor/Switch A Circuit Range/Performance Problem,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0122,Throttle Position Sensor/Switch A Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0123,Throttle Position Sensor/Switch A Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0124,Throttle Position Sensor/Switch A Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0125,OBD-II Trouble Code,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0126,Insufficient Coolant Temperature for Stable Operation,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0127,Intake Air Temperature Too High,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,1
+P0129,Barometric Pressure Too Low,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",CRITICAL_STOP,5,1
+P0130,"O2 Sensor Circuit Malfunction (Bank 1, Sensor 1)","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0131,Oxygen Sensor Circuit Low Voltage (B1S1),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,2
+P0132,O2 Sensor Circuit High (Bank 1 Sensor 1),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,2,2
+P0133,Oxygen Sensor Circuit Slow Response,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,4
+P0134,O2 Sensor Circuit No Activity Detected (Bank 1 Sensor 1),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0135,Oxygen O2 Sensor Heater Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0136,O2 Sensor Circuit Low Voltage (B1S2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0137,Oxygen Sensor Circuit Low Voltage B1S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",CRITICAL_STOP,5,4
+P0138,O2 Oxygen Sensor Circuit High (B1S2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,2
+P0139,Oxygen Sensor Circuit Slow Response (B1S2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,4
+P0140,O2 Sensor Circuit No Activity Detected (B1S2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0141,O2 Sensor Heater Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0142,02 Sensor Circuit Malfunction B1S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0145,O2 Sensor Circuit Slow Response B1S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0146,O2 Sensor Circuit (No Activity),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0147,O2 Sensor Heater Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0148,Fuel Delivery Error,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,2
+P0149,Fuel Timing Error,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,2
+P0150,O2 Sensor Circuit Malfunction Bank 2 Sensor 1,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0151,O2 Sensor Circuit Low B2S1,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,2
+P0152,O2 Sensor (High Voltage) B2S1,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",CRITICAL_STOP,5,3
+P0153,Oxygen Sensor Circuit Slow Response B2S1,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,4
+P0154,02 Sensor No Activity Circuit B2S1,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0155,O2 Sensor Heater Circuit Malfunction (B2S1),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0156,O2 Sensor Circuit Malfunction B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0157,O2 Sensor Circuit Low B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0158,O2 Sensor Circuit High B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0159,O2 Sensor Circuit Slow Response B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,4
+P0160,O2 Sensor Circuit No Activity B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0161,Oxygen O2 Sensor Circuit Low B2S2,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,4
+P0162,O2 Sensor Circuit Malfunction B2S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0163,O2 Oxygen Sensor Circuit Low B2S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0164,O2 Sensor Circuit High B2S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0165,O2 Sensor Circuit Slow Response B2S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0166,O2 Sensor Circuit No Activity B1S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0167,O2 Sensor Heater Circuit Malfunction B2S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0168,Fuel Temperature Too High,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0169,Incorrect Fuel Composition,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0170,Fuel Trim Malfunction (Bank 1),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0173,Fuel Trim Malfunction (Bank 2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0174,System Too Lean (Bank 2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0175,Engine Too Rich (Bank 2),"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,4
+P0176,Fuel Composition Sensor Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0177,Fuel Composition Sensor Circuit Range/Performance,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0178,Fuel Composition Sensor Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0179,Fuel Composition Sensor Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,4
+P0180,Fuel Temperature Sensor A Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0181,Fuel Temperature Sensor A Circuit Range/Performance,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0182,Fuel Temperature Sensor A Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0183,Fuel Temperature Sensor A Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0184,Fuel Temperature Sensor A Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0185,Fuel Temperature Sensor B Circuit Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0186,Fuel Temperature Sensor B Circuit Range/Performance,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0187,Fuel Temperature Sensor B Circuit Low Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0188,Fuel Temperature Sensor B Circuit High Input,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0189,Fuel Temperature Sensor B Circuit Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",LOW,5,2
+P0190,"Fuel Rail Pressure Sensor ""A"" Circuit","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0191,"Fuel Rail Pressure Sensor ""A"" Circuit Range/Performance","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0192,"Fuel Rail Pressure Sensor ""A"" Circuit Low","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,2,3
+P0193,"Fuel Rail Pressure Sensor ""A"" Circuit High","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,3,3
+P0194,"Fuel Rail Pressure Sensor ""A"" Circuit Intermittent","Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0195,Engine Oil Temperature Sensor Malfunction,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0196,Engine Oil Temperature Sensor Range Performance,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,3
+P0197,Engine Oil Temperature Sensor Low,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0198,Engine Oil Temperature Sensor High,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0199,Engine Oil Temperature Sensor Intermittent,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,4,2
+P0200,Fuel Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0201,Cylinder 1 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+C0106,P0106 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0107,P0107 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0108,P0108 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0109,P0109 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0110,P0110 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0111,P0111 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0112,P0112 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0113,P0113 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0114,P0114 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0115,P0115 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0116,P0116 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0117,P0117 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0118,P0118 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0119,P0119 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0120,P0120 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0121,P0121 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0122,P0122 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0123,P0123 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0124,P0124 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0125,P0125 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0126,P0126 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0127,P0127 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0128,P0128 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",LOW,3,3
+C0129,P0129 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0130,P0130 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0131,P0131 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0132,P0132 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0133,P0133 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0134,P0134 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0135,P0135 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0136,P0136 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0137,P0137 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0138,P0138 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0139,P0139 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0140,P0140 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0141,P0141 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0142,P0142 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0143,P0143 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0144,P0144 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0145,P0145 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0146,P0146 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0147,P0147 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0148,P0148 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0149,P0149 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0150,P0150 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0151,P0151 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0152,P0152 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0153,P0153 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0154,P0154 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0155,P0155 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0156,P0156 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0157,P0157 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0158,P0158 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0159,P0159 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0160,P0160 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0161,P0161 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0162,P0162 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0163,P0163 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0164,P0164 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0165,P0165 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0166,P0166 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0167,P0167 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0168,P0168 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0169,P0169 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0170,P0170 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0171,P0171 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0172,P0172 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0173,P0173 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0174,P0174 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0175,P0175 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0176,P0176 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0177,P0177 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0178,P0178 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0179,P0179 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0180,P0180 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0181,P0181 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0182,P0182 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0183,P0183 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0184,P0184 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0185,P0185 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0106,P0106 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0107,P0107 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0108,P0108 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0109,P0109 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0110,P0110 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0111,P0111 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0112,P0112 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0113,P0113 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0114,P0114 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0115,P0115 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0116,P0116 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0117,P0117 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0118,P0118 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0119,P0119 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0120,P0120 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0121,P0121 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0122,P0122 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0123,P0123 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0124,P0124 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0125,P0125 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0126,P0126 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0127,P0127 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0128,P0128 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",LOW,3,3
+B0129,P0129 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0130,P0130 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0131,P0131 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0132,P0132 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0133,P0133 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0134,P0134 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0135,P0135 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0136,P0136 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0137,P0137 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0138,P0138 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0139,P0139 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0140,P0140 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0141,P0141 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0142,P0142 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0143,P0143 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0144,P0144 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0145,P0145 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0146,P0146 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0147,P0147 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0148,P0148 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0149,P0149 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0150,P0150 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0151,P0151 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0152,P0152 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0153,P0153 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0154,P0154 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0155,P0155 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0156,P0156 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0157,P0157 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0158,P0158 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0159,P0159 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0160,P0160 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0161,P0161 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0162,P0162 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0163,P0163 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0164,P0164 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0165,P0165 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0166,P0166 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0167,P0167 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0168,P0168 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0169,P0169 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0170,P0170 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0171,P0171 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0172,P0172 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0173,P0173 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0174,P0174 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0175,P0175 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0176,P0176 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0177,P0177 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0178,P0178 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0179,P0179 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0180,P0180 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0181,P0181 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0182,P0182 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0183,P0183 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0184,P0184 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0185,P0185 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+U0264,Lost Communication With Camera Module Rear,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,LOW,4,3
+U0265,P0265 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0266,P0266 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0267,P0267 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0268,P0268 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0269,P0269 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0270,P0270 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0271,P0271 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0272,P0272 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0273,P0273 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0274,P0274 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0275,P0275 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0276,P0276 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0277,P0277 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0278,P0278 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0279,P0279 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0280,P0280 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0281,P0281 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0282,P0282 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0283,P0283 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0284,P0284 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0285,P0285 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0286,Lost Communication With Radiator Anti Tamper Device,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0287,Lost Communication With Transmission Fluid Pump Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0288,Lost Communication With DC to AC Converter Control Module-A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0289,Lost Communication With DC to AC Converter Control Module-B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0290,P0290 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0291,Lost Communication with Gear Shift Control (GSC-B) Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0292,Lost Communication with Drive Motor Control Module B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,5,3
+U0293,Lost Communication With Hybrid Powertrain Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0294,Lost Communication With Powertrain Control Monitor Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0295,Lost Communication With AC to AC Converter Control Module,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0296,Lost Communication With AC to DC Converter Control Module-A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0297,Lost Communication With AC to DC Converter Control Module-B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0298,Lost Communication With DC to DC Converter Control Module-A,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0299,Lost Communication With DC to DC Converter Control Module-B,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,4,3
+U0300,P0300 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0301,P0301 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0302,P0302 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0303,P0303 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0304,P0304 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0305,P0305 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0306,P0306 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0307,P0307 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0308,P0308 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0309,P0309 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0310,P0310 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0311,P0311 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0312,P0312 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0313,P0313 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0314,P0314 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0315,P0315 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0316,P0316 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0317,P0317 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0318,P0318 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0319,P0319 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0320,P0320 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0321,P0321 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0322,P0322 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0323,P0323 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0324,P0324 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0325,P0325 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0326,P0326 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0327,P0327 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0328,P0328 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0329,P0329 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0330,P0330 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0331,P0331 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0332,P0332 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0333,P0333 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0334,P0334 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0335,P0335 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0336,P0336 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0337,P0337 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0338,P0338 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0339,P0339 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0340,P0340 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0341,P0341 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0342,P0342 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0343,P0343 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P2243,O2 Sensor Reference Voltage Circuit/Open Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2244,O2 Sensor Reference Voltage Performance Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2245,O2 Sensor Reference Voltage Circuit Low Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2246,O2 Sensor Reference Voltage Circuit High Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2247,O2 Sensor Reference Voltage Circuit/Open Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2248,O2 Sensor Reference Voltage Performance Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2249,O2 Sensor Reference Voltage Circuit Low Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2250,O2 Sensor Reference Voltage Circuit High Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2251,O2 Sensor Negative Current Control Circuit/Open Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2252,O2 Sensor Negative Current Control Circuit Low Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2253,O2 Sensor Negative Current Control Circuit High Bank 1 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2254,O2 Sensor Negative Current Control Circuit/Open Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2255,O2 Sensor Negative Current Control Circuit Low Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2256,O2 Sensor Negative Current Control Circuit High Bank 2 Sensor 1,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,1
+P2257,Secondary Air Injection System Control A Circuit Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2258,Secondary Air Injection System Control 'A' Circuit High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2259,Secondary Air Injection System Control B Circuit Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2260,Secondary Air Injection System Control B Circuit High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2261,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2262,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2263,Turbo/Supercharger Boost System Performance,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2264,Water in Fuel Sensor Circuit,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2265,Water in Fuel Sensor Circuit Range/Performance,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2266,Water in Fuel Sensor Circuit Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2267,Water in Fuel Sensor Circuit High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2268,Water in Fuel Sensor Circuit Intermittent,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2269,Water in Fuel Sensor Condition,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,2
+P2272,O2 Sensor Signal Stuck Lean B2S2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2273,O2 Sensor Signal Biased/Stuck Rich Bank 2 Sensor 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2274,O2 Sensor Signal Biased/Stuck Lean Bank 1 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2275,O2 Sensor Signal Biased/Stuck Rich Bank 1 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2276,O2 Sensor Signal Stuck Lean Bank 2 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2277,O2 Sensor Signal Biased/Stuck Rich Bank 2 Sensor 3,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2278,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2279,Intake Air System Leak,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,5,4
+P2280,Air Flow Restriction/Air Leak Between Air Filter and MAF,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2281,Air Leak Between MAF and Throttle Body,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2282,Air Leak Between Throttle Body and Intake Valves,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,1
+P2283,Injector Control Pressure Sensor Circuit,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2284,Injector Control Pressure Sensor Circuit Range/Performance,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2285,Injector Control Pressure Sensor Circuit Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2286,Injector Control Pressure Sensor Circuit High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2287,Injector Control Pressure Sensor Circuit Intermittent,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,4
+P2288,Injector Control Pressure Too High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,4,1
+P2289,Injector Control Pressure Too High - Engine Off,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,4,1
+P2290,Injector Control Pressure Too Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,4,1
+P2291,Injector Control Pressure Too Low - Engine Cranking,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,4,1
+P2292,Injector Control Pressure Erratic,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",CRITICAL_STOP,4,1
+P2293,Fuel Pressure Regulator 2 Performance,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,3
+P2294,Fuel Pressure Regulator 2 Control Circuit Open,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,2
+P2295,Fuel Pressure Regulator 2 Control Circuit Low,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,2
+P2296,Fuel Pressure Regulator 2 Control Circuit High,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,4,2
+P2297,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2298,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2299,OBD Code,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,3,3
+P2300,Ignition Coil A Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2301,Ignition Coil A Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2302,Ignition Coil A Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2303,Ignition Coil B Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2304,Ignition Coil B Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2305,Ignition Coil B Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2306,Ignition Coil C Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2307,Ignition Coil C Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2308,Ignition Coil C Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2309,Ignition Coil D Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2310,Ignition Coil D Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2311,Ignition Coil D Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2312,Ignition Coil E Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2313,Ignition Coil E Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2314,Ignition Coil E Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2315,Ignition Coil F Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2316,Ignition Coil F Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2317,Ignition Coil F Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2318,Ignition Coil G Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2319,Ignition Coil G Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2320,Ignition Coil G Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2321,Ignition Coil H Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2322,Ignition Coil H Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P0143,O2 Sensor Circuit Low B1S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0144,O2 Sensor Circuit High B1S3,"Yakıt & Hava Ölçümü (MAF, MAP, O2, ECT Sensörleri)",MEDIUM,5,3
+P0202,Cylinder 2 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0203,Cylinder 3 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0204,Cylinder 4 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0205,Cylinder 5 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0206,Cylinder 6 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0207,Cylinder 7 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0208,Cylinder 8 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0209,Cylinder 9 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0210,Cylinder 10 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0211,Cylinder 11 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0212,Cylinder 12 Injector Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0213,Cold Start Injector 1 Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0214,Cold Start Injector 2 Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0215,Engine Shutoff Solenoid Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,CRITICAL_STOP,5,4
+P0216,Injection Timing Control Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0217,Engine Over Temperature,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0218,Transmission Over Temperature,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,CRITICAL_STOP,5,3
+P0219,Engine Overspeed Condition,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0220,TPS B Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0221,Throttle Position Sensor B Circuit Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0222,Throttle Position Sensor B Circuit Low Input,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0223,Throttle Position Sensor/Switch B Circuit High Input,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,1
+P0224,Throttle Position Sensor/Switch B Circuit Intermittent,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,2
+P0225,Throttle Position Sensor/Swith C Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0226,Throttle Position Sensor C Circuit Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0227,Throttle Position Sensor C Circuit Low Input,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0228,Throttle Position Sensor/Switch C Circuit High Input,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,1
+P0229,Throttle Position Sensor/Switch C Circuit Intermittent,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,2
+P0230,Fuel Pump Primary Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0231,Low Voltage Fuel Pump Secondary Circuit,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0232,High Voltage Fuel Pump Secondary Circuit,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,CRITICAL_STOP,5,3
+P0233,Fuel Pump Secondary Circuit Intermittent,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0235,Turbocharger Boost Sensor A Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0236,Turbocharger Boost Sensor A Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0237,Turbocharger/Supercharger Boost Sensor A Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0238,Turbocharger/Supercharger Boost Sensor A Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0239,Turbocharger Boost Sensor B Circuit Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0240,Turbocharger Boost Sensor B Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0241,Turbocharger/Supercharger Boost Sensor B Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0242,Turbocharger/Supercharger Boost Sensor B Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0243,Turbocharger Wastegate Solenoid A Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0244,Turbocharger Wastegate Solenoid A Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0245,Turbocharger Wastegate Solenoid A Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0246,Turbocharger Wastegate Solenoid A High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0247,Turbocharger Wastegate Solenoid B Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0248,Turbocharger Wastegate Solenoid B Range/Performance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0249,Turbocharger Wastegate Solenoid B Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0250,Turbocharger Wastegate Solenoid B High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0251,Injection Pump Fuel Metering Control A Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0252,Injection Pump Fuel Metering Control A Range,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0253,Injection Pump Fuel Metering Control A Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,3
+P0254,Injection Pump Fuel Metering Control A High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0255,Injection Pump Fuel Metering Control B Intermittent,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0258,Injection Pump Fuel Metering Control B Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,3
+P0259,Injection Pump Fuel Metering Control B High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0260,Injection Pump Fuel Metering Control B Intermittent,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0261,Cylinder 1 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0262,Cylinder 1 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0263,Cylinder 1 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0264,Cylinder 2 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0265,Cylinder 2 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0266,Cylinder 2 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0267,Cylinder 3 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0268,Cylinder 3 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0269,Cylinder 3 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0270,Cylinder 4 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0271,Cylinder 4 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0272,Cylinder 4 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0273,Cylinder 5 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0274,Cylinder 5 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0275,Cylinder 5 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0276,Cylinder 6 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0277,Cylinder 6 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0278,Cylinder 6 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0279,Cylinder 7 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0280,Cylinder 7 Injector Circuit High Code,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+C0186,P0186 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0187,P0187 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0188,P0188 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0189,P0189 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0190,P0190 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0191,P0191 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0192,P0192 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0193,P0193 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0194,P0194 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0195,P0195 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0196,P0196 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0197,P0197 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0198,P0198 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0199,P0199 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0200,P0200 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0201,P0201 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0202,P0202 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0203,P0203 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0204,P0204 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0205,P0205 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0206,P0206 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0207,P0207 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0208,P0208 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0209,P0209 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0210,P0210 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0211,P0211 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0212,P0212 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0213,P0213 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0214,P0214 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0215,P0215 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0216,P0216 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0217,P0217 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0218,P0218 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0219,P0219 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0220,P0220 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0221,P0221 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0222,P0222 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0223,P0223 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0224,P0224 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0225,P0225 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0226,P0226 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0227,P0227 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0228,P0228 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0229,P0229 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0230,P0230 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0231,P0231 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0232,P0232 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0233,P0233 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0234,P0234 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0235,P0235 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0236,P0236 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0237,P0237 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0238,P0238 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0239,P0239 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0240,P0240 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0241,P0241 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0242,P0242 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0243,P0243 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0244,P0244 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0245,P0245 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0246,P0246 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0247,P0247 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0248,P0248 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0249,P0249 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0250,P0250 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0251,P0251 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0252,P0252 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0253,P0253 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0254,P0254 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0255,P0255 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0256,P0256 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0257,P0257 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0258,P0258 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0259,P0259 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0260,P0260 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0261,P0261 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0262,P0262 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0263,P0263 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0264,P0264 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0265,P0265 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0186,P0186 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0187,P0187 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0188,P0188 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0189,P0189 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0190,P0190 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0191,P0191 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0192,P0192 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0193,P0193 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0194,P0194 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0195,P0195 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0196,P0196 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0197,P0197 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0198,P0198 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0199,P0199 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0200,P0200 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0201,P0201 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0202,P0202 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0203,P0203 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0204,P0204 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0205,P0205 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0206,P0206 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0207,P0207 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0208,P0208 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0209,P0209 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0210,P0210 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0211,P0211 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0212,P0212 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0213,P0213 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0214,P0214 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0215,P0215 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0216,P0216 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0217,P0217 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0218,P0218 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0219,P0219 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0220,P0220 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0221,P0221 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0222,P0222 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0223,P0223 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0224,P0224 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0225,P0225 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0226,P0226 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0227,P0227 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0228,P0228 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0229,P0229 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0230,P0230 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0231,P0231 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0232,P0232 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0233,P0233 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0234,P0234 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0235,P0235 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0236,P0236 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0237,P0237 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0238,P0238 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0239,P0239 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0240,P0240 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0241,P0241 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0242,P0242 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0243,P0243 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0244,P0244 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0245,P0245 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0246,P0246 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0247,P0247 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0248,P0248 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0249,P0249 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0250,P0250 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0251,P0251 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0252,P0252 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0253,P0253 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0254,P0254 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0255,P0255 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0256,P0256 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0257,P0257 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0258,P0258 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0259,P0259 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0260,P0260 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0261,P0261 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0262,P0262 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0263,P0263 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0264,P0264 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0265,P0265 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+U0344,P0344 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0345,P0345 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0346,P0346 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0347,P0347 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0348,P0348 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0349,P0349 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0350,P0350 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0351,P0351 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0352,P0352 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0353,P0353 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P2270,O2 Sensor Signal Biased/Stuck Lean Bank 1 Sensor 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2271,O2 Sensor Signal Biased/Stuck Rich Bank 1 Sensor 2,"NOx, O2 Sensörleri & Emiş Havası Kontrolü",MEDIUM,5,3
+P2323,Ignition Coil H Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2324,Ignition Coil I Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2325,Ignition Coil I Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2326,Ignition Coil I Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2327,Ignition Coil J Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2328,Ignition Coil J Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2329,Ignition Coil J Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2330,Ignition Coil K Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P0256,Injection Pump Fuel Metering Control B Malfunction,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0257,Injection Pump Fuel Metering Control B Range,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,3
+P0281,Cylinder 7 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0282,Cylinder 8 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0283,Cylinder 8 Injector Circuit High DTC,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0284,Cylinder 8 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0285,Cylinder 9 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0286,Cylinder 9 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0287,Cylinder 9 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0288,Cylinder 10 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+C0266,P0266 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+U0354,P0354 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0355,P0355 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0356,P0356 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0357,P0357 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0358,P0358 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0359,P0359 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0360,P0360 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0361,P0361 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0362,P0362 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0363,P0363 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0364,P0364 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0365,P0365 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0366,P0366 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0367,P0367 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0368,P0368 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0369,P0369 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0370,P0370 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0371,P0371 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0372,P0372 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0373,P0373 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0374,P0374 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0375,P0375 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0376,P0376 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0377,P0377 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0378,P0378 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P2331,Ignition Coil K Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2332,Ignition Coil K Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2333,Ignition Coil L Primary Control Circuit Low,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2334,Ignition Coil L Primary Control Circuit High,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2335,Ignition Coil L Secondary Circuit,Güç Aktarma Organları & Motor Yönetimi (Powertrain),LOW,5,1
+P2336,Cylinder 1 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2337,Cylinder 2 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2338,Cylinder 3 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2339,Cylinder 4 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2340,Cylinder 5 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2341,Cylinder 6 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2342,Cylinder 7 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2343,Cylinder 8 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2344,Cylinder 9 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2345,Cylinder 10 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2346,Cylinder 11 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2347,Cylinder 12 Above Knock Threshold,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,5,1
+P2348,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2349,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2350,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2351,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2352,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2353,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2354,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2355,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P0289,Cylinder 10 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0290,Cylinder 10 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0291,Cylinder 11 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0292,Cylinder 11 Injector Circuit High,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0293,Cylinder 11 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0294,Cylinder 12 Injector Circuit Low,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,5,4
+P0295,Cylinder 12 Injector Circuit High Code,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,4
+P0296,Cylinder 12 Contribution/Balance,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,3,4
+P0297,Vehicle Overspeed Condition,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,MEDIUM,4,3
+P0298,Engine Oil Over Temperature Condition,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,CRITICAL_STOP,5,3
+P0299,Turbocharger/Supercharger A Underboost Condition,Yakıt Ölçümü & Enjektör Devresi / Turboşarj,CRITICAL_STOP,5,3
+P0301,Cylinder #1 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0302,Cylinder 2 Misfire Detected,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,4
+P0303,Cylinder #3 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0304,Cylinder #4 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0305,Cylinder #5 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0306,Cylinder 6 Misfire Detected,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,4
+P0307,Cylinder #7 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0308,Cylinder #8 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0309,Cylinder #9 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0310,Cylinder #10 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0311,Cylinder #11 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0312,Cylinder #12 Misfire,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0313,Misfire Detected with Low Fuel,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,4
+P0314,Single Cylinder Misfire (Cylinder not Specified),Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,4
+C0267,P0267 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0268,P0268 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0269,P0269 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0270,P0270 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0271,P0271 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0272,P0272 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0273,P0273 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0274,P0274 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0275,P0275 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0276,P0276 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0277,P0277 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0278,P0278 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0279,P0279 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0280,P0280 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0281,P0281 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0282,P0282 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0283,P0283 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0284,P0284 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0285,P0285 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0286,P0286 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0287,P0287 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0288,P0288 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0289,P0289 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0290,P0290 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0291,P0291 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0266,P0266 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0267,P0267 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0268,P0268 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0269,P0269 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0270,P0270 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0271,P0271 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0272,P0272 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0273,P0273 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0274,P0274 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0275,P0275 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0276,P0276 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0277,P0277 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0278,P0278 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0279,P0279 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0280,P0280 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0281,P0281 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0282,P0282 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0283,P0283 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0284,P0284 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0285,P0285 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0286,P0286 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0287,P0287 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0288,P0288 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0289,P0289 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0290,P0290 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0291,P0291 OBD Code,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+C0292,P0292 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0293,P0293 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0294,P0294 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0295,P0295 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0296,P0296 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0297,P0297 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0298,P0298 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0299,P0299 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0300,P0300 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0301,P0301 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0302,P0302 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0303,P0303 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0304,P0304 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0305,P0305 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0306,P0306 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0307,P0307 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0308,P0308 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0309,P0309 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0310,P0310 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0311,P0311 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0312,P0312 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0313,P0313 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0314,P0314 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0315,P0315 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0316,P0316 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+P3000,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3001,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3002,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3003,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3004,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3005,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3006,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3007,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3008,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3009,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3010,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3011,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3012,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3013,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3014,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3015,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3016,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3017,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3018,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3019,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3020,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3021,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3022,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3023,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3024,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P0315,Crankshaft Position System Variation Not Learned,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0316,Engine Misfire at Startup,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,3
+P0317,Rough Road Hardware Not Present,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,4,3
+P0318,Rough Road Sensor A Signal Circuit,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,4,3
+P0319,Rough Road Sensor B Signal Circuit,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,4,3
+P0320,Ignition/Distributor Engine Speed Input Circuit,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0321,Ignition/Distributor Engine Speed Input Circuit Range / Performance,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0322,Ignition/Distributor Engine Speed Input Circuit Low,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0323,Ignition/Distributor Engine Speed Input Circuit High,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0324,Knock Control System Error,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,2
+P0325,Knock Sensor 1 Circuit Malfunction,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,4
+P0326,Knock Sensor Circuit Range Performance,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0327,Knock Sensor DTC Code,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,4
+P0328,Knock Sensor Circuit High Input,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0329,Knock Sensor Circuit Intermittent,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,2
+U0379,P0379 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0380,P0380 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0381,P0381 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0382,P0382 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0383,P0383 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0384,P0384 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0385,P0385 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0386,P0386 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0387,P0387 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0388,P0388 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0389,P0389 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0390,P0390 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0391,P0391 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0392,P0392 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0393,P0393 OBD Code,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P2356,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2357,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2358,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2359,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2360,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2361,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2362,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2363,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2364,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2365,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2366,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2367,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2368,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2369,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P2370,OBD Code,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P0330,Knock Sensor 2 Circuit Malfunction (Bank 2),Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,2,3
+P0331,Knock Sensor 2 Circuit Range/Performance,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0332,Knock Sensor 2 Circuit Low (Bank 2),Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,4
+P0333,Knock Sensor 2 Circuit High Input,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0334,Knock Sensor 2 Circuit Intermittent (Bank 2),Ateşleme Sistemi & Tekleme (Misfire) Tespiti,CRITICAL_STOP,5,2
+P0335,Crankshaft Position Sensor A Circuit Malfunction,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,4
+P0336,Crankshaft Position Sensor Range/Performance,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,3
+P0337,Crankshaft Position Sensor A Circuit Low,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,4,2
+P0338,Crankshaft Position Sensor A Circuit High Input,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,5,2
+P0339,Crankshaft Position Sensor B Circuit Intermittent,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,4,2
+P0340,Camshaft Position Sensor Circuit Malfunction,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,LOW,5,4
+P0341,Camshaft Position Sensor Circuit Range/Performance,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,LOW,5,4
+P0342,"Camshaft Position Sensor ""A"" Circuit Low",Ateşleme Sistemi & Tekleme (Misfire) Tespiti,LOW,5,4
+P0343,"Camshaft Position Sensor ""A"" Circuit Low",Ateşleme Sistemi & Tekleme (Misfire) Tespiti,LOW,4,3
+P0344,"Camshaft Position Sensor ""A"" Circuit Intermittent",Ateşleme Sistemi & Tekleme (Misfire) Tespiti,LOW,5,3
+C0317,P0317 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0318,P0318 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0319,P0319 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0320,P0320 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0321,P0321 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0322,P0322 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0323,P0323 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0324,P0324 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0325,P0325 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0326,P0326 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0327,P0327 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0328,P0328 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0329,P0329 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0330,P0330 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+C0331,P0331 OBD Code,"Şasi, ABS / ESP Fren Sistemi & Süspansiyon",MEDIUM,3,3
+B0292,B0292 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0293,B0293 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0294,B0294 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0295,B0295 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0296,B0296 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0297,B0297 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0298,B0298 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0299,B0299 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0300,B0300 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0301,B0301 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0302,B0302 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0303,B0303 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0304,B0304 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0305,B0305 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+B0306,B0306 Arıza Teşhis Kaydı,"Gövde Elektroniği, Aydınlatma & BCM",MEDIUM,3,3
+P3025,P3025 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3026,P3026 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3027,P3027 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3028,P3028 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3029,P3029 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3030,P3030 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3031,P3031 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3032,P3032 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3033,P3033 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3034,P3034 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3035,P3035 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3036,P3036 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3037,P3037 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3038,P3038 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+P3039,P3039 Arıza Teşhis Kaydı,Güç Aktarma Organları & Motor Yönetimi (Powertrain),MEDIUM,3,3
+U0394,U0394 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0395,U0395 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0396,U0396 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0397,U0397 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0398,U0398 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0399,U0399 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0400,U0400 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0401,U0401 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0402,U0402 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0403,U0403 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0404,U0404 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0405,U0405 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0406,U0406 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0407,U0407 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+U0408,U0408 Arıza Teşhis Kaydı,CAN-Bus & Ağ Haberleşme / ECU İletişim Kaybı,MEDIUM,3,3
+P0345,P0345 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0346,P0346 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0347,P0347 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0348,P0348 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0349,P0349 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0350,P0350 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0351,P0351 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0352,P0352 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0353,P0353 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0354,P0354 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0355,P0355 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0356,P0356 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0357,P0357 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0358,P0358 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3
+P0359,P0359 Arıza Teşhis Kaydı,Ateşleme Sistemi & Tekleme (Misfire) Tespiti,MEDIUM,3,3

@@ -1,0 +1,1972 @@
+{
+  "metadata": {
+    "title": "SAE J1939 Heavy Duty & Commercial Vehicle Diagnostic Database",
+    "version": "1.0.0",
+    "standard": "SAE J1939-71 / J1939-73",
+    "total_spns": 53,
+    "total_fmis": 20
+  },
+  "fmi_definitions": {
+    "0": {
+      "name": "Data Valid But Above Normal Range - Most Severe Level",
+      "description_tr": "Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+      "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın."
+    },
+    "1": {
+      "name": "Data Valid But Below Normal Range - Most Severe Level",
+      "description_tr": "Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+      "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin."
+    },
+    "2": {
+      "name": "Data Erratic, Intermittent Or Incorrect",
+      "description_tr": "Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+      "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın."
+    },
+    "3": {
+      "name": "Voltage Above Normal, Or Shorted To High Source",
+      "description_tr": "Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+      "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir."
+    },
+    "4": {
+      "name": "Voltage Below Normal, Or Shorted To Low Source",
+      "description_tr": "Voltaj normalin altında veya şasiye (GND) kısa devre",
+      "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır)."
+    },
+    "5": {
+      "name": "Current Below Normal Or Open Circuit",
+      "description_tr": "Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+      "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin."
+    },
+    "6": {
+      "name": "Current Above Normal Or Grounded Circuit",
+      "description_tr": "Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+      "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın."
+    },
+    "7": {
+      "name": "Mechanical System Not Responding Or Out Of Adjustment",
+      "description_tr": "Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+      "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin."
+    },
+    "8": {
+      "name": "Abnormal Frequency Or Pulse Width Or Period",
+      "description_tr": "Anormal frekans, darbe genişliği (PWM) veya periyot",
+      "diagnostic_action": "Osiloskop ile PWM sinyal doluluk oranını (Duty Cycle) ve gürültü seviyesini inceleyin."
+    },
+    "9": {
+      "name": "Abnormal Update Rate",
+      "description_tr": "Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+      "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın."
+    },
+    "10": {
+      "name": "Abnormal Rate Of Change",
+      "description_tr": "Anormal değişim hızı (Fiziksel Olarak İmkansız Sıçrama)",
+      "diagnostic_action": "Sensör içindeki elemanın gevşediğini veya soket pini korozyonunu inceleyin."
+    },
+    "11": {
+      "name": "Root Cause Not Known",
+      "description_tr": "Kök neden bilinmiyor (Genel Arıza Modu)",
+      "diagnostic_action": "Öncelikli olarak Freeze Frame (DM4) verilerini ve motor çalışma koşullarını okuyun."
+    },
+    "12": {
+      "name": "Bad Intelligent Device Or Component",
+      "description_tr": "Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+      "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır."
+    },
+    "14": {
+      "name": "Special Instructions",
+      "description_tr": "Özel Servis Talimatı (Üreticiye Özel Teşhis Prosedürü)",
+      "diagnostic_action": "Motor üreticisinin (Cummins/CAT/Volvo) yetkili servis kılavuzuna başvurun."
+    },
+    "15": {
+      "name": "Data Valid But Above Normal - Least Severe Level",
+      "description_tr": "Veri normalin üzerinde (Hafif Uyarı Seviyesi)",
+      "diagnostic_action": "Filtre ve soğutma temizliği yapın; sistem henüz arıza lambası yakmamış olabilir."
+    },
+    "16": {
+      "name": "Data Valid But Above Normal - Moderate Severity",
+      "description_tr": "Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+      "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin."
+    },
+    "17": {
+      "name": "Data Valid But Below Normal - Least Severe Level",
+      "description_tr": "Veri normalin altında (Hafif Uyarı Seviyesi)",
+      "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin."
+    },
+    "18": {
+      "name": "Data Valid But Below Normal - Moderate Severity",
+      "description_tr": "Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+      "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin."
+    },
+    "19": {
+      "name": "Received Network Data In Error",
+      "description_tr": "Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+      "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin."
+    },
+    "31": {
+      "name": "Condition Exists",
+      "description_tr": "Özel durum mevcut (Anahtar kapalı, debriyaj basılı vb.)",
+      "diagnostic_action": "İlgili anahtar veya sensör kontak pozisyonunu doğrulayın."
+    }
+  },
+  "spns": {
+    "SPN_100": {
+      "spn": 100,
+      "name": "Engine Oil Pressure",
+      "title_tr": "Motor Yağ Basıncı",
+      "subsystem": "Motor Yağlama Sistemi (J1939)",
+      "associated_pgn": 65263,
+      "pgn_acronym": "EFL_P1",
+      "range": "0.0 - 1000.0 kPa",
+      "unit": "kPa",
+      "description": "Engine oil gallery gage pressure before main bearings.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Motor Yağ Basıncı - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Yağ Basıncı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Yağ Basıncı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_110": {
+      "spn": 110,
+      "name": "Engine Coolant Temperature",
+      "title_tr": "Motor Soğutma Suyu Sıcaklığı",
+      "subsystem": "Motor Soğutma & Termal Yönetim",
+      "associated_pgn": 65262,
+      "pgn_acronym": "ET1",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "Temperature of engine coolant circulated through engine block.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Motor Soğutma Suyu Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Soğutma Suyu Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Soğutma Suyu Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Motor Soğutma Suyu Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_190": {
+      "spn": 190,
+      "name": "Engine Speed",
+      "title_tr": "Motor Devri (Krank Hızı)",
+      "subsystem": "Motor Zamanlama & Krank Sensörü",
+      "associated_pgn": 61444,
+      "pgn_acronym": "EEC1",
+      "range": "0.0 - 8031.875 RPM",
+      "unit": "RPM",
+      "description": "Actual rotational speed of the crankshaft from primary engine speed sensor.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Motor Devri (Krank Hızı) - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Motor Devri (Krank Hızı) - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "8": {
+          "fmi_name": "Abnormal Frequency Or Pulse Width Or Period",
+          "fault_title": "Motor Devri (Krank Hızı) - Anormal frekans, darbe genişliği (PWM) veya periyot",
+          "diagnostic_action": "Osiloskop ile PWM sinyal doluluk oranını (Duty Cycle) ve gürültü seviyesini inceleyin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_102": {
+      "spn": 102,
+      "name": "Engine Turbocharger 1 Boost Pressure",
+      "title_tr": "Turboşarj Takviye Basıncı (Boost Pressure)",
+      "subsystem": "Hava Emiş & Turboşarj (CAC)",
+      "associated_pgn": 65270,
+      "pgn_acronym": "IC1",
+      "range": "0.0 - 500.0 kPa",
+      "unit": "kPa",
+      "description": "Absolute gage pressure in intake manifold after intercooler.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Turboşarj Takviye Basıncı (Boost Pressure) - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Turboşarj Takviye Basıncı (Boost Pressure) - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Turboşarj Takviye Basıncı (Boost Pressure) - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Turboşarj Takviye Basıncı (Boost Pressure) - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_157": {
+      "spn": 157,
+      "name": "Engine Injector Metering Rail 1 Pressure",
+      "title_tr": "Ortak Yakıt Yolu (Common Rail) Basıncı",
+      "subsystem": "Yüksek Basınç Yakıt Enjeksiyonu",
+      "associated_pgn": 65271,
+      "pgn_acronym": "FED1",
+      "range": "0.0 - 250000.0 kPa",
+      "unit": "kPa",
+      "description": "High pressure fuel rail delivering diesel to electro-hydraulic injectors.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Ortak Yakıt Yolu (Common Rail) Basıncı - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3251": {
+      "spn": 3251,
+      "name": "Aftertreatment 1 Diesel Particulate Filter Differential Pressure",
+      "title_tr": "DPF Partikül Filtresi Fark Basıncı",
+      "subsystem": "Egzoz & DPF Kurum Yönetimi",
+      "associated_pgn": 64948,
+      "pgn_acronym": "A1D1",
+      "range": "0.0 - 100.0 kPa",
+      "unit": "kPa",
+      "description": "Differential exhaust gas pressure across DPF substrate indicating soot accumulation.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "DPF Partikül Filtresi Fark Basıncı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "DPF Partikül Filtresi Fark Basıncı - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "DPF Partikül Filtresi Fark Basıncı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "DPF Partikül Filtresi Fark Basıncı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "DPF Partikül Filtresi Fark Basıncı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3719": {
+      "spn": 3719,
+      "name": "Aftertreatment 1 Diesel Particulate Filter Soot Load Percent",
+      "title_tr": "DPF Kurum Doluluk Oranı",
+      "subsystem": "Egzoz & DPF Rejenerasyonu",
+      "associated_pgn": 64948,
+      "pgn_acronym": "A1D1",
+      "range": "0.0 - 250.0 %",
+      "unit": "%",
+      "description": "Calculated soot loading percent requiring passive or active thermal regeneration.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "DPF Kurum Doluluk Oranı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "15": {
+          "fmi_name": "Data Valid But Above Normal - Least Severe Level",
+          "fault_title": "DPF Kurum Doluluk Oranı - Veri normalin üzerinde (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Filtre ve soğutma temizliği yapın; sistem henüz arıza lambası yakmamış olabilir.",
+          "severity": "LOW"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "DPF Kurum Doluluk Oranı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_4364": {
+      "spn": 4364,
+      "name": "Aftertreatment 1 SCR Catalyst Conversion Efficiency",
+      "title_tr": "SCR Katalizör NOx Dönüşüm Verimliliği",
+      "subsystem": "Egzoz & SCR / AdBlue Dozaj Sistemi",
+      "associated_pgn": 64947,
+      "pgn_acronym": "A1D2",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "DeNOx efficiency ratio comparing upstream and downstream exhaust NOx sensors.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "SCR Katalizör NOx Dönüşüm Verimliliği - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "SCR Katalizör NOx Dönüşüm Verimliliği - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3361": {
+      "spn": 3361,
+      "name": "Aftertreatment 1 Diesel Exhaust Fluid Dosing Unit",
+      "title_tr": "AdBlue / DEF Dozaj Ünitesi & Enjektörü",
+      "subsystem": "SCR / AdBlue Sıvı Enjeksiyonu",
+      "associated_pgn": 64946,
+      "pgn_acronym": "A1D3",
+      "range": "0.0 - 1000.0 g/h",
+      "unit": "g/h",
+      "description": "Electro-hydraulic urea injector delivering DEF mist into decomposition tube.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "AdBlue / DEF Dozaj Ünitesi & Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "AdBlue / DEF Dozaj Ünitesi & Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "AdBlue / DEF Dozaj Ünitesi & Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "AdBlue / DEF Dozaj Ünitesi & Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_3364": {
+      "spn": 3364,
+      "name": "Aftertreatment 1 Diesel Exhaust Fluid Quality",
+      "title_tr": "AdBlue / DEF Sıvı Kalitesi & Üre Konsantrasyonu",
+      "subsystem": "SCR / AdBlue Sıvı Kalitesi",
+      "associated_pgn": 65110,
+      "pgn_acronym": "AT1T1I",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Urea concentration measured by ultrasonic DEF tank sensor (Nominal 32.5% ±0.7%).",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "AdBlue / DEF Sıvı Kalitesi & Üre Konsantrasyonu - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "AdBlue / DEF Sıvı Kalitesi & Üre Konsantrasyonu - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_1087": {
+      "spn": 1087,
+      "name": "Service Brake Air Pressure Circuit 1",
+      "title_tr": "Pnömatik Fren Hava Basıncı - Devre 1",
+      "subsystem": "Pnömatik Fren Sistemi (Hava Tankı 1)",
+      "associated_pgn": 65274,
+      "pgn_acronym": "AIR1",
+      "range": "0.0 - 1000.0 kPa",
+      "unit": "kPa",
+      "description": "Primary compressed air tank pressure for commercial vehicle service foundation brakes.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 1 - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "17": {
+          "fmi_name": "Data Valid But Below Normal - Least Severe Level",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 1 - Veri normalin altında (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin.",
+          "severity": "LOW"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 1 - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_1088": {
+      "spn": 1088,
+      "name": "Service Brake Air Pressure Circuit 2",
+      "title_tr": "Pnömatik Fren Hava Basıncı - Devre 2",
+      "subsystem": "Pnömatik Fren Sistemi (Hava Tankı 2)",
+      "associated_pgn": 65274,
+      "pgn_acronym": "AIR1",
+      "range": "0.0 - 1000.0 kPa",
+      "unit": "kPa",
+      "description": "Secondary compressed air circuit pressure supplying drive axle brakes.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 2 - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "17": {
+          "fmi_name": "Data Valid But Below Normal - Least Severe Level",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 2 - Veri normalin altında (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin.",
+          "severity": "LOW"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Pnömatik Fren Hava Basıncı - Devre 2 - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_522": {
+      "spn": 522,
+      "name": "Transmission Current Gear",
+      "title_tr": "Şanzıman Mevcut Vites",
+      "subsystem": "Otomatik / AMT Şanzıman Kontrolü",
+      "associated_pgn": 61445,
+      "pgn_acronym": "ETC2",
+      "range": "-125 - 125 gear",
+      "unit": "gear",
+      "description": "Currently engaged physical gear ratio in automated manual or automatic transmission.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Şanzıman Mevcut Vites - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "Şanzıman Mevcut Vites - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "11": {
+          "fmi_name": "Root Cause Not Known",
+          "fault_title": "Şanzıman Mevcut Vites - Kök neden bilinmiyor (Genel Arıza Modu)",
+          "diagnostic_action": "Öncelikli olarak Freeze Frame (DM4) verilerini ve motor çalışma koşullarını okuyun.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_168": {
+      "spn": 168,
+      "name": "Battery Potential / Power Input 1",
+      "title_tr": "Akü Voltajı / Ana Besleme Hattı (KL30)",
+      "subsystem": "Elektrik Dağıtım & Alternatör",
+      "associated_pgn": 65271,
+      "pgn_acronym": "VEP1",
+      "range": "0.0 - 32.125 V",
+      "unit": "V",
+      "description": "DC battery system electrical potential under vehicle starting and alternator charging.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Akü Voltajı / Ana Besleme Hattı (KL30) - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Akü Voltajı / Ana Besleme Hattı (KL30) - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "15": {
+          "fmi_name": "Data Valid But Above Normal - Least Severe Level",
+          "fault_title": "Akü Voltajı / Ana Besleme Hattı (KL30) - Veri normalin üzerinde (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Filtre ve soğutma temizliği yapın; sistem henüz arıza lambası yakmamış olabilir.",
+          "severity": "LOW"
+        },
+        "17": {
+          "fmi_name": "Data Valid But Below Normal - Least Severe Level",
+          "fault_title": "Akü Voltajı / Ana Besleme Hattı (KL30) - Veri normalin altında (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_91": {
+      "spn": 91,
+      "name": "Accelerator Pedal Position 1",
+      "title_tr": "Gaz Pedalı Konum Sensörü 1",
+      "subsystem": "Elektronik Gaz Kelebeği & Sürücü Talebi",
+      "associated_pgn": 61443,
+      "pgn_acronym": "EEC2",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Driver demanded accelerator pedal angle (Dual redundant Hall sensor).",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Gaz Pedalı Konum Sensörü 1 - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Gaz Pedalı Konum Sensörü 1 - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Gaz Pedalı Konum Sensörü 1 - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "8": {
+          "fmi_name": "Abnormal Frequency Or Pulse Width Or Period",
+          "fault_title": "Gaz Pedalı Konum Sensörü 1 - Anormal frekans, darbe genişliği (PWM) veya periyot",
+          "diagnostic_action": "Osiloskop ile PWM sinyal doluluk oranını (Duty Cycle) ve gürültü seviyesini inceleyin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_92": {
+      "spn": 92,
+      "name": "Engine Percent Load At Current Speed",
+      "title_tr": "Mevcut Devirdeki Motor Yük Yüzdesi",
+      "subsystem": "Motor Yönetimi & Tork Talebi",
+      "associated_pgn": 61444,
+      "pgn_acronym": "EEC1",
+      "range": "0.0 - 250.0 %",
+      "unit": "%",
+      "description": "Ratio of actual indicated engine torque to reference maximum torque.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Mevcut Devirdeki Motor Yük Yüzdesi - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Mevcut Devirdeki Motor Yük Yüzdesi - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_94": {
+      "spn": 94,
+      "name": "Engine Fuel Delivery Pressure",
+      "title_tr": "Düşük Basınç Yakıt Besleme Basıncı",
+      "subsystem": "Yakıt Besleme & Ön Filtre",
+      "associated_pgn": 65263,
+      "pgn_acronym": "EFL_P1",
+      "range": "0.0 - 1000.0 kPa",
+      "unit": "kPa",
+      "description": "Low-pressure feed pump delivery gage pressure before high pressure pump.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Düşük Basınç Yakıt Besleme Basıncı - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Düşük Basınç Yakıt Besleme Basıncı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Düşük Basınç Yakıt Besleme Basıncı - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_108": {
+      "spn": 108,
+      "name": "Barometric Pressure",
+      "title_tr": "Atmosferik Çevre Basıncı",
+      "subsystem": "Emiş Havası & Rakım Telafisi",
+      "associated_pgn": 65269,
+      "pgn_acronym": "AMB",
+      "range": "0.0 - 125.0 kPa",
+      "unit": "kPa",
+      "description": "Ambient atmospheric barometric pressure for turbo wastegate and fuel altitude compensation.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Atmosferik Çevre Basıncı - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Atmosferik Çevre Basıncı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Atmosferik Çevre Basıncı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_174": {
+      "spn": 174,
+      "name": "Engine Fuel Temperature 1",
+      "title_tr": "Motor Yakıt Sıcaklığı",
+      "subsystem": "Yakıt Yönetimi & Yoğunluk Düzeltmesi",
+      "associated_pgn": 65262,
+      "pgn_acronym": "ET1",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "Diesel fuel temperature measured before high pressure injection pump.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Motor Yakıt Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Yakıt Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Yakıt Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Motor Yakıt Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_175": {
+      "spn": 175,
+      "name": "Engine Oil Temperature 1",
+      "title_tr": "Motor Yağ Sıcaklığı",
+      "subsystem": "Motor Yağlama & Termal Yönetim",
+      "associated_pgn": 65262,
+      "pgn_acronym": "ET1",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "Lubricating engine oil temperature inside main sump oil pan.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Motor Yağ Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Yağ Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Yağ Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Motor Yağ Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_183": {
+      "spn": 183,
+      "name": "Engine Fuel Rate",
+      "title_tr": "Anlık Yakıt Tüketim Debisi",
+      "subsystem": "Yakıt Ekonomisi & Telemetri",
+      "associated_pgn": 65266,
+      "pgn_acronym": "LFE1",
+      "range": "0.0 - 3212.75 L/h",
+      "unit": "L/h",
+      "description": "Instantaneous volumetric fuel consumption calculated by injector timing and pulse width.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Anlık Yakıt Tüketim Debisi - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Anlık Yakıt Tüketim Debisi - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_247": {
+      "spn": 247,
+      "name": "Engine Total Hours of Operation",
+      "title_tr": "Toplam Motor Çalışma Saati",
+      "subsystem": "Motor Servis & Bakım Takibi",
+      "associated_pgn": 65253,
+      "pgn_acronym": "HOURS",
+      "range": "0.0 - 21055406.075 hr",
+      "unit": "hr",
+      "description": "Cumulative total engine operating hours recorded in EEPROM/flash memory.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Toplam Motor Çalışma Saati - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "Toplam Motor Çalışma Saati - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_3242": {
+      "spn": 3242,
+      "name": "DPF Intake Gas Temperature",
+      "title_tr": "DPF Giriş Egzoz Gazı Sıcaklığı",
+      "subsystem": "Egzoz & DPF Termal Rejenerasyonu",
+      "associated_pgn": 64948,
+      "pgn_acronym": "A1D1",
+      "range": "-40.0 - 1000.0 °C",
+      "unit": "°C",
+      "description": "Exhaust gas temperature directly entering DPF substrate (Target 550°C - 650°C during regen).",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "DPF Giriş Egzoz Gazı Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "DPF Giriş Egzoz Gazı Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "DPF Giriş Egzoz Gazı Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "DPF Giriş Egzoz Gazı Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3246": {
+      "spn": 3246,
+      "name": "DPF Outlet Gas Temperature",
+      "title_tr": "DPF Çıkış Egzoz Gazı Sıcaklığı",
+      "subsystem": "Egzoz & DPF Termal Rejenerasyonu",
+      "associated_pgn": 64948,
+      "pgn_acronym": "A1D1",
+      "range": "-40.0 - 1000.0 °C",
+      "unit": "°C",
+      "description": "Exhaust temperature leaving DPF substrate, monitoring thermal runaway or melting.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "DPF Çıkış Egzoz Gazı Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "DPF Çıkış Egzoz Gazı Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "DPF Çıkış Egzoz Gazı Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "DPF Çıkış Egzoz Gazı Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_1761": {
+      "spn": 1761,
+      "name": "Aftertreatment 1 DEF Tank Level",
+      "title_tr": "AdBlue / DEF Sıvı Tankı Seviyesi",
+      "subsystem": "SCR / AdBlue Sıvı Depolama",
+      "associated_pgn": 65110,
+      "pgn_acronym": "AT1T1I",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Urea solution volume remaining in DEF tank (Warning <10%, Derate <2.5%).",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Seviyesi - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Seviyesi - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Seviyesi - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Seviyesi - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3031": {
+      "spn": 3031,
+      "name": "Aftertreatment 1 DEF Tank Temperature",
+      "title_tr": "AdBlue / DEF Sıvı Tankı Sıcaklığı",
+      "subsystem": "SCR / AdBlue Donma Koruması",
+      "associated_pgn": 65110,
+      "pgn_acronym": "AT1T1I",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "DEF reservoir fluid temperature controlling coolant thaw valve (Freezes at -11°C).",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Sıcaklığı - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "AdBlue / DEF Sıvı Tankı Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_651": {
+      "spn": 651,
+      "name": "Engine Injector Cylinder #01",
+      "title_tr": "1. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 1)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #1.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "1. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "1. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "1. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "1. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "1. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_652": {
+      "spn": 652,
+      "name": "Engine Injector Cylinder #02",
+      "title_tr": "2. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 2)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #2.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "2. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "2. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "2. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "2. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "2. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_653": {
+      "spn": 653,
+      "name": "Engine Injector Cylinder #03",
+      "title_tr": "3. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 3)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #3.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "3. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "3. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "3. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "3. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "3. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_654": {
+      "spn": 654,
+      "name": "Engine Injector Cylinder #04",
+      "title_tr": "4. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 4)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #4.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "4. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "4. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "4. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "4. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "4. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_655": {
+      "spn": 655,
+      "name": "Engine Injector Cylinder #05",
+      "title_tr": "5. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 5)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #5.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "5. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "5. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "5. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "5. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "5. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_656": {
+      "spn": 656,
+      "name": "Engine Injector Cylinder #06",
+      "title_tr": "6. Silindir Yakıt Enjektörü",
+      "subsystem": "Yakıt Enjeksiyonu (Silindir 6)",
+      "associated_pgn": 65261,
+      "pgn_acronym": "FED2",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Electro-hydraulic common rail solenoid injector driving cylinder #6.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "6. Silindir Yakıt Enjektörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "6. Silindir Yakıt Enjektörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "6. Silindir Yakıt Enjektörü - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "6": {
+          "fmi_name": "Current Above Normal Or Grounded Circuit",
+          "fault_title": "6. Silindir Yakıt Enjektörü - Akım normalin üzerinde veya devre şasiye aşırı yüklenmiş",
+          "diagnostic_action": "Bobin sargısında dahili izolasyon delinmesi veya aktüatör mekanik sıkışması kontrolü yapın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "6. Silindir Yakıt Enjektörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_84": {
+      "spn": 84,
+      "name": "Wheel-Based Vehicle Speed",
+      "title_tr": "Tekerlek Tabanlı Araç Hızı (Takograf/TCM)",
+      "subsystem": "Şanzıman & Hız Algılama",
+      "associated_pgn": 65265,
+      "pgn_acronym": "CCVS1",
+      "range": "0.0 - 250.0 km/h",
+      "unit": "km/h",
+      "description": "Speed of the vehicle calculated from wheel or transmission output shaft speed sensors.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Tekerlek Tabanlı Araç Hızı (Takograf/TCM) - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "8": {
+          "fmi_name": "Abnormal Frequency Or Pulse Width Or Period",
+          "fault_title": "Tekerlek Tabanlı Araç Hızı (Takograf/TCM) - Anormal frekans, darbe genişliği (PWM) veya periyot",
+          "diagnostic_action": "Osiloskop ile PWM sinyal doluluk oranını (Duty Cycle) ve gürültü seviyesini inceleyin.",
+          "severity": "LOW"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Tekerlek Tabanlı Araç Hızı (Takograf/TCM) - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "19": {
+          "fmi_name": "Received Network Data In Error",
+          "fault_title": "Tekerlek Tabanlı Araç Hızı (Takograf/TCM) - Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+          "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_96": {
+      "spn": 96,
+      "name": "Fuel Level 1",
+      "title_tr": "Yakıt Deposu Seviyesi 1",
+      "subsystem": "Yakıt Seviyesi & Şamandıra",
+      "associated_pgn": 65276,
+      "pgn_acronym": "DD",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Ratio of current fuel volume to total fuel storage capacity in primary tank.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Yakıt Deposu Seviyesi 1 - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Yakıt Deposu Seviyesi 1 - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Yakıt Deposu Seviyesi 1 - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "17": {
+          "fmi_name": "Data Valid But Below Normal - Least Severe Level",
+          "fault_title": "Yakıt Deposu Seviyesi 1 - Veri normalin altında (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_97": {
+      "spn": 97,
+      "name": "Water In Fuel Indicator",
+      "title_tr": "Yakıtta Su Göstergesi / Sensörü",
+      "subsystem": "Yakıt Filtrasyonu & Ön Ayırıcı",
+      "associated_pgn": 65279,
+      "pgn_acronym": "WFI",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Signal indicating water level in fuel filter separator bowl has exceeded safe threshold.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Yakıtta Su Göstergesi / Sensörü - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Yakıtta Su Göstergesi / Sensörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Yakıtta Su Göstergesi / Sensörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "15": {
+          "fmi_name": "Data Valid But Above Normal - Least Severe Level",
+          "fault_title": "Yakıtta Su Göstergesi / Sensörü - Veri normalin üzerinde (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Filtre ve soğutma temizliği yapın; sistem henüz arıza lambası yakmamış olabilir.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_98": {
+      "spn": 98,
+      "name": "Engine Oil Level",
+      "title_tr": "Motor Yağ Seviyesi",
+      "subsystem": "Motor Yağlama Sistemi (J1939)",
+      "associated_pgn": 65263,
+      "pgn_acronym": "EFL_P1",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Ratio of engine oil volume to total engine oil capacity in sump.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Motor Yağ Seviyesi - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Yağ Seviyesi - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Yağ Seviyesi - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "17": {
+          "fmi_name": "Data Valid But Below Normal - Least Severe Level",
+          "fault_title": "Motor Yağ Seviyesi - Veri normalin altında (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Sistem basınç regülatörünü ve filtre tıkanıklığını kontrol edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_105": {
+      "spn": 105,
+      "name": "Engine Intake Manifold 1 Temperature",
+      "title_tr": "Emme Manifoldu Hava Sıcaklığı",
+      "subsystem": "Hava Emiş & Turbo Basıncı",
+      "associated_pgn": 65270,
+      "pgn_acronym": "ET1",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "Temperature of pre-combustion charge air downstream of intercooler.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "Emme Manifoldu Hava Sıcaklığı - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Emme Manifoldu Hava Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Emme Manifoldu Hava Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "Emme Manifoldu Hava Sıcaklığı - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_111": {
+      "spn": 111,
+      "name": "Engine Coolant Level",
+      "title_tr": "Motor Soğutma Suyu Seviyesi",
+      "subsystem": "Motor Soğutma & Termal Yönetim",
+      "associated_pgn": 65263,
+      "pgn_acronym": "EFL_P1",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Ratio of volume of coolant in engine cooling reservoir to total capacity.",
+      "fault_matrix": {
+        "1": {
+          "fmi_name": "Data Valid But Below Normal Range - Most Severe Level",
+          "fault_title": "Motor Soğutma Suyu Seviyesi - Veri geçerli fakat normal çalışma aralığının altında (Kritik Düşük)",
+          "diagnostic_action": "Sıvı seviyelerini, emiş filtrelerini ve mekanik aşınma belirtilerini kontrol edin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Soğutma Suyu Seviyesi - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Soğutma Suyu Seviyesi - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "18": {
+          "fmi_name": "Data Valid But Below Normal - Moderate Severity",
+          "fault_title": "Motor Soğutma Suyu Seviyesi - Veri normalin altında (Orta Seviye - Tork Sınırlandırma)",
+          "diagnostic_action": "Dozaj pompası, hava tahrik valfi veya debi kısıtlamalarını giderin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_171": {
+      "spn": 171,
+      "name": "Ambient Air Temperature",
+      "title_tr": "Dış Ortam Hava Sıcaklığı",
+      "subsystem": "Çevre Koşulları & İklimlendirme",
+      "associated_pgn": 65269,
+      "pgn_acronym": "AMB",
+      "range": "-40.0 - 210.0 °C",
+      "unit": "°C",
+      "description": "Temperature of air surrounding the vehicle.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Dış Ortam Hava Sıcaklığı - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Dış Ortam Hava Sıcaklığı - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Dış Ortam Hava Sıcaklığı - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_513": {
+      "spn": 513,
+      "name": "Actual Engine - Percent Torque",
+      "title_tr": "Gerçekleşen Motor Torku Oranı",
+      "subsystem": "Motor Güç Aktarma & Tork Kontrolü",
+      "associated_pgn": 61444,
+      "pgn_acronym": "EEC1",
+      "range": "-125.0 - 125.0 %",
+      "unit": "%",
+      "description": "Calculated output torque of engine relative to reference torque.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Gerçekleşen Motor Torku Oranı - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Gerçekleşen Motor Torku Oranı - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "19": {
+          "fmi_name": "Received Network Data In Error",
+          "fault_title": "Gerçekleşen Motor Torku Oranı - Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+          "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_524": {
+      "spn": 524,
+      "name": "Transmission Selected Gear",
+      "title_tr": "Şanzıman Seçilen Vites Pozisyonu",
+      "subsystem": "Otomatik / Robotize Şanzıman (TCU)",
+      "associated_pgn": 61445,
+      "pgn_acronym": "ETC2",
+      "range": "-125 - 125 gear",
+      "unit": "gear",
+      "description": "Gear position selected by driver or automated transmission shift strategy.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Şanzıman Seçilen Vites Pozisyonu - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "Şanzıman Seçilen Vites Pozisyonu - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Şanzıman Seçilen Vites Pozisyonu - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_628": {
+      "spn": 628,
+      "name": "Program Memory (Flash Checksum)",
+      "title_tr": "ECU Program Belleği / Flash Checksum Hatası",
+      "subsystem": "ECU Dahili Donanım & Mikrodenetleyici",
+      "associated_pgn": 65242,
+      "pgn_acronym": "SFT",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "ECU internal microprocessor flash memory checksum calculation mismatch.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "ECU Program Belleği / Flash Checksum Hatası - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "ECU Program Belleği / Flash Checksum Hatası - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_629": {
+      "spn": 629,
+      "name": "Controller #1 Malfunction",
+      "title_tr": "Ana Motor Beyni (ECU #1) Dahili Donanım Arızası",
+      "subsystem": "ECU Dahili Donanım & Mikrodenetleyici",
+      "associated_pgn": 65242,
+      "pgn_acronym": "SFT",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Internal hardware failure of main electronic engine control unit microcomputer.",
+      "fault_matrix": {
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "Ana Motor Beyni (ECU #1) Dahili Donanım Arızası - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_630": {
+      "spn": 630,
+      "name": "Calibration Memory (EEPROM)",
+      "title_tr": "Kalibrasyon Belleği / EEPROM Veri Bozulması",
+      "subsystem": "ECU Dahili Donanım & Mikrodenetleyici",
+      "associated_pgn": 65242,
+      "pgn_acronym": "SFT",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "ECU calibration non-volatile data memory integrity verification fault.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Kalibrasyon Belleği / EEPROM Veri Bozulması - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "Kalibrasyon Belleği / EEPROM Veri Bozulması - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_639": {
+      "spn": 639,
+      "name": "J1939 Network #1 (Primary CAN Bus)",
+      "title_tr": "SAE J1939 Ana CAN Hattı Haberleşme Arızası",
+      "subsystem": "CAN-Bus Ağ & İletişim Hattı",
+      "associated_pgn": 65226,
+      "pgn_acronym": "DM1",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Primary vehicle CAN bus physical link failure, bus-off state, or severe frame distortion.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "SAE J1939 Ana CAN Hattı Haberleşme Arızası - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "SAE J1939 Ana CAN Hattı Haberleşme Arızası - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "SAE J1939 Ana CAN Hattı Haberleşme Arızası - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        },
+        "19": {
+          "fmi_name": "Received Network Data In Error",
+          "fault_title": "SAE J1939 Ana CAN Hattı Haberleşme Arızası - Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+          "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_641": {
+      "spn": 641,
+      "name": "Turbocharger VGT Actuator #1",
+      "title_tr": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü",
+      "subsystem": "Turboşarj Aşırı Besleme & Aktüatör",
+      "associated_pgn": 65174,
+      "pgn_acronym": "VGT1",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Electronic actuator motor positioning the variable geometry turbocharger nozzle vanes.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "12": {
+          "fmi_name": "Bad Intelligent Device Or Component",
+          "fault_title": "Turbo Değişken Geometri (VGT) Akıllı Aktüatörü - Arızalı akıllı cihaz, mikrodenetleyici veya dahili bileşen",
+          "diagnostic_action": "Modülün besleme voltajını teyit edin; düzelmiyorsa dahili ECU/Sensör arızasıdır.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_647": {
+      "spn": 647,
+      "name": "Engine Fan Drive State",
+      "title_tr": "Motor Soğutma Fanı Tahrik Kavraması",
+      "subsystem": "Motor Soğutma & Termal Yönetim",
+      "associated_pgn": 65213,
+      "pgn_acronym": "FDC",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Electro-viscous cooling fan clutch PWM command and feedback slip state.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Soğutma Fanı Tahrik Kavraması - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Soğutma Fanı Tahrik Kavraması - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "Motor Soğutma Fanı Tahrik Kavraması - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "Motor Soğutma Fanı Tahrik Kavraması - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_1072": {
+      "spn": 1072,
+      "name": "Engine Compression Brake Output #1",
+      "title_tr": "Motor Kompresyon Freni (Jake Brake) Çıkışı #1",
+      "subsystem": "Motor Freni & Retarder",
+      "associated_pgn": 65214,
+      "pgn_acronym": "EBC1",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Solenoid driver circuit actuating engine compression release exhaust valves for braking.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Motor Kompresyon Freni (Jake Brake) Çıkışı #1 - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Motor Kompresyon Freni (Jake Brake) Çıkışı #1 - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "Motor Kompresyon Freni (Jake Brake) Çıkışı #1 - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_3216": {
+      "spn": 3216,
+      "name": "Aftertreatment 1 Intake NOx Sensor",
+      "title_tr": "Katalizör Giriş NOx Sensörü (SCR Öncesi)",
+      "subsystem": "SCR & DEF Dozaj Emisyon Sistemi",
+      "associated_pgn": 61454,
+      "pgn_acronym": "AT1IG1",
+      "range": "-200.0 - 3000.0 ppm",
+      "unit": "ppm",
+      "description": "Nitrogen oxides concentration in exhaust gas entering SCR catalyst system.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "10": {
+          "fmi_name": "Abnormal Rate Of Change",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Anormal değişim hızı (Fiziksel Olarak İmkansız Sıçrama)",
+          "diagnostic_action": "Sensör içindeki elemanın gevşediğini veya soket pini korozyonunu inceleyin.",
+          "severity": "LOW"
+        },
+        "19": {
+          "fmi_name": "Received Network Data In Error",
+          "fault_title": "Katalizör Giriş NOx Sensörü (SCR Öncesi) - Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+          "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_3226": {
+      "spn": 3226,
+      "name": "Aftertreatment 1 Outlet NOx Sensor",
+      "title_tr": "Katalizör Çıkış NOx Sensörü (SCR Sonrası)",
+      "subsystem": "SCR & DEF Dozaj Emisyon Sistemi",
+      "associated_pgn": 61455,
+      "pgn_acronym": "AT1OG1",
+      "range": "-200.0 - 3000.0 ppm",
+      "unit": "ppm",
+      "description": "Nitrogen oxides concentration in tailpipe exhaust leaving SCR catalyst system.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "9": {
+          "fmi_name": "Abnormal Update Rate",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Anormal veri güncelleme hızı (CAN Zaman Aşımı)",
+          "diagnostic_action": "Sensör veya kaynak modülün CAN-Bus hattına bağlı olduğunu ve adres aldığını (Address Claim) doğrulayın.",
+          "severity": "LOW"
+        },
+        "10": {
+          "fmi_name": "Abnormal Rate Of Change",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Anormal değişim hızı (Fiziksel Olarak İmkansız Sıçrama)",
+          "diagnostic_action": "Sensör içindeki elemanın gevşediğini veya soket pini korozyonunu inceleyin.",
+          "severity": "LOW"
+        },
+        "19": {
+          "fmi_name": "Received Network Data In Error",
+          "fault_title": "Katalizör Çıkış NOx Sensörü (SCR Sonrası) - Ağdan hatalı veri alındı (CAN Mesaj Bozulması)",
+          "diagnostic_action": "Veri yolunda 120Ω hat sonlandırma direncini ve CAN-H/CAN-L sinyal gürültüsünü test edin.",
+          "severity": "LOW"
+        }
+      }
+    },
+    "SPN_3556": {
+      "spn": 3556,
+      "name": "Aftertreatment 1 Hydrocarbon Doser",
+      "title_tr": "DPF Hidrokarbon / Dizel Enjektörü (7. Enjektör)",
+      "subsystem": "Egzoz & DPF Rejenerasyon Dozajı",
+      "associated_pgn": 64835,
+      "pgn_acronym": "HCD1",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Dedicated exhaust pipe fuel dosing injector used to ignite and elevate DPF regen heat.",
+      "fault_matrix": {
+        "3": {
+          "fmi_name": "Voltage Above Normal, Or Shorted To High Source",
+          "fault_title": "DPF Hidrokarbon / Dizel Enjektörü (7. Enjektör) - Voltaj normalin üzerinde veya yüksek kaynağa (+5V / +24V) kısa devre",
+          "diagnostic_action": "Sensör soketini ayırın; voltaj şasiye göre düşmüyorsa kablo demeti akü besleme hattına ezilmiştir.",
+          "severity": "MEDIUM"
+        },
+        "4": {
+          "fmi_name": "Voltage Below Normal, Or Shorted To Low Source",
+          "fault_title": "DPF Hidrokarbon / Dizel Enjektörü (7. Enjektör) - Voltaj normalin altında veya şasiye (GND) kısa devre",
+          "diagnostic_action": "Sinyal pini ile şasi arasındaki direnci ölçün (<1.0 Ω ise tesisatta şasi teması vardır).",
+          "severity": "MEDIUM"
+        },
+        "5": {
+          "fmi_name": "Current Below Normal Or Open Circuit",
+          "fault_title": "DPF Hidrokarbon / Dizel Enjektörü (7. Enjektör) - Akım normalin altında veya açık devre (Kablo Kopuk / Temassız)",
+          "diagnostic_action": "Aktüatör/solenoid bobin direncini ölçün ve soket kilit tırnaklarını kontrol edin.",
+          "severity": "MEDIUM"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "DPF Hidrokarbon / Dizel Enjektörü (7. Enjektör) - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        }
+      }
+    },
+    "SPN_5246": {
+      "spn": 5246,
+      "name": "Regulatory Actuation - Engine Protection Torque Derate",
+      "title_tr": "EPA/Euro Yasal Emisyon İhlali - Ağır Tork Düşürme (Derate)",
+      "subsystem": "SCR & DEF Dozaj Emisyon Sistemi",
+      "associated_pgn": 64964,
+      "pgn_acronym": "EER",
+      "range": "0 - 1 state",
+      "unit": "state",
+      "description": "Indicates mandatory regulatory engine torque and speed derate due to unresolved DEF/SCR faults.",
+      "fault_matrix": {
+        "0": {
+          "fmi_name": "Data Valid But Above Normal Range - Most Severe Level",
+          "fault_title": "EPA/Euro Yasal Emisyon İhlali - Ağır Tork Düşürme (Derate) - Veri geçerli fakat normal çalışma aralığının üzerinde (Kritik Yüksek)",
+          "diagnostic_action": "Sensör besleme hattını ve fiziksel aşırı basınç/sıcaklık durumunu mekanik test portundan doğrulayın.",
+          "severity": "CRITICAL_STOP"
+        },
+        "15": {
+          "fmi_name": "Data Valid But Above Normal - Least Severe Level",
+          "fault_title": "EPA/Euro Yasal Emisyon İhlali - Ağır Tork Düşürme (Derate) - Veri normalin üzerinde (Hafif Uyarı Seviyesi)",
+          "diagnostic_action": "Filtre ve soğutma temizliği yapın; sistem henüz arıza lambası yakmamış olabilir.",
+          "severity": "LOW"
+        },
+        "16": {
+          "fmi_name": "Data Valid But Above Normal - Moderate Severity",
+          "fault_title": "EPA/Euro Yasal Emisyon İhlali - Ağır Tork Düşürme (Derate) - Veri normalin üzerinde (Orta Seviye - Derate Başlayabilir)",
+          "diagnostic_action": "Motor tork sınırlandırması (Derate) başlamadan önce ilgili devreyi temizleyin.",
+          "severity": "MEDIUM"
+        }
+      }
+    },
+    "SPN_1714": {
+      "spn": 1714,
+      "name": "Retarder Torque Limit",
+      "title_tr": "Retarder Fren Torku Limiti",
+      "subsystem": "Hidrolik & Elektromanyetik Retarder",
+      "associated_pgn": 61440,
+      "pgn_acronym": "ERC1",
+      "range": "0.0 - 100.0 %",
+      "unit": "%",
+      "description": "Secondary auxiliary driveline retarder braking torque stage limit.",
+      "fault_matrix": {
+        "2": {
+          "fmi_name": "Data Erratic, Intermittent Or Incorrect",
+          "fault_title": "Retarder Fren Torku Limiti - Veri tutarsız, kesintili veya yanlış (Sinyal Sıçraması)",
+          "diagnostic_action": "Kablo demetinde titreşim temassızlığı, gevşek klemens veya manyetik relüktör çark diş hasarı arayın.",
+          "severity": "LOW"
+        },
+        "7": {
+          "fmi_name": "Mechanical System Not Responding Or Out Of Adjustment",
+          "fault_title": "Retarder Fren Torku Limiti - Mekanik sistem yanıt vermiyor veya kalibrasyon dışı (Mekanik Sıkışma)",
+          "diagnostic_action": "Aktüatör itici kollarını, kurum birikmesini ve hava/yağ tahrik hatlarını mekanik olarak inceleyin.",
+          "severity": "CRITICAL_STOP"
+        },
+        "11": {
+          "fmi_name": "Root Cause Not Known",
+          "fault_title": "Retarder Fren Torku Limiti - Kök neden bilinmiyor (Genel Arıza Modu)",
+          "diagnostic_action": "Öncelikli olarak Freeze Frame (DM4) verilerini ve motor çalışma koşullarını okuyun.",
+          "severity": "LOW"
+        }
+      }
+    }
+  }
+}

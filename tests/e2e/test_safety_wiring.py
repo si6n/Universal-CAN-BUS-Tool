@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import queue
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -198,6 +199,7 @@ def test_composition_root_wiring_with_mock_bus_and_webview2() -> None:
 
     # 6. Test App lifecycle execution with mock webview
     with (
+        patch.object(app, "_resolve_dist_html", return_value=Path(__file__)),
         patch("webview.create_window", return_value=mock_window),
         patch("webview.start", side_effect=lambda **kwargs: None),
     ):

@@ -70,6 +70,8 @@ secrets.bin
 data/*
 !data/dbc/
 !data/traces/
+!data/diagnostics/
+!data/diagnostics/**
 *.bin.zst
 traces/
 !data/traces/

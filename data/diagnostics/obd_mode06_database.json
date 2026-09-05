@@ -1,0 +1,751 @@
+{
+  "metadata": {
+    "title": "Universal SAE J1979 OBD-II Mode $06 Diagnostic Monitor Database",
+    "version": "1.0.0",
+    "total_monitors": 20,
+    "uasid_scaling_formulas": {
+      "0x01": {
+        "unit": "mV",
+        "scale": 0.1,
+        "offset": 0.0,
+        "formula": "raw * 0.1",
+        "description": "Millivolts"
+      },
+      "0x02": {
+        "unit": "V",
+        "scale": 0.001,
+        "offset": 0.0,
+        "formula": "raw * 0.001",
+        "description": "Volts"
+      },
+      "0x04": {
+        "unit": "mA",
+        "scale": 0.01,
+        "offset": -128.0,
+        "formula": "(raw - 128) * 0.01",
+        "description": "Milliamperes (Bi-directional)"
+      },
+      "0x07": {
+        "unit": "ms",
+        "scale": 1.0,
+        "offset": 0.0,
+        "formula": "raw * 1.0",
+        "description": "Milliseconds"
+      },
+      "0x08": {
+        "unit": "ms",
+        "scale": 4.0,
+        "offset": 0.0,
+        "formula": "raw * 4.0",
+        "description": "Milliseconds (High Resolution)"
+      },
+      "0x0B": {
+        "unit": "Pa",
+        "scale": 0.25,
+        "offset": 0.0,
+        "formula": "raw * 0.25",
+        "description": "Pascals"
+      },
+      "0x0C": {
+        "unit": "kPa",
+        "scale": 0.01,
+        "offset": 0.0,
+        "formula": "raw * 0.01",
+        "description": "Kilopascals"
+      },
+      "0x10": {
+        "unit": "°C",
+        "scale": 0.1,
+        "offset": -40.0,
+        "formula": "raw * 0.1 - 40",
+        "description": "Degrees Celsius"
+      },
+      "0x11": {
+        "unit": "°C",
+        "scale": 1.0,
+        "offset": -40.0,
+        "formula": "raw * 1.0 - 40",
+        "description": "Degrees Celsius (Integer)"
+      },
+      "0x14": {
+        "unit": "%",
+        "scale": 0.39215686274509803,
+        "offset": 0.0,
+        "formula": "raw * (100 / 255)",
+        "description": "Percentage (0..100%)"
+      },
+      "0x15": {
+        "unit": "%",
+        "scale": 0.0030517578125,
+        "offset": -100.0,
+        "formula": "raw * (100 / 32768) - 100",
+        "description": "Signed Percentage (-100..+100%)"
+      },
+      "0x21": {
+        "unit": "RPM",
+        "scale": 0.25,
+        "offset": 0.0,
+        "formula": "raw * 0.25",
+        "description": "Revolutions Per Minute"
+      },
+      "0x22": {
+        "unit": "counts",
+        "scale": 1.0,
+        "offset": 0.0,
+        "formula": "raw * 1",
+        "description": "Event / Misfire Counts"
+      },
+      "0x30": {
+        "unit": "ratio",
+        "scale": 0.001,
+        "offset": 0.0,
+        "formula": "raw * 0.001",
+        "description": "Dimensionless Ratio / Lambda"
+      },
+      "0x33": {
+        "unit": "g/s",
+        "scale": 0.01,
+        "offset": 0.0,
+        "formula": "raw * 0.01",
+        "description": "Grams per second (MAF)"
+      },
+      "0x35": {
+        "unit": "s",
+        "scale": 1.0,
+        "offset": 0.0,
+        "formula": "raw * 1.0",
+        "description": "Seconds"
+      }
+    }
+  },
+  "monitors": {
+    "0x01": {
+      "mid_hex": "0x01",
+      "mid_int": 1,
+      "name": "Exhaust Gas Sensor Monitor Bank 1 - Sensor 1",
+      "name_tr": "Egzoz Gazı O2 Sensör İzleme Sıra 1 - Sensör 1 (Ön Lambda)",
+      "subsystem": "Emisyon & Yakıt Karışım Geri Beslemesi",
+      "tests": [
+        {
+          "tid_hex": "0x01",
+          "name": "Rich-to-Lean Sensor Switch Voltage",
+          "name_tr": "Zenginden Fakire Geçiş Eşik Voltajı",
+          "uasid": "0x01",
+          "default_unit": "mV"
+        },
+        {
+          "tid_hex": "0x02",
+          "name": "Lean-to-Rich Sensor Switch Voltage",
+          "name_tr": "Fakirden Zengine Geçiş Eşik Voltajı",
+          "uasid": "0x01",
+          "default_unit": "mV"
+        },
+        {
+          "tid_hex": "0x05",
+          "name": "Rich-to-Lean Sensor Switch Time",
+          "name_tr": "Zenginden Fakire Geçiş Süresi",
+          "uasid": "0x07",
+          "default_unit": "ms"
+        },
+        {
+          "tid_hex": "0x06",
+          "name": "Lean-to-Rich Sensor Switch Time",
+          "name_tr": "Fakirden Zengine Geçiş Süresi",
+          "uasid": "0x07",
+          "default_unit": "ms"
+        },
+        {
+          "tid_hex": "0x07",
+          "name": "Sensor Transition Period",
+          "name_tr": "Sensör Dalgalanma Periyodu",
+          "uasid": "0x07",
+          "default_unit": "ms"
+        }
+      ]
+    },
+    "0x02": {
+      "mid_hex": "0x02",
+      "mid_int": 2,
+      "name": "Exhaust Gas Sensor Monitor Bank 1 - Sensor 2",
+      "name_tr": "Egzoz Gazı O2 Sensör İzleme Sıra 1 - Sensör 2 (Katalizör Sonrası)",
+      "subsystem": "Katalitik Konvertör Verimlilik Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x01",
+          "name": "Minimum Post-Cat Voltage Threshold",
+          "name_tr": "Minimum Kat-Sonrası Voltaj Eşiği",
+          "uasid": "0x01",
+          "default_unit": "mV"
+        },
+        {
+          "tid_hex": "0x02",
+          "name": "Maximum Post-Cat Voltage Threshold",
+          "name_tr": "Maksimum Kat-Sonrası Voltaj Eşiği",
+          "uasid": "0x01",
+          "default_unit": "mV"
+        },
+        {
+          "tid_hex": "0x08",
+          "name": "Oxygen Storage Capacity Switch Ratio",
+          "name_tr": "Oksijen Depolama Kapasitesi Geçiş Oranı",
+          "uasid": "0x30",
+          "default_unit": "ratio"
+        }
+      ]
+    },
+    "0x21": {
+      "mid_hex": "0x21",
+      "mid_int": 33,
+      "name": "Catalyst Monitor Bank 1",
+      "name_tr": "Katalitik Konvertör İzleme Sıra 1",
+      "subsystem": "Egzoz Gazı Arıtma & Emisyon",
+      "tests": [
+        {
+          "tid_hex": "0xA2",
+          "name": "Catalyst Efficiency Conversion Ratio",
+          "name_tr": "Katalizör Dönüşüm Verim Oranı",
+          "uasid": "0x30",
+          "default_unit": "ratio"
+        },
+        {
+          "tid_hex": "0xA3",
+          "name": "Catalyst Light-Off Temperature",
+          "name_tr": "Katalizör Tutuşma Çalışma Sıcaklığı",
+          "uasid": "0x10",
+          "default_unit": "°C"
+        },
+        {
+          "tid_hex": "0xA4",
+          "name": "Oxygen Storage Capacity Index",
+          "name_tr": "Oksijen Depolama Kapasite İndeksi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0x31": {
+      "mid_hex": "0x31",
+      "mid_int": 49,
+      "name": "EGR Monitor Bank 1",
+      "name_tr": "EGR (Egzoz Gazı Devridaimi) İzleme Sıra 1",
+      "subsystem": "NOx Emisyon Kontrol & EGR Valfi",
+      "tests": [
+        {
+          "tid_hex": "0x80",
+          "name": "EGR Valve Flow Delta Pressure",
+          "name_tr": "EGR Valfi Akış Fark Basıncı",
+          "uasid": "0x0C",
+          "default_unit": "kPa"
+        },
+        {
+          "tid_hex": "0x81",
+          "name": "EGR Step Motor Commanded vs Actual Position Error",
+          "name_tr": "EGR Adım Motoru Hedef-Gerçek Konum Sapması",
+          "uasid": "0x14",
+          "default_unit": "%"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "EGR Gas Temperature Delta",
+          "name_tr": "EGR Gaz Sıcaklık Değişimi",
+          "uasid": "0x10",
+          "default_unit": "°C"
+        }
+      ]
+    },
+    "0x35": {
+      "mid_hex": "0x35",
+      "mid_int": 53,
+      "name": "VVT (Variable Valve Timing) Monitor Bank 1",
+      "name_tr": "Değişken Subap Zamanlaması (VVT/Vanos) Sıra 1",
+      "subsystem": "Eksantrik Mili Zamanlama & Solenoid",
+      "tests": [
+        {
+          "tid_hex": "0x90",
+          "name": "Camshaft Phase Angle Response Time",
+          "name_tr": "Eksantrik Faz Açısı Tepki Süresi",
+          "uasid": "0x07",
+          "default_unit": "ms"
+        },
+        {
+          "tid_hex": "0x91",
+          "name": "Camshaft Steady State Angle Deviation",
+          "name_tr": "Eksantrik Kararlı Açı Sapma Toleransı",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0x39": {
+      "mid_hex": "0x39",
+      "mid_int": 57,
+      "name": "EVAP Monitor (0.090 Inch Large Leak / Cap Off)",
+      "name_tr": "EVAP Depo Havalandırma Büyük Kaçak Testi (Kapak Açık)",
+      "subsystem": "Yakıt Buharı Kontrol Sistemi",
+      "tests": [
+        {
+          "tid_hex": "0xB0",
+          "name": "Vacuum Draw Rate During Purge",
+          "name_tr": "Hava Tahliyesi Esnasında Vakum Çekiş Hızı",
+          "uasid": "0x0B",
+          "default_unit": "Pa"
+        },
+        {
+          "tid_hex": "0xB1",
+          "name": "Vapor Pressure Sensor Baseline Offset",
+          "name_tr": "Buhar Basınç Sensörü Referans Sıfır Noktası",
+          "uasid": "0x0B",
+          "default_unit": "Pa"
+        }
+      ]
+    },
+    "0x3A": {
+      "mid_hex": "0x3A",
+      "mid_int": 58,
+      "name": "EVAP Monitor (0.040 Inch Small Leak Detection)",
+      "name_tr": "EVAP Küçük Kaçak Testi (0.040 inç Orifis)",
+      "subsystem": "Yakıt Buharı Kontrol Sistemi",
+      "tests": [
+        {
+          "tid_hex": "0xB2",
+          "name": "Tank Vacuum Decay Rate",
+          "name_tr": "Depo Vakum Düşüş Hızı",
+          "uasid": "0x0B",
+          "default_unit": "Pa"
+        },
+        {
+          "tid_hex": "0xB3",
+          "name": "Canister Vent Solenoid Seal Integrity",
+          "name_tr": "Kömür Filtresi Tahliye Solenoidi Sızdırmazlığı",
+          "uasid": "0x0B",
+          "default_unit": "Pa"
+        }
+      ]
+    },
+    "0x3B": {
+      "mid_hex": "0x3B",
+      "mid_int": 59,
+      "name": "EVAP Monitor (0.020 Inch Very Small Leak)",
+      "name_tr": "EVAP Çok Küçük Kaçak Testi (0.020 inç Hassas)",
+      "subsystem": "Yakıt Buharı Kontrol Sistemi",
+      "tests": [
+        {
+          "tid_hex": "0xB4",
+          "name": "Natural Vacuum Leak Detection (NVLD) Switch Point",
+          "name_tr": "Doğal Vakum Kaçak Algılama Şalter Kapanma Eşiği",
+          "uasid": "0x0B",
+          "default_unit": "Pa"
+        },
+        {
+          "tid_hex": "0xB5",
+          "name": "EVAP Pump Current Draw",
+          "name_tr": "EVAP Kaçak Teşhis Pompası Akım Çekişi",
+          "uasid": "0x04",
+          "default_unit": "mA"
+        }
+      ]
+    },
+    "0x71": {
+      "mid_hex": "0x71",
+      "mid_int": 113,
+      "name": "Variable Geometry Turbocharger (VGT) Monitor",
+      "name_tr": "Değişken Geometrili Turbo (VGT) İzleme",
+      "subsystem": "Turboşarj Aşırı Besleme & Aktüatör",
+      "tests": [
+        {
+          "tid_hex": "0xC1",
+          "name": "VGT Vane Slew Rate Response",
+          "name_tr": "VGT Kanatçık Değişim Tepki Süresi",
+          "uasid": "0x07",
+          "default_unit": "ms"
+        },
+        {
+          "tid_hex": "0xC2",
+          "name": "VGT Boost Pressure Overshoot Error",
+          "name_tr": "VGT Aşırı Besleme Basınç Aşımı Hatası",
+          "uasid": "0x0C",
+          "default_unit": "kPa"
+        },
+        {
+          "tid_hex": "0xC3",
+          "name": "VGT Minimum Stop Learn Calibration",
+          "name_tr": "VGT Minimum Mekanik Dayanak Kalibrasyonu",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0x81": {
+      "mid_hex": "0x81",
+      "mid_int": 129,
+      "name": "Engine Boost Pressure Control Monitor",
+      "name_tr": "Motor Aşırı Besleme / Turbo Basınç Kontrolü",
+      "subsystem": "Hava Emiş & Turbo Basıncı",
+      "tests": [
+        {
+          "tid_hex": "0xC4",
+          "name": "Boost Control Solenoid Duty Cycle Deviation",
+          "name_tr": "Wastegate / Turbo Solenoidi Doluluk Sapması",
+          "uasid": "0x14",
+          "default_unit": "%"
+        },
+        {
+          "tid_hex": "0xC5",
+          "name": "Charge Air Cooler Temperature Differential",
+          "name_tr": "Intercooler Sıcaklık Düşüş Verimi",
+          "uasid": "0x10",
+          "default_unit": "°C"
+        }
+      ]
+    },
+    "0x84": {
+      "mid_hex": "0x84",
+      "mid_int": 132,
+      "name": "Particulate Matter (PM / DPF) Filter Monitor",
+      "name_tr": "Dizel Partikül Filtresi (DPF) İzleme",
+      "subsystem": "Dizel Emisyon & Egzoz Filtresi",
+      "tests": [
+        {
+          "tid_hex": "0xD1",
+          "name": "DPF Differential Pressure Delta at Rated Flow",
+          "name_tr": "Anma Gaz Akışında DPF Fark Basıncı",
+          "uasid": "0x0C",
+          "default_unit": "kPa"
+        },
+        {
+          "tid_hex": "0xD2",
+          "name": "DPF Regeneration Frequency Interval",
+          "name_tr": "Rejenerasyonlar Arası Çalışma Süresi",
+          "uasid": "0x35",
+          "default_unit": "s"
+        },
+        {
+          "tid_hex": "0xD3",
+          "name": "Soot Mass Sensor Current Output",
+          "name_tr": "Kurum Sensörü Akım Çıkışı",
+          "uasid": "0x04",
+          "default_unit": "mA"
+        }
+      ]
+    },
+    "0xA1": {
+      "mid_hex": "0xA1",
+      "mid_int": 161,
+      "name": "Misfire Monitor General Data",
+      "name_tr": "Genel Tekleme / Ateşleme Kaçırma İzleme Verisi",
+      "subsystem": "Ateşleme & Yanma Odası Sağlığı",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Overall EWMA Misfire Count (10 Drives)",
+          "name_tr": "Ağırlıklı Ortalama Toplam Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Total Misfire Counts Last 1000 Revolutions",
+          "name_tr": "Son 1.000 Motor Devrinde Toplam Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        }
+      ]
+    },
+    "0xA2": {
+      "mid_hex": "0xA2",
+      "mid_int": 162,
+      "name": "Misfire Cylinder 1 Monitor",
+      "name_tr": "Silindir 1 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 1 EWMA Misfire Count",
+          "name_tr": "Silindir 1 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 1 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 1 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 1 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 1 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 1 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 1 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA3": {
+      "mid_hex": "0xA3",
+      "mid_int": 163,
+      "name": "Misfire Cylinder 2 Monitor",
+      "name_tr": "Silindir 2 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 2 EWMA Misfire Count",
+          "name_tr": "Silindir 2 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 2 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 2 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 2 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 2 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 2 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 2 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA4": {
+      "mid_hex": "0xA4",
+      "mid_int": 164,
+      "name": "Misfire Cylinder 3 Monitor",
+      "name_tr": "Silindir 3 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 3 EWMA Misfire Count",
+          "name_tr": "Silindir 3 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 3 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 3 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 3 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 3 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 3 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 3 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA5": {
+      "mid_hex": "0xA5",
+      "mid_int": 165,
+      "name": "Misfire Cylinder 4 Monitor",
+      "name_tr": "Silindir 4 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 4 EWMA Misfire Count",
+          "name_tr": "Silindir 4 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 4 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 4 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 4 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 4 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 4 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 4 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA6": {
+      "mid_hex": "0xA6",
+      "mid_int": 166,
+      "name": "Misfire Cylinder 5 Monitor",
+      "name_tr": "Silindir 5 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 5 EWMA Misfire Count",
+          "name_tr": "Silindir 5 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 5 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 5 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 5 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 5 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 5 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 5 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA7": {
+      "mid_hex": "0xA7",
+      "mid_int": 167,
+      "name": "Misfire Cylinder 6 Monitor",
+      "name_tr": "Silindir 6 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 6 EWMA Misfire Count",
+          "name_tr": "Silindir 6 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 6 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 6 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 6 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 6 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 6 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 6 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA8": {
+      "mid_hex": "0xA8",
+      "mid_int": 168,
+      "name": "Misfire Cylinder 7 Monitor",
+      "name_tr": "Silindir 7 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 7 EWMA Misfire Count",
+          "name_tr": "Silindir 7 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 7 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 7 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 7 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 7 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 7 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 7 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    },
+    "0xA9": {
+      "mid_hex": "0xA9",
+      "mid_int": 169,
+      "name": "Misfire Cylinder 8 Monitor",
+      "name_tr": "Silindir 8 Ateşleme Kaçırma / Tekleme İzleme",
+      "subsystem": "Yanma & Enjeksiyon Denge Denetimi",
+      "tests": [
+        {
+          "tid_hex": "0x81",
+          "name": "Cylinder 8 EWMA Misfire Count",
+          "name_tr": "Silindir 8 Ortalama Tekleme Sayısı",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x82",
+          "name": "Cylinder 8 Misfire Count (Last 1000 Revs)",
+          "name_tr": "Silindir 8 Son 1000 Devirdeki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x83",
+          "name": "Cylinder 8 Current Driving Cycle Misfires",
+          "name_tr": "Silindir 8 Güncel Sürüşteki Tekleme",
+          "uasid": "0x22",
+          "default_unit": "counts"
+        },
+        {
+          "tid_hex": "0x84",
+          "name": "Cylinder 8 Crankshaft Acceleration Fluctuation",
+          "name_tr": "Silindir 8 Krank Mili İvmelenme Titreşimi",
+          "uasid": "0x14",
+          "default_unit": "%"
+        }
+      ]
+    }
+  }
+}
