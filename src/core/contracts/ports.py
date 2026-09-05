@@ -188,7 +188,9 @@ class QueueRxSubscription:
         if timeout_s is None:
             try:
                 return await self._queue.get()
-            except (asyncio.CancelledError, Exception):
+            except asyncio.CancelledError:
+                raise
+            except Exception:
                 return None
         if timeout_s <= 0:
             try:
@@ -199,7 +201,9 @@ class QueueRxSubscription:
             return await asyncio.wait_for(self._queue.get(), timeout=timeout_s)
         except (asyncio.TimeoutError, TimeoutError):
             return None
-        except (asyncio.CancelledError, Exception):
+        except asyncio.CancelledError:
+            raise
+        except Exception:
             return None
 
     def unsubscribe(self) -> None:

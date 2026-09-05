@@ -96,7 +96,7 @@ class EmergencyStopToken:
         """Parse token from canonical string format."""
         parts = token_str.strip().split(":")
         if len(parts) != 5:
-            raise ValueError(f"Invalid token format, expected 5 colon-separated fields: {token_str}")
+            raise ValueError(f"Invalid token format, expected 5 colon-separated fields (got {len(parts)})")
         try:
             return cls(
                 epoch=int(parts[0]),

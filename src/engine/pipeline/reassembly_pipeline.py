@@ -102,17 +102,19 @@ PROTOCOL_RESPONSE_11BIT_IDS: frozenset[int] = frozenset(range(0x7E0, 0x7F0)) | {
 def j1939_protocol_response_masks(my_address: int) -> tuple[tuple[int, int], ...]:
     """Build whitelist (value, mask) pairs authorizing our protocol responses.
 
-    Covers J1939 TP.CM (0x18EC..), TP.DT (0x18EB..) and 29-bit ISO-TP
-    (0x18DA..) frames sourced from `my_address` regardless of the peer they
-    answer. Pass the result to TxSafetyGateway(whitelist_masks=...) when
-    wiring this pipeline, otherwise every CTS/ACK/FC response trips the
-    fail-closed whitelist stage.
+    Covers J1939 TP.CM (0x18EC..), TP.DT (0x18EB..), 29-bit ISO-TP
+    (0x18DA..) and Address Claiming (0x18EE..) frames sourced from
+    `my_address` regardless of the peer they answer. Pass the result to
+    TxSafetyGateway(whitelist_masks=...) when wiring this pipeline,
+    otherwise every CTS/ACK/FC/Claim response trips the fail-closed
+    whitelist stage.
     """
     sa = my_address & 0xFF
     return (
         (0x18EC0000 | sa, 0x18EC00FF),
         (0x18EB0000 | sa, 0x18EB00FF),
         (0x18DA0000 | sa, 0x18DA00FF),
+        (0x18EE0000 | sa, 0x18EE00FF),
     )
 
 

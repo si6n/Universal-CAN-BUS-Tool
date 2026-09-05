@@ -12,7 +12,7 @@ import threading
 import time
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import webview
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -48,6 +48,13 @@ DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64 = "eX3vJQWpo/pKrkpi5Y+f7m5ooUCRbCyY201DTnA
 class DesktopApiBridge:
     """Bidirectional API bridge exposed to React JavaScript window via window.pywebview.api."""
 
+    VALID_SCENARIOS: ClassVar[frozenset[str]] = frozenset({
+        "nominal", "misfire_p0300", "overboost", "overheat", "bus_surge",
+        "ev_bms_telemetry", "marine_vessel_n2k", "j1939_multi_ecu_fleet",
+        "can_fd_adas_vision", "intermittent_wiring_fault"
+    })
+    VALID_FAULTS: ClassVar[frozenset[str]] = frozenset({"error_frame", "wiring_dropout"})
+
     def __init__(self, app: UniversalCanDesktopApp) -> None:
         self.app = app
 
@@ -59,13 +66,26 @@ class DesktopApiBridge:
         return self.app.toggle_simulator()
 
     def select_scenario(self, scenario_name: str) -> None:
-        self.app.set_scenario(scenario_name)
+        clean = str(scenario_name).strip().lower()
+        if clean in self.VALID_SCENARIOS:
+            self.app.set_scenario(clean)
+        else:
+            logger.warning("Rejected unrecognized scenario name from JS bridge: %s", scenario_name)
 
     def inject_fault(self, fault_type: str) -> None:
-        self.app.inject_fault(fault_type)
+        clean = str(fault_type).strip().lower()
+        if clean in self.VALID_FAULTS:
+            self.app.inject_fault(clean)
+        else:
+            logger.warning("Rejected unrecognized fault type from JS bridge: %s", fault_type)
 
     def set_simulation_speed(self, speed: float) -> None:
-        self.app.set_simulation_speed(speed)
+        try:
+            val = float(speed)
+            if math.isfinite(val):
+                self.app.set_simulation_speed(val)
+        except (ValueError, TypeError):
+            pass
 
     def ask_copilot(self, query: str) -> str:
         return self.app.query_copilot(query)

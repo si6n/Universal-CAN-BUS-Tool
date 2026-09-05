@@ -46,6 +46,10 @@ class RP1210Bus(AbstractBus):
     DEFAULT_TX_BUFFER: ClassVar[int] = 8000
     DEFAULT_RX_BUFFER: ClassVar[int] = 8000
     MAX_CLASSIC_PAYLOAD: ClassVar[int] = 8
+    # Protocols that are strictly 29-bit only (SAE J1939 standard).
+    _STRICT_29BIT_PROTOCOLS: ClassVar[frozenset[str]] = frozenset(
+        {"j1939", "j1939t"}
+    )
     # Protocols whose RP1210 stacks deliver 29-bit frames in the
     # 4-byte-ID + 1-byte-DLC layout (case-insensitive).
     _EXTENDED_ID_PROTOCOLS: ClassVar[frozenset[str]] = frozenset(
@@ -138,16 +142,14 @@ class RP1210Bus(AbstractBus):
             )
         data = bytes(frame.data)
 
-        if frame.is_extended or self._uses_extended_id_layout:
-            # 29-bit identifier path — J1939 PDU1/PDU2 and ISO 15765-4.
-            # Reject 11-bit frames on a 29-bit protocol stack rather than
-            # silently re-labelling them extended.
-            if not frame.is_extended:
-                raise HardwareError(
-                    "11-bit frame sent on a 29-bit (J1939/ISO 15765) protocol stack",
-                    code="HARDWARE_FRAME_REJECTED",
-                )
+        if frame.is_extended:
             wire = (frame.arbitration_id & _EXT_ID_MASK).to_bytes(4, "little") + bytes([len(data)]) + data
+        elif self.protocol.strip().lower() in self._STRICT_29BIT_PROTOCOLS:
+            # Strictly 29-bit J1939 stack rejects 11-bit frames (J1939-21 conformance)
+            raise HardwareError(
+                "11-bit frame sent on a 29-bit (J1939) protocol stack",
+                code="HARDWARE_FRAME_REJECTED",
+            )
         else:
             header = (frame.arbitration_id & 0x7FF) << 4 | (len(data) & 0x0F)
             wire = header.to_bytes(2, "little") + data
@@ -181,7 +183,8 @@ class RP1210Bus(AbstractBus):
                 continue
 
             if raw is not None:
-                min_len = 5 if self._uses_extended_id_layout else 2
+                is_strict_29bit = self.protocol.strip().lower() in self._STRICT_29BIT_PROTOCOLS
+                min_len = 5 if is_strict_29bit else 2
                 if len(raw) >= min_len:
                     frame = self._decode_rp1210_packet(raw)
                     if frame is not None:
@@ -206,8 +209,10 @@ class RP1210Bus(AbstractBus):
 
     def _decode_rp1210_packet(self, raw: bytes) -> CanFrame | None:
         """Decode an RP1210 packet into a CanFrame (layout by protocol)."""
+        is_strict_29bit = self.protocol.strip().lower() in self._STRICT_29BIT_PROTOCOLS
+
         # 29-bit extended layout: 4-byte LE identifier + 1-byte DLC.
-        if self._uses_extended_id_layout:
+        if is_strict_29bit or (self._uses_extended_id_layout and len(raw) >= 5):
             if len(raw) < 5:
                 logger.warning(
                     "RP1210 extended packet shorter than 4+1 header; dropped",

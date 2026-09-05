@@ -57,8 +57,13 @@ def _run_powershell(command: str) -> str:
         logger.warning("Rejected non-conforming PowerShell command", extra={"command": command[:80]})
         return ""
     try:
+        import os
+        system_root = os.environ.get("SystemRoot", "C:\\Windows")
+        system_ps = os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+        ps_executable = system_ps if os.path.isfile(system_ps) else "powershell"
+
         cmd = [
-            "powershell",
+            ps_executable,
             "-NoProfile",
             "-NonInteractive",
             "-Command",

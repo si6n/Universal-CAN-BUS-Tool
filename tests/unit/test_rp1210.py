@@ -354,3 +354,21 @@ def test_build_bus_routes_rp1210_and_rejects_bad_device() -> None:
     classic = build_bus(interface="virtual", channel="vcan0", bitrate=250000)
     assert isinstance(classic, PythonCanBus)
     classic.disconnect()
+
+
+def test_rp1210_bus_allows_11bit_on_iso15765_stack() -> None:
+    """11-bit frames (such as OBD 0x7DF / UDS 0x7E0) must be allowed on ISO 15765."""
+    mock = _MockRP1210Client()
+    bus = _make_bus(mock, protocol="iso15765")
+    bus.connect()
+
+    frame = CanFrame.create(
+        channel_id=bus.channel_id, arbitration_id=0x7DF, data=b"\x02\x01\x00", is_extended=False
+    )
+    bus.send(frame)
+    assert len(mock.sent) == 1
+    packet = mock.sent[0]
+    header = int.from_bytes(packet[:2], "little")
+    assert (header >> 4) & 0x7FF == 0x7DF
+    assert header & 0x0F == 3
+    assert packet[2:] == b"\x02\x01\x00"

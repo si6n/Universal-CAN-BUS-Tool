@@ -81,6 +81,8 @@ class TxWatchdogSupervisor:
             self._is_running = False
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
+            if self._thread.is_alive():
+                logger.error("TX Watchdog monitor thread failed to exit within 1.0s timeout")
         logger.info("TX Watchdog Supervisor stopped")
 
     def _monitor_loop(self) -> None:
@@ -106,16 +108,23 @@ class TxWatchdogSupervisor:
                             "TX Watchdog Lease Expired! Revoking all TX authorization.",
                             extra={"elapsed_ms": elapsed * 1000.0, "timeout_ms": self.timeout_sec * 1000.0},
                         )
-                        # Revoke TX in state machine
-                        self.supervisor.trigger_fault(
-                            f"WATCHDOG_TIMEOUT: Lease expired after {elapsed * 1000.0:.1f} ms without heartbeat",
-                        )
-                        # Engage hardware/software E-Stop if available
-                        if self.estop:
-                            self.estop.trigger(
-                                EStopTriggerSource.KEEPALIVE_TIMEOUT,
-                                f"Watchdog lease expired ({elapsed * 1000.0:.1f}ms > {self.timeout_sec * 1000.0:.1f}ms)",
+                        # Revoke TX in state machine with primary root cause
+                        try:
+                            self.supervisor.trigger_fault(
+                                f"WATCHDOG_TIMEOUT: Lease expired after {elapsed * 1000.0:.1f} ms without heartbeat",
                             )
+                        except Exception as sup_exc:  # noqa: BLE001
+                            logger.critical("Failed to trigger supervisor fault during watchdog timeout", extra={"error": str(sup_exc)})
+
+                        # Engage hardware/software E-Stop (fail-safe cutoff)
+                        if self.estop:
+                            try:
+                                self.estop.trigger(
+                                    EStopTriggerSource.KEEPALIVE_TIMEOUT,
+                                    f"Watchdog lease expired ({elapsed * 1000.0:.1f}ms > {self.timeout_sec * 1000.0:.1f}ms)",
+                                )
+                            except Exception as estop_exc:  # noqa: BLE001
+                                logger.critical("Failed to engage E-Stop during watchdog timeout", extra={"error": str(estop_exc)})
                 except Exception as exc:  # noqa: BLE001
                     logger.error(
                         "TX Watchdog monitor iteration failed; continuing supervision",

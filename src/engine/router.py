@@ -126,23 +126,20 @@ class FrameRouter:
                 elapsed_ms = (time.monotonic() - t0) * 1000.0
                 if elapsed_ms > self.CALLBACK_BUDGET_MS:
                     logger.warning(
-                        "Slow FrameRouter callback demoted to queue-only dispatch",
+                        "Slow FrameRouter callback exceeded time budget",
                         extra={
                             "sub_id": sub.sub_id,
                             "elapsed_ms": round(elapsed_ms, 2),
                             "budget_ms": self.CALLBACK_BUDGET_MS,
                         },
                     )
-                    with self._lock:
-                        if sub.sub_id in self._subscriptions:
-                            self._subscriptions[sub.sub_id].callback = None
-                            self._subscriptions[sub.sub_id].is_demoted = True
-                            if self._subscriptions[sub.sub_id].frame_queue is None:
-                                # No queue either — create one so the demoted
-                                # subscriber keeps receiving frames.
-                                self._subscriptions[sub.sub_id].frame_queue = queue.Queue(
-                                    maxsize=self.MAX_QUEUE_SIZE
-                                )
+                    # Only demote to queue-only if the subscriber actually has a queue to read from.
+                    # Setting callback=None on a callback-only subscriber leaves it completely deaf.
+                    if sub.frame_queue is not None:
+                        with self._lock:
+                            if sub.sub_id in self._subscriptions:
+                                self._subscriptions[sub.sub_id].callback = None
+                                self._subscriptions[sub.sub_id].is_demoted = True
 
             # Dispatch to queue (non-blocking with drop on full)
             if sub.frame_queue is not None:

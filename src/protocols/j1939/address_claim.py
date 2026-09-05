@@ -117,7 +117,7 @@ class AddressClaimEngine:
         """Return True if an address is successfully claimed and active for TX."""
         return self.state == AddressClaimState.CLAIMED and self.current_address != NULL_ADDRESS
 
-    def start_claiming(self) -> CanFrame:
+    def start_claiming(self, auto_arm_timer: bool = True) -> CanFrame:
         """Initiate address claiming sequence and return the Address Claim frame to transmit."""
         with self._engine_lock:
             self.current_address = self.preferred_address
@@ -136,13 +136,27 @@ class AddressClaimEngine:
 
             # F-31: J1939-81 claim window — if no contention arrives within 250 ms
             # the claim finalizes automatically (daemon timer).
-            self._arm_claim_confirmation_timer()
+            if auto_arm_timer:
+                self._arm_claim_confirmation_timer()
 
             logger.info(
                 "Broadcasting Address Claim",
                 extra={"address": self.current_address, "name_int": hex(self.name.to_int64())},
             )
             return claim_frame
+
+    def on_claim_transmitted(self) -> None:
+        """Explicitly arm claim window timer upon confirmed physical transmission."""
+        with self._engine_lock:
+            if self.state == AddressClaimState.CLAIMING:
+                self._arm_claim_confirmation_timer()
+
+    def on_claim_transmission_failed(self) -> None:
+        """Cancel claim timer and revert state if transmission fails or is rejected."""
+        with self._engine_lock:
+            self.cancel_pending_claim_timer()
+            if self.state == AddressClaimState.CLAIMING:
+                self.state = AddressClaimState.UNINITIALIZED
 
     CLAIM_CONFIRM_WINDOW_MS: ClassVar[float] = 250.0  # F-31 (J1939-81 250 ms window)
 

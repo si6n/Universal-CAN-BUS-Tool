@@ -26,7 +26,7 @@ from src.ui.desktop_app import UniversalCanDesktopApp
 logger = get_logger("app.main")
 
 
-def build_bus(interface: str, channel: str, bitrate: int) -> AbstractBus:
+def build_bus(interface: str, channel: str, bitrate: int, listen_only: bool = False) -> AbstractBus:
     """Single bus factory for every launch path (K4-a).
 
     rp1210 uses the RP1210Bus adapter over the vendor client (device id from
@@ -42,7 +42,7 @@ def build_bus(interface: str, channel: str, bitrate: int) -> AbstractBus:
                 f"rp1210 interface requires a numeric device id, got {channel!r}"
             ) from exc
         return RP1210Bus(device_id=device_id, bitrate=bitrate)
-    return PythonCanBus(interface=interface, channel=channel, bitrate=bitrate)
+    return PythonCanBus(interface=interface, channel=channel, bitrate=bitrate, listen_only=listen_only)
 
 # Global placeholder for Qt testing hooks
 QApplication: Any = None
@@ -73,6 +73,7 @@ class UniversalCanMainWindow:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Universal CAN-Bus Diagnostic & Telemetry Tool")
     parser.add_argument("--cli", action="store_true", help="Run in CLI mode instead of GUI")
+    parser.add_argument("--tx", action="store_true", help="Enable active TX in CLI mode (defaults to listen-only sniffer)")
     parser.add_argument("--channel", type=str, default="vcan0", help="CAN Channel (e.g. PCAN_USBBUS1, 0, vcan0)")
     parser.add_argument(
         "--interface",
@@ -94,7 +95,7 @@ def main() -> int:
 
     if args.cli:
         print("=== Universal CAN-Bus CLI Mode ===")
-        bus = build_bus(interface=args.interface, channel=args.channel, bitrate=args.bitrate)
+        bus = build_bus(interface=args.interface, channel=args.channel, bitrate=args.bitrate, listen_only=not args.tx)
         bus.connect()
         print(f"Connected to {args.interface}:{args.channel} @ {args.bitrate} bps. Listening for frames...")
         try:

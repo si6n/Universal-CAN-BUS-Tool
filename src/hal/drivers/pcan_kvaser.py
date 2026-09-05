@@ -169,17 +169,21 @@ class PythonCanBus(AbstractBus):
 
         try:
             # Timeout guards a wedged vendor driver; supported by socketcan &
-            # most native backends (ignored where unsupported).
-            try:
-                bus_snapshot.send(msg, timeout=0.05)
-            except TypeError:
-                bus_snapshot.send(msg)
+            # most native backends.
+            bus_snapshot.send(msg, timeout=0.05)
             self.metrics.tx_frames += 1
         except can.CanError as exc:
             self.metrics.error_frames += 1
             raise TransportError(
                 f"Hardware frame transmission failed: {exc}",
                 code="TRANSPORT_TX_FAILED",
+                cause=exc,
+            ) from exc
+        except TypeError as exc:
+            self.metrics.error_frames += 1
+            raise TransportError(
+                f"Hardware frame rejected by driver: {exc}",
+                code="TRANSPORT_FRAME_INVALID",
                 cause=exc,
             ) from exc
 

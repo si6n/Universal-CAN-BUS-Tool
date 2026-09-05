@@ -48,26 +48,22 @@ class SafeMultiplexedBus(AbstractBus):
 
     @is_connected.setter
     def is_connected(self, value: bool) -> None:
-        """S-2 (3FABLE): the old setter wrote a dead `_is_connected` field the
-        getter never read. The base class assigns `is_connected = False`
-        during __init__; the only meaningful delegation is to the physical
-        bus's own flag (the router subscription is managed by
-        connect/disconnect lifecycle methods)."""
-        if getattr(self, "_initialized", False) and getattr(self, "physical_bus", None) is not None:
-            try:
-                self.physical_bus.is_connected = value
-            except AttributeError:
-                # read-only property on the driver — nothing to sync
-                pass
+        """Read-only delegation: connection state is strictly driven by the physical bus
+        driver lifecycle (connect/disconnect), not by external property assignment."""
+        pass
 
     def connect(self) -> None:
         """Physical bus connection is managed externally (e.g. by main UI)."""
         if not self.physical_bus.is_connected:
             self.physical_bus.connect()
+        if self.sub_id is None:
+            self.sub_id, self.rx_queue = self.router.subscribe(use_queue=True)
 
     def disconnect(self) -> None:
         """Unsubscribe from router upon teardown."""
-        self.router.unsubscribe(self.sub_id)
+        if self.sub_id is not None:
+            self.router.unsubscribe(self.sub_id)
+            self.sub_id = None
 
     def send(
         self,
