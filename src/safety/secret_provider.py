@@ -37,6 +37,20 @@ DEFAULT_LINUX_SALT: bytes = b"UniversalCAN_Linux_Secret_Salt_2026"
 DEFAULT_KDF_INFO: bytes = b"UniversalCAN_Secret_Key_Derivation_v1"
 
 
+def derive_machine_dpapi_entropy(base_entropy: bytes = DEFAULT_DPAPI_ENTROPY) -> bytes:
+    """Derive hardware-tied DPAPI secondary entropy binding (F-06 / SEC-SP-001).
+
+    Mixes machine node, platform identity, and base entropy through SHA-256
+    to prevent cross-device credential transfer attacks while maintaining
+    deterministic local recovery.
+    """
+    import hashlib
+    import platform
+
+    ident = f"{platform.node()}-{platform.machine()}-{os.environ.get('COMPUTERNAME', '')}".encode("utf-8")
+    return hashlib.sha256(base_entropy + b":" + ident).digest()
+
+
 class SecretProvider(ABC):
     """Abstract interface for secure secret and key storage providers."""
 
@@ -483,14 +497,14 @@ class WindowsDPAPISecretBackend(SecretProvider):
         finally:
             kernel32.LocalFree(blob_out.pbData)
 
-    def _dpapi_unprotect(self, encrypted_data: bytes) -> bytes:
-        """Unprotect DPAPI data using win32crypt if available or ctypes."""
+    def _dpapi_unprotect_single(self, encrypted_data: bytes, entropy_bytes: bytes) -> bytes:
+        """Single-attempt unprotect of DPAPI data using win32crypt or ctypes."""
         # 1. Try win32crypt if present
         try:
             win32crypt = importlib.import_module("win32crypt")
             _desc, decrypted = win32crypt.CryptUnprotectData(
                 encrypted_data,
-                self.entropy,
+                entropy_bytes,
                 None,
                 None,
                 0,
@@ -503,18 +517,15 @@ class WindowsDPAPISecretBackend(SecretProvider):
         crypt32 = ctypes.windll.crypt32
         kernel32 = ctypes.windll.kernel32
 
-        # B7: keep the input buffer alive on a named local for the duration of
-        # the call — an anonymous create_string_buffer could be collected while
-        # blob_in still points into it.
         data_buffer = ctypes.create_string_buffer(encrypted_data)
         blob_in = _WindowsDATA_BLOB(len(encrypted_data), ctypes.cast(data_buffer, ctypes.POINTER(ctypes.c_byte)))
         blob_out = _WindowsDATA_BLOB()
 
         blob_entropy_ptr = None
         entropy_buffer = None
-        if self.entropy:
-            entropy_buffer = ctypes.create_string_buffer(self.entropy)
-            blob_entropy = _WindowsDATA_BLOB(len(self.entropy), ctypes.cast(entropy_buffer, ctypes.POINTER(ctypes.c_byte)))
+        if entropy_bytes:
+            entropy_buffer = ctypes.create_string_buffer(entropy_bytes)
+            blob_entropy = _WindowsDATA_BLOB(len(entropy_bytes), ctypes.cast(entropy_buffer, ctypes.POINTER(ctypes.c_byte)))
             blob_entropy_ptr = ctypes.byref(blob_entropy)
 
         res = crypt32.CryptUnprotectData(
@@ -534,6 +545,18 @@ class WindowsDPAPISecretBackend(SecretProvider):
             return ctypes.string_at(blob_out.pbData, blob_out.cbData)
         finally:
             kernel32.LocalFree(blob_out.pbData)
+
+    def _dpapi_unprotect(self, encrypted_data: bytes) -> bytes:
+        """Unprotect DPAPI data with primary entropy and fallback to legacy base entropy (F-06)."""
+        try:
+            return self._dpapi_unprotect_single(encrypted_data, self.entropy)
+        except Exception as primary_exc:
+            if self.entropy != DEFAULT_DPAPI_ENTROPY:
+                try:
+                    return self._dpapi_unprotect_single(encrypted_data, DEFAULT_DPAPI_ENTROPY)
+                except Exception:
+                    pass
+            raise primary_exc
 
     def _get_fallback(self) -> SecretProvider:
         """Get or initialize fallback encrypted file provider."""
@@ -685,7 +708,10 @@ def get_default_secret_provider(
     try:
         if sys.platform == "win32":
             path = Path(storage_dir) / "secrets.dpapi" if storage_dir else None
-            return WindowsDPAPISecretBackend(storage_path=path)
+            return WindowsDPAPISecretBackend(
+                storage_path=path,
+                entropy=derive_machine_dpapi_entropy(),
+            )
         else:
             path = Path(storage_dir) / "secrets.bin" if storage_dir else None
             return LinuxSecretBackend(storage_path=path)

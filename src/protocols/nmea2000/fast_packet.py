@@ -42,12 +42,12 @@ class N2KCompletedMessage:
 
 
 class Nmea2000FastPacketDecoder:
-    """Fast Packet stream reassembler using (Source_Address, PGN, Sequence_ID) indexing."""
+    """Fast Packet stream reassembler using (Source_Address, PGN, Sequence_ID, Channel_ID) indexing (B-04)."""
 
     TIMEOUT_SEC: ClassVar[float] = 0.500  # 500 ms maximum inter-frame timeout
 
     def __init__(self) -> None:
-        self._sessions: dict[tuple[int, int, int], FastPacketSession] = {}
+        self._sessions: dict[tuple[int, int, int, str], FastPacketSession] = {}
         self._sessions_lock = threading.RLock()  # F-24: concurrent dict access
 
     def handle_rx_frame(self, frame: CanFrame) -> N2KCompletedMessage | None:
@@ -66,7 +66,7 @@ class Nmea2000FastPacketDecoder:
         sequence_id = (header_byte >> 5) & 0x07
         frame_index = header_byte & 0x1F
 
-        session_key = (source_address, pgn, sequence_id)
+        session_key = (source_address, pgn, sequence_id, frame.channel_id)
         now = time.monotonic()
 
         with self._sessions_lock:
@@ -81,7 +81,7 @@ class Nmea2000FastPacketDecoder:
         sequence_id: int,
         source_address: int,
         pgn: int,
-        session_key: tuple[int, int, int],
+        session_key: tuple[int, int, int, str],
         now: float,
     ) -> N2KCompletedMessage | None:
         if frame_index == 0:
@@ -130,6 +130,15 @@ class Nmea2000FastPacketDecoder:
             return None  # Missing initial frame or already expired
 
         session = self._sessions[session_key]
+
+        # Channel verification for defence in depth (B-04)
+        if session.channel_id != frame.channel_id:
+            logger.warning(
+                "N2K Fast Packet CF channel mismatch — dropping session",
+                extra={"session_channel": session.channel_id, "frame_channel": frame.channel_id},
+            )
+            self._sessions.pop(session_key, None)
+            return None
 
         if frame_index != session.expected_frame_index:
             logger.warning(

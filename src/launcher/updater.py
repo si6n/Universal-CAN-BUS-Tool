@@ -6,12 +6,16 @@ and atomic file replacement to keep the desktop client updated seamlessly.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from src.core.logging import get_logger
 from src.security.cloud.client import CloudClient
@@ -28,6 +32,7 @@ class UpdateInfo:
     latest_version: str
     download_url: str = ""
     sha256_hash: str = ""
+    signature: str = ""  # Base64 encoded Ed25519 signature of the package
     package_size_bytes: int = 0
     release_notes: str = ""
     mandatory: bool = False
@@ -36,9 +41,17 @@ class UpdateInfo:
 class UpdateManager:
     """Manages version checking, SHA-256 verified downloads, and atomic binary updates."""
 
-    def __init__(self, current_version: str = "13.0.0", cloud_client: CloudClient | None = None) -> None:
+    def __init__(
+        self,
+        current_version: str = "13.0.0",
+        cloud_client: CloudClient | None = None,
+        public_key: ed25519.Ed25519PublicKey | None = None,
+        require_signature: bool = False,
+    ) -> None:
         self.current_version = current_version
         self.cloud_client = cloud_client
+        self.public_key = public_key
+        self.require_signature = require_signature
 
     @staticmethod
     def _parse_semver(v: str) -> tuple[int, int, int]:
@@ -69,6 +82,7 @@ class UpdateManager:
                 latest_version=latest_v,
                 download_url=custom_manifest.get("download_url", ""),
                 sha256_hash=custom_manifest.get("sha256", ""),
+                signature=custom_manifest.get("signature", ""),
                 package_size_bytes=custom_manifest.get("size_bytes", 0),
                 release_notes=custom_manifest.get("release_notes", ""),
                 mandatory=custom_manifest.get("mandatory", False),
@@ -92,6 +106,7 @@ class UpdateManager:
                 latest_version=latest_v,
                 download_url=data.get("download_url", ""),
                 sha256_hash=data.get("sha256", ""),
+                signature=data.get("signature", ""),
                 package_size_bytes=data.get("size_bytes", 0),
                 release_notes=data.get("release_notes", ""),
                 mandatory=data.get("mandatory", False),
@@ -115,17 +130,42 @@ class UpdateManager:
         calculated = hasher.hexdigest().lower()
         return calculated == expected_hash.strip().lower()
 
+    @classmethod
+    def verify_file_signature(
+        cls,
+        file_path: Path | str,
+        signature_b64: str,
+        public_key: ed25519.Ed25519PublicKey,
+    ) -> bool:
+        """Verify Ed25519 signature of the downloaded binary file (SEC-U-001)."""
+        path = Path(file_path)
+        if not path.is_file() or not signature_b64.strip():
+            return False
+
+        try:
+            # Pad base64 if needed
+            raw_sig = signature_b64.strip()
+            pad_len = -len(raw_sig) % 4
+            sig_bytes = base64.b64decode(raw_sig + ("=" * pad_len))
+            file_bytes = path.read_bytes()
+            public_key.verify(sig_bytes, file_bytes)
+            return True
+        except (InvalidSignature, ValueError, OSError) as exc:
+            logger.error("Update package Ed25519 signature verification failed", extra={"error": str(exc)})
+            return False
+
     def download_update(
         self,
         update_info: UpdateInfo,
         destination_path: Path | str,
         progress_callback: Callable[[int, int, float], None] | None = None,
     ) -> bool:
-        """Download update file and verify SHA-256 hash.
+        """Download update file and verify SHA-256 hash and Ed25519 signature.
 
         L-C-002: an update without a SHA-256 hash is rejected — an unsigned
         package must never execute on the operator's machine.
         L-H-001: download URLs must be HTTPS.
+        SEC-U-001: Ed25519 signature verification enforced when configured.
         """
         dest = Path(destination_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -149,10 +189,18 @@ class UpdateManager:
             )
             return False
 
+        # Fail closed if signature is strictly required but missing
+        if self.require_signature and not update_info.signature:
+            logger.error(
+                "Update rejected: manifest provides no Ed25519 signature while signature is required",
+                extra={"version": update_info.latest_version},
+            )
+            return False
+
         try:
             temp_dest = dest.with_suffix(".tmp_download")
             req = urllib.request.Request(update_info.download_url, headers={"User-Agent": "UniversalCAN-Launcher/13.0"})
-            with urllib.request.urlopen(req, timeout=60) as response, open(temp_dest, "wb") as out_file:
+            with urllib.request.urlopen(req, timeout=60) as response, open(temp_dest, "wb") as out_file:  # nosec: B310
                 total_size = int(response.headers.get("Content-Length", update_info.package_size_bytes or 0))
                 bytes_downloaded = 0
                 while chunk := response.read(65536):
@@ -165,6 +213,17 @@ class UpdateManager:
             if not self.verify_file_sha256(temp_dest, update_info.sha256_hash):
                 temp_dest.unlink(missing_ok=True)
                 logger.error("Downloaded update SHA-256 hash mismatch. File discarded.")
+                return False
+
+            # Verify Ed25519 signature if key or signature present
+            if self.public_key is not None and update_info.signature:
+                if not self.verify_file_signature(temp_dest, update_info.signature, self.public_key):
+                    temp_dest.unlink(missing_ok=True)
+                    logger.error("Downloaded update Ed25519 signature mismatch. File discarded.")
+                    return False
+            elif self.require_signature:
+                temp_dest.unlink(missing_ok=True)
+                logger.error("Downloaded update rejected: signature requirement not satisfied.")
                 return False
 
             temp_dest.replace(dest)

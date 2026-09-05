@@ -33,6 +33,7 @@ class BusMetrics:
     rx_frames: int = 0
     tx_frames: int = 0
     error_frames: int = 0
+    dropped_frames: int = 0
     bus_load_percent: float = 0.0
     bitrate: int = 250000
     data_bitrate: int | None = None

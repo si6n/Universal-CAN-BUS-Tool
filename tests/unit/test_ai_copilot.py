@@ -250,3 +250,107 @@ def test_gemini_endpoint_constant_matches_readme_model() -> None:
 
     assert GEMINI_ENDPOINT.endswith("gemini-2.0-flash:generateContent")
     assert "?key=" not in GEMINI_ENDPOINT
+
+
+# ============================================================================
+# DYNAMIC AUTOMOTIVE DIAGNOSTIC DATABASES INTEGRATION TESTS
+# ============================================================================
+
+
+def test_external_dtc_database_loaded_and_expanded() -> None:
+    """Verify external DTC database loaded properly, expanding KB beyond 1800 codes."""
+    from src.engine.ai.diagnostic_copilot import EXPERT_KNOWLEDGE_BASE
+
+    assert len(EXPERT_KNOWLEDGE_BASE) >= 1800
+    # Verify presence of representative codes from each domain
+    assert "U0001" in EXPERT_KNOWLEDGE_BASE
+    assert "P2002" in EXPERT_KNOWLEDGE_BASE
+    assert "C0035" in EXPERT_KNOWLEDGE_BASE
+    assert "B0001" in EXPERT_KNOWLEDGE_BASE
+    assert "P3000" in EXPERT_KNOWLEDGE_BASE
+
+
+def test_dynamic_dtc_4stage_technician_reports() -> None:
+    """Verify CausalBayesianInferenceEngine generates 4-stage technician report for dynamic codes."""
+    from src.engine.ai.diagnostic_copilot import CausalBayesianInferenceEngine
+
+    # Test U0001 (High Speed CAN Bus)
+    report_u0001 = CausalBayesianInferenceEngine.evaluate_diagnostic_query(
+        "U0001 ariza kodu nedir?", [], {"EngineSpeed": 0.0, "BoostPressure": 0.0, "CoolantTemp": 85.0}
+    )
+    assert "[U0001]" in report_u0001
+    assert "4-AŞAMALI USTA TEKNİSYEN SAHA ONARIM KILAVUZU" in report_u0001
+    assert "Aşama 1: Görsel & Mekanik Kontrol" in report_u0001
+    assert "Aşama 2: Kesin Multimetre & Osiloskop Toleransları" in report_u0001
+
+    # Test C0035 (Chassis / ABS)
+    report_c0035 = CausalBayesianInferenceEngine.evaluate_diagnostic_query(
+        "C0035 hatasi verdi arac", [], {}
+    )
+    assert "[C0035]" in report_c0035
+    assert "Alt Sistem:" in report_c0035
+
+    # Test P3000 (Hybrid Battery)
+    report_p3000 = CausalBayesianInferenceEngine.evaluate_diagnostic_query(
+        "P3000 nedir?", [], {}
+    )
+    assert "[P3000]" in report_p3000
+
+
+def test_j1939_spn_query_evaluation() -> None:
+    """Verify J1939 SPN & FMI queries retrieve heavy-duty diagnostic guides."""
+    from src.engine.ai.diagnostic_copilot import CausalBayesianInferenceEngine, get_j1939_spn_database
+
+    j1939_db = get_j1939_spn_database()
+    assert len(j1939_db.get("spns", {})) >= 50
+
+    # Query SPN 641 FMI 7 (VGT Turbo Actuator Mechanical Jam)
+    report = CausalBayesianInferenceEngine.evaluate_diagnostic_query(
+        "SPN 641 FMI 7 arızası nedir?", [], {"EngineSpeed": 1200.0}
+    )
+    assert "SPN 641" in report
+    assert "Turbo" in report or "VGT" in report
+    assert "FMI 7" in report
+    assert "SAE J1939-73" in report
+
+
+def test_dynamic_loaders_and_fallbacks() -> None:
+    """Verify getters and graceful fallback behavior when files are missing or invalid."""
+    from src.engine.ai.diagnostic_copilot import (
+        get_j1939_spn_database,
+        get_mode06_database,
+        get_uds_did_database,
+        load_external_dtc_database,
+    )
+
+    # Valid loaders
+    uds_db = get_uds_did_database()
+    assert len(uds_db.get("dids", {})) >= 30
+
+    mode06_db = get_mode06_database()
+    assert len(mode06_db.get("monitors", {})) >= 15
+
+    # Missing path fallback (must return 0 and empty dict gracefully without raising)
+    assert load_external_dtc_database("non_existent_file.json") == 0
+    assert get_j1939_spn_database("non_existent_file.json") == {}
+    assert get_uds_did_database("non_existent_file.json") == {}
+    assert get_mode06_database("non_existent_file.json") == {}
+
+
+def test_dynamic_dtc_in_copilot_session_analysis() -> None:
+    """Verify AiDiagnosticCopilot incorporates dynamically loaded DTCs into session report."""
+    from src.engine.ai.diagnostic_copilot import AiDiagnosticCopilot, FaultSeverity
+
+    copilot = AiDiagnosticCopilot()
+    # P2002 is DPF efficiency from external DTC catalog
+    report = copilot.analyze_session(
+        [{"code": "P2002"}],
+        {"EngineSpeed": 850.0, "BoostPressure": 0.1, "CoolantTemp": 88.0},
+        ["ECU_ECM"],
+    )
+
+    assert report.severity in (FaultSeverity.MEDIUM, FaultSeverity.LOW)
+    assert len(report.likely_causes) > 0
+    assert len(report.troubleshooting_steps) > 0
+    assert any("Emisyon" in s or "SCR" in s or "DPF" in s for s in report.affected_subsystems)
+

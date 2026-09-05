@@ -75,11 +75,16 @@ class TelemetryUploader:
         if not path.is_file():
             raise LicenseError(f"Telemetry file not found: {path}", code="FILE_NOT_FOUND")
 
-        data = path.read_bytes()
-        sha256 = hashlib.sha256(data).hexdigest()
-        total_chunks = math.ceil(len(data) / self.chunk_size)
+        # MED-5: Compute file size and streaming SHA-256 without loading entire file into memory
+        file_size = path.stat().st_size
+        hasher = hashlib.sha256()
+        with open(path, "rb") as f:
+            while chunk := f.read(64 * 1024):
+                hasher.update(chunk)
+        sha256 = hasher.hexdigest()
+        total_chunks = math.ceil(file_size / self.chunk_size) if file_size > 0 else 1
 
-        progress = UploadProgress(total_bytes=len(data), total_chunks=total_chunks, status="uploading")
+        progress = UploadProgress(total_bytes=file_size, total_chunks=total_chunks, status="uploading")
         self._emit(progress)
 
         # 1. Announce the session (size + digest + chunk size).
@@ -88,7 +93,7 @@ class TelemetryUploader:
             "/telematics/sessions",
             json_body={
                 "vehicle_vin": vehicle_vin,
-                "declared_size_bytes": len(data),
+                "declared_size_bytes": file_size,
                 "declared_sha256": sha256,
                 "chunk_size_bytes": self.chunk_size,
             },
@@ -105,35 +110,31 @@ class TelemetryUploader:
         progress.uploaded_chunks = session.get("received_chunks", 0)
         self._emit(progress)
 
-        # 2. Upload chunks. The server's chunk PUT is idempotent (re-PUT acks),
-        #    so after an interrupted run the caller may re-upload everything.
-        #    `received_chunks` here reflects THIS session's server-side counter
-        #    (0 for a fresh session) — never treated as a contiguous prefix of
-        #    an unknown prior session (that assumption was fragile: a gap in
-        #    the middle would silently skip the wrong chunks).
+        # 2. Upload chunks with seek/read to keep memory constant.
         first_unsent = progress.uploaded_chunks
-        for index in range(total_chunks):
-            if index < first_unsent:
-                continue
+        with open(path, "rb") as f:
+            for index in range(total_chunks):
+                if index < first_unsent:
+                    continue
 
-            start = index * self.chunk_size
-            chunk = data[start : start + self.chunk_size]
+                f.seek(index * self.chunk_size)
+                chunk = f.read(self.chunk_size)
 
-            put = self.client.request(
-                "PUT",
-                f"/telematics/sessions/{session_id}/chunks/{index}",
-                raw_body=chunk,
-                content_type="application/octet-stream",
-            )
-            if put.status != 200:
-                progress.status = "failed"
-                progress.error = f"chunk {index} rejected (HTTP {put.status})"
+                put = self.client.request(
+                    "PUT",
+                    f"/telematics/sessions/{session_id}/chunks/{index}",
+                    raw_body=chunk,
+                    content_type="application/octet-stream",
+                )
+                if put.status != 200:
+                    progress.status = "failed"
+                    progress.error = f"chunk {index} rejected (HTTP {put.status})"
+                    self._emit(progress)
+                    raise LicenseError(progress.error, code="CHUNK_UPLOAD_FAILED")
+
+                progress.uploaded_chunks += 1
+                progress.bytes_sent += len(chunk)
                 self._emit(progress)
-                raise LicenseError(progress.error, code="CHUNK_UPLOAD_FAILED")
-
-            progress.uploaded_chunks += 1
-            progress.bytes_sent += len(chunk)
-            self._emit(progress)
 
         # 3. Complete — the cloud worker verifies SHA-256, archives to S3 and
         #    ingests signals into TimescaleDB.
@@ -154,7 +155,7 @@ class TelemetryUploader:
 
         logger.info(
             "Telemetry session uploaded",
-            extra={"session_id": session_id, "bytes": len(data), "chunks": total_chunks},
+            extra={"session_id": session_id, "bytes": file_size, "chunks": total_chunks},
         )
         return UploadResult(
             session_id=session_id,

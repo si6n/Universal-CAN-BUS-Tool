@@ -158,8 +158,8 @@ class J1939TransportProtocol:
             return self.clock.now_monotonic()
         return time.monotonic()
 
-    def _reap_stale_sessions(self, now: float | None = None) -> None:
-        """Reap inactive reassembly sessions.
+    def _reap_stale_sessions(self, now: float | None = None) -> int:
+        """Reap inactive reassembly sessions and return the number of reaped sessions (MED-3).
 
         P-c: per SAE J1939-21 the receiver holds a CMDT (point-to-point)
         session open for T4 (1050 ms) after CTS while awaiting the next DT,
@@ -176,6 +176,7 @@ class J1939TransportProtocol:
         ]
         for key in expired:
             self._release_session_slot(key, self._rx_sessions.get(key))
+        return len(expired)
 
     def handle_rx_frame(self, frame: CanFrame) -> tuple[CompletedMessage | None, CanFrame | None]:
         """Process incoming frame according to SAE J1939-21 PDU format rules."""
@@ -263,9 +264,14 @@ class J1939TransportProtocol:
             self._pending_tx_frames.clear()
 
     def reap_stale_sessions_public(self) -> int:
-        """Lock-holding public reaper (P2-8) — safe from any thread."""
+        """Lock-holding public reaper (P2-8, H-5) — safe from any thread."""
         with self._sessions_lock:
             return self._reap_stale_sessions(now=self._get_now())
+
+    def reap_stale_sessions(self, now: float | None = None) -> int:
+        """Lock-holding public alias for reaping stale sessions."""
+        with self._sessions_lock:
+            return self._reap_stale_sessions(now=now)
 
     def _handle_tp_cm(
         self, frame: CanFrame, sa: int, da: int
@@ -299,13 +305,20 @@ class J1939TransportProtocol:
 
             if ctrl_byte == TP_CTRL_BAM:
                 # Broadcast Announce Message (DA == 255)
-                # F-19: a new BAM for an existing key replaces the old session
+                # B-03: If an in-flight BAM is replaced by another BAM from same SA for a DIFFERENT PGN,
+                # record partial drop and log warning cleanly.
                 old_bam = self._rx_sessions.get(session_key)
                 if old_bam is not None:
-                    logger.warning(
-                        "New BAM replaces in-flight session",
-                        extra={"sa": sa, "old_pgn": hex(old_bam.target_pgn), "new_pgn": hex(target_pgn)},
-                    )
+                    if old_bam.target_pgn != target_pgn:
+                        logger.warning(
+                            "New BAM with different PGN replaces in-flight session (B-03)",
+                            extra={"sa": sa, "old_pgn": hex(old_bam.target_pgn), "new_pgn": hex(target_pgn)},
+                        )
+                    else:
+                        logger.warning(
+                            "New BAM replaces in-flight session",
+                            extra={"sa": sa, "old_pgn": hex(old_bam.target_pgn), "new_pgn": hex(target_pgn)},
+                        )
                     self._release_session_slot(session_key, old_bam)
 
                 # F-19: per source-address quota
@@ -497,7 +510,8 @@ class J1939TransportProtocol:
 
             # Append payload data
             bytes_needed = session.total_bytes - len(session.received_bytes)
-            session.received_bytes.extend(payload[:bytes_needed])
+            chunk = payload[:bytes_needed]
+            session.received_bytes.extend(chunk)
             session.expected_sequence += 1
             session.last_activity_time = now
 

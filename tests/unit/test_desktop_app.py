@@ -24,6 +24,11 @@ def test_desktop_api_bridge_estop() -> None:
     assert app._is_simulating is False
     assert app._bus_load == 0
 
+    # Test CRIT-1 & CRIT-2 reset
+    res = bridge.estop_reset_local()
+    assert res.get("success") is True
+    assert app._is_estop is False
+
 
 def test_desktop_api_bridge_toggle_simulator() -> None:
     """Verify simulator toggle functionality."""
@@ -165,6 +170,20 @@ def test_desktop_app_default_interface_stays_virtual() -> None:
     app = UniversalCanDesktopApp(channel="vcan0", bitrate=250000)
     assert app.interface_val == "virtual"
     assert app.bus.interface == "virtual"
+
+
+def test_desktop_app_export_logs(tmp_path) -> None:
+    """Verify export_logs functionality (LOW-4)."""
+    app = UniversalCanDesktopApp(channel="vcan0", bitrate=250000)
+    bridge = DesktopApiBridge(app)
+
+    # Insert a dummy frame
+    frame = CanFrame.create(channel_id="vcan0", arbitration_id=0x123, data=b"\x01\x02")
+    app.ring_buffer.append(frame)
+
+    assert bridge.export_logs("json") is True
+    assert bridge.export_logs("csv") is True
+    assert bridge.export_logs("unsupported_xyz") is False
 
 
 def test_desktop_app_settings_interface_change_reconnects() -> None:

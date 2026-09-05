@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from src.core.contracts.ports import RxSubscription, TxPort
 from src.core.errors import ProtocolError
 from src.core.logging import get_logger
-from src.protocols.uds.isotp import IsoTpTransport
+from src.protocols.uds.isotp import IsoTpTransport, decode_st_min
 from src.protocols.uds.nrc import UdsNrc
 from src.protocols.uds.services import (
     DiagnosticSessionType,
@@ -352,8 +352,9 @@ class UdsClient:
             while idx < total:
                 if bs > 0 and block_sent >= bs:
                     break  # block exhausted — wait for the next FC
-                if st_min > 0:
-                    time.sleep(st_min / 1000.0 if st_min <= 0x7F else 0.127)
+                delay_ms = decode_st_min(st_min)
+                if delay_ms > 0:
+                    time.sleep(delay_ms / 1000.0)
                 self._tx_frame(cf_frames[idx], is_critical_command, user_confirmed)
                 idx += 1
                 block_sent += 1

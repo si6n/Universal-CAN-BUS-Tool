@@ -41,7 +41,7 @@ def test_main_cli_keyboard_interrupt_graceful_shutdown() -> None:
         mock_bus.disconnect.assert_called_once()
 
 
-def test_window_close_event_cleans_resources(qapp: object) -> None:
+def test_window_close_event_cleans_resources() -> None:
     """Verify closeEvent stops worker thread and disconnects hardware bus."""
     mock_bus = MagicMock()
     mock_bus.is_connected = True

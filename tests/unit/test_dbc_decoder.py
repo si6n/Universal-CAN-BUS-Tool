@@ -114,17 +114,17 @@ def test_lru_cache_eviction_and_bounding() -> None:
     decoder._lookup_message(0x300, is_extended=False)
 
     assert len(decoder._message_cache) == 3
-    assert list(decoder._message_cache.keys()) == [0x100, 0x200, 0x300]
+    assert list(decoder._message_cache.keys()) == [(0x100, False), (0x200, False), (0x300, False)]
 
     # Re-access 0x100 (moves 0x100 to most recently used end)
     decoder._lookup_message(0x100, is_extended=False)
-    assert list(decoder._message_cache.keys()) == [0x200, 0x300, 0x100]
+    assert list(decoder._message_cache.keys()) == [(0x200, False), (0x300, False), (0x100, False)]
 
     # Query 4th ID: 0x400 -> oldest (0x200) should be evicted
     decoder._lookup_message(0x400, is_extended=False)
     assert len(decoder._message_cache) == 3
-    assert 0x200 not in decoder._message_cache
-    assert list(decoder._message_cache.keys()) == [0x300, 0x100, 0x400]
+    assert (0x200, False) not in decoder._message_cache
+    assert list(decoder._message_cache.keys()) == [(0x300, False), (0x100, False), (0x400, False)]
 
 
 def test_from_dbc_file_with_custom_cache_size() -> None:

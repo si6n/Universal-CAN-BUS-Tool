@@ -75,6 +75,8 @@ class LicenseFlow:
         public_key: ed25519.Ed25519PublicKey,
         app_version: str = "13.0.0",
         trusted_keys: dict[str, ed25519.Ed25519PublicKey] | None = None,
+        boot_realtime: float | None = None,
+        boot_monotonic: float | None = None,
     ) -> None:
         self.client = client
         self.public_key = public_key
@@ -83,6 +85,10 @@ class LicenseFlow:
         # ticket's `kid`; the constructor key remains the default/fallback
         # so existing wiring keeps working.
         self._trusted_keys: dict[str, ed25519.Ed25519PublicKey] = dict(trusted_keys) if trusted_keys else {"v1": public_key}
+        import time
+        self.boot_realtime: float = boot_realtime if boot_realtime is not None else time.time()
+        self.boot_monotonic: float = boot_monotonic if boot_monotonic is not None else time.monotonic()
+        self.last_known_clock_ts: float = self.boot_realtime
 
     def _resolve_key(self, kid: str) -> ed25519.Ed25519PublicKey:
         """Select the verification key for a ticket's key id (kid).
@@ -240,7 +246,34 @@ class LicenseFlow:
 
         import time
 
-        if time.time() > data["exp"]:
+        now = time.time()
+        # Anti-Clock Rollback and monotonic drift cross-check (HIGH-4)
+        if now < self.last_known_clock_ts - 1.0:
+            logger.critical(
+                "System clock rollback detected in cloud ticket verification!",
+                extra={"now": now, "last": self.last_known_clock_ts},
+            )
+            raise LicenseError(
+                "System clock manipulation detected. License validation halted.",
+                code="CLOCK_ROLLBACK_DETECTED",
+            )
+
+        curr_mono = time.monotonic()
+        mono_elapsed = curr_mono - self.boot_monotonic
+        real_elapsed = now - self.boot_realtime
+        if abs(mono_elapsed - real_elapsed) > 60.0:
+            logger.critical(
+                "Monotonic counter mismatch detected in cloud ticket verification!",
+                extra={"mono_elapsed": mono_elapsed, "real_elapsed": real_elapsed},
+            )
+            raise LicenseError(
+                "System clock manipulation detected (monotonic counter mismatch).",
+                code="CLOCK_MONOTONIC_MISMATCH",
+            )
+
+        self.last_known_clock_ts = max(self.last_known_clock_ts, now)
+
+        if now > data["exp"]:
             raise LicenseError("Cloud license ticket has expired.", code="LICENSE_EXPIRED")
 
         return CloudLicenseClaims(

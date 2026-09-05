@@ -26,11 +26,11 @@ class WindowsPowerManager:
     """Controls Windows kernel thread execution state to prevent USB and system sleep.
 
     SetThreadExecutionState is per-thread: a nested context releasing its hold
-    would silently drop the outer context's protection. A reference count
-    (D10) keeps the kernel awake until the LAST holder releases it.
+    would silently drop the outer context's protection. A per-thread reference count
+    (H-2) keeps the kernel awake for each thread until its LAST holder releases it.
     """
 
-    _ref_count: ClassVar[int] = 0
+    _leases: ClassVar[dict[int, int]] = {}
     _is_active: ClassVar[bool] = False
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
@@ -44,10 +44,11 @@ class WindowsPowerManager:
         if windll is None:
             return False
 
+        tid = threading.get_ident()
         with cls._lock:
-            cls._ref_count += 1
-            if cls._ref_count > 1:
-                # Already held by an outer context — kernel state unchanged.
+            depth = cls._leases.get(tid, 0)
+            cls._leases[tid] = depth + 1
+            if depth > 0:
                 return True
 
         flags = ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED
@@ -57,23 +58,22 @@ class WindowsPowerManager:
         try:
             prev_state = windll.kernel32.SetThreadExecutionState(flags)
             if prev_state != 0:
-                cls._is_active = True
+                with cls._lock:
+                    cls._is_active = True
                 logger.info("SetThreadExecutionState: System Sleep Prevention ACTIVATED")
                 return True
+            with cls._lock:
+                cls._leases[tid] = depth
         except (AttributeError, OSError, RuntimeError) as exc:
             logger.warning("Failed to invoke SetThreadExecutionState", extra={"error": str(exc)})
             with cls._lock:
-                cls._ref_count = max(0, cls._ref_count - 1)
+                cls._leases[tid] = depth
 
         return False
 
     @classmethod
     def restore_sleep(cls) -> bool:
-        """Restore normal Windows power management behavior.
-
-        Balanced against prevent_sleep: the kernel state is only restored when
-        the last holder releases (D10 reference counting).
-        """
+        """Restore normal Windows power management behavior for the calling thread."""
         if sys.platform != "win32":
             return True
 
@@ -81,19 +81,22 @@ class WindowsPowerManager:
         if windll is None:
             return False
 
+        tid = threading.get_ident()
         with cls._lock:
-            if cls._ref_count == 0:
+            depth = cls._leases.get(tid, 0)
+            if depth <= 0:
                 logger.warning("restore_sleep called without a matching prevent_sleep")
                 return False
-            cls._ref_count -= 1
-            if cls._ref_count > 0:
-                # Outer context still holds the lease — kernel state unchanged.
+            cls._leases[tid] = depth - 1
+            if depth - 1 > 0:
                 return True
+            cls._leases.pop(tid, None)
+            if not cls._leases:
+                cls._is_active = False
 
         try:
             prev_state = windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
             if prev_state != 0:
-                cls._is_active = False
                 logger.info("SetThreadExecutionState: Normal Power Management RESTORED")
                 return True
         except (AttributeError, OSError, RuntimeError) as exc:
@@ -103,13 +106,14 @@ class WindowsPowerManager:
 
     @classmethod
     def is_active(cls) -> bool:
-        return cls._is_active
+        with cls._lock:
+            return cls._is_active
 
     @classmethod
     def reset_for_testing(cls) -> None:
         """Clear reference state between tests."""
         with cls._lock:
-            cls._ref_count = 0
+            cls._leases.clear()
             cls._is_active = False
 
 

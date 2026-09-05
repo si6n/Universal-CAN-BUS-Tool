@@ -266,74 +266,79 @@ class ActiveDiagnosticPoller:
             return None, fc_frame
 
         sid = completed_payload[0]
+        cb_to_dispatch = None
 
-        # --------------------------------------------------------------------
-        # 1. Negative Response Handling (SID 0x7F)
-        # --------------------------------------------------------------------
-        if sid == 0x7F and len(completed_payload) >= 3:
-            nrc = completed_payload[2]
+        with self._lock:
+            active = self._active_job
 
-            if nrc == UdsNrc.REQUEST_CORRECTLY_RECEIVED_RESPONSE_PENDING:  # NRC 0x78
-                if active is not None:
-                    active.state = PollerState.WAITING_P2_STAR
-                    active.response_deadline_s = now + P2_STAR_TIMEOUT_S
-                    self._state = PollerState.WAITING_P2_STAR
-                    logger.info("Received NRC 0x78 (Response Pending) — extended P2* armed")
-                return None, fc_frame
+            # --------------------------------------------------------------------
+            # 1. Negative Response Handling (SID 0x7F)
+            # --------------------------------------------------------------------
+            if sid == 0x7F and len(completed_payload) >= 3:
+                nrc = completed_payload[2]
 
-            elif nrc == UdsNrc.BUSY_REPEAT_REQUEST:  # NRC 0x21
-                if active is not None:
-                    active.state = PollerState.RETRY_BACKOFF
-                    self._schedule_retry(active, now)
-                return None, fc_frame
+                if nrc == UdsNrc.REQUEST_CORRECTLY_RECEIVED_RESPONSE_PENDING:  # NRC 0x78
+                    if active is not None:
+                        active.state = PollerState.WAITING_P2_STAR
+                        active.response_deadline_s = now + P2_STAR_TIMEOUT_S
+                        self._state = PollerState.WAITING_P2_STAR
+                        logger.info("Received NRC 0x78 (Response Pending) — extended P2* armed")
+                    return None, fc_frame
 
-            else:
-                # Other Negative Response
-                if active is not None:
-                    active.state = PollerState.FAILED
-                    active.consecutive_failures += 1
-                    self._state = PollerState.FAILED
-                return None, fc_frame
+                elif nrc == UdsNrc.BUSY_REPEAT_REQUEST:  # NRC 0x21
+                    if active is not None:
+                        active.state = PollerState.RETRY_BACKOFF
+                        self._schedule_retry(active, now)
+                    return None, fc_frame
 
-        # --------------------------------------------------------------------
-        # 2. Positive OBD Mode 01 Response (SID 0x41)
-        # --------------------------------------------------------------------
-        if sid == 0x41:
-            pid = completed_payload[1]
-            raw_data = completed_payload[2:]
-            result = self.obd_registry.decode(pid, raw_data)
-            decoded_result = result
+                else:
+                    # Other Negative Response
+                    if active is not None:
+                        active.state = PollerState.FAILED
+                        active.consecutive_failures += 1
+                        self._state = PollerState.FAILED
+                    return None, fc_frame
 
-            if active is not None and active.kind == "obd_pid" and active.identifier == pid:
-                active.state = PollerState.COMPLETED
-                active.consecutive_failures = 0
-                active.retry_count = 0
-                self._state = PollerState.COMPLETED
-                self._active_job = None
-                try:
-                    active.callback(result)
-                except Exception as cb_err:
-                    logger.error("Error in OBD poller callback", extra={"error": str(cb_err)})
+            # --------------------------------------------------------------------
+            # 2. Positive OBD Mode 01 Response (SID 0x41)
+            # --------------------------------------------------------------------
+            if sid == 0x41:
+                pid = completed_payload[1]
+                raw_data = completed_payload[2:]
+                result = self.obd_registry.decode(pid, raw_data)
+                decoded_result = result
 
-        # --------------------------------------------------------------------
-        # 3. Positive UDS Service 0x22 Response (SID 0x62)
-        # --------------------------------------------------------------------
-        elif sid == 0x62 and len(completed_payload) >= 3:
-            did = (completed_payload[1] << 8) | completed_payload[2]
-            raw_data = completed_payload[3:]
-            result = self.uds_registry.decode(did, raw_data)
-            decoded_result = result
+                if active is not None and active.kind == "obd_pid" and active.identifier == pid:
+                    active.state = PollerState.COMPLETED
+                    active.consecutive_failures = 0
+                    active.retry_count = 0
+                    self._state = PollerState.COMPLETED
+                    self._active_job = None
+                    cb_to_dispatch = (active.callback, result)
 
-            if active is not None and active.kind == "uds_did" and active.identifier == did:
-                active.state = PollerState.COMPLETED
-                active.consecutive_failures = 0
-                active.retry_count = 0
-                self._state = PollerState.COMPLETED
-                self._active_job = None
-                try:
-                    active.callback(result)
-                except Exception as cb_err:
-                    logger.error("Error in UDS poller callback", extra={"error": str(cb_err)})
+            # --------------------------------------------------------------------
+            # 3. Positive UDS Service 0x22 Response (SID 0x62)
+            # --------------------------------------------------------------------
+            elif sid == 0x62 and len(completed_payload) >= 3:
+                did = (completed_payload[1] << 8) | completed_payload[2]
+                raw_data = completed_payload[3:]
+                result = self.uds_registry.decode(did, raw_data)
+                decoded_result = result
+
+                if active is not None and active.kind == "uds_did" and active.identifier == did:
+                    active.state = PollerState.COMPLETED
+                    active.consecutive_failures = 0
+                    active.retry_count = 0
+                    self._state = PollerState.COMPLETED
+                    self._active_job = None
+                    cb_to_dispatch = (active.callback, result)
+
+        if cb_to_dispatch is not None:
+            cb, res = cb_to_dispatch
+            try:
+                cb(res)
+            except Exception as cb_err:
+                logger.error("Error in poller callback", extra={"error": str(cb_err)})
 
         return decoded_result, fc_frame
 

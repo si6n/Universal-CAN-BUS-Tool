@@ -53,7 +53,7 @@ class VirtualBus(AbstractBus):
         if not self.is_connected:
             raise HardwareError("Cannot receive: Virtual CAN bus is not connected")
         try:
-            frame = self._rx_queue.get(timeout=timeout_s if timeout_s is not None else 0.05)
+            frame = self._rx_queue.get(timeout=timeout_s if timeout_s is not None else 0.1)
             self.metrics.rx_frames += 1
             return frame
         except queue.Empty:

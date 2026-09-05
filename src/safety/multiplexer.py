@@ -29,10 +29,12 @@ class SafeMultiplexedBus(AbstractBus):
         gateway: TxSafetyGateway,
         router: FrameRouter,
     ) -> None:
-        super().__init__(channel_id=physical_bus.channel_id, bitrate=physical_bus.bitrate, is_fd=physical_bus.is_fd)
         self.physical_bus = physical_bus
         self.gateway = gateway
         self.router = router
+        self._initialized = False
+        super().__init__(channel_id=physical_bus.channel_id, bitrate=physical_bus.bitrate, is_fd=physical_bus.is_fd)
+        self._initialized = True
 
         # Subscribe to FrameRouter for RX without stealing frames from hardware
         self.sub_id, self.rx_queue = self.router.subscribe(use_queue=True)
@@ -51,7 +53,7 @@ class SafeMultiplexedBus(AbstractBus):
         during __init__; the only meaningful delegation is to the physical
         bus's own flag (the router subscription is managed by
         connect/disconnect lifecycle methods)."""
-        if self.physical_bus is not None:
+        if getattr(self, "_initialized", False) and getattr(self, "physical_bus", None) is not None:
             try:
                 self.physical_bus.is_connected = value
             except AttributeError:

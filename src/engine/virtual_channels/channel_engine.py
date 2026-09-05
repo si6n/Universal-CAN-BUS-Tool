@@ -5,6 +5,7 @@ Complies with SAE J1939-71 and Marine Telemetry standards (MASTER_PLAN.md Sectio
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -31,19 +32,23 @@ class VirtualChannelEngine:
     @classmethod
     def calculate_torque_and_power(
         cls,
-        rpm: float,
-        actual_torque_percent: float,
+        rpm: float | None,
+        actual_torque_percent: float | None,
         nominal_torque_nm: float = 1000.0,
-    ) -> tuple[float, float, float]:
-        """Calculate Engine Torque (Nm), Power (kW), and Metric Horsepower (HP).
+    ) -> tuple[float | None, float | None, float | None]:
+        """Calculate Engine Torque (Nm), Power (kW), and Metric Horsepower (HP) (B-11).
 
         Formulas:
             Torque (Nm) = (Actual Torque % / 100) * Nominal Torque (Nm)
             Power (kW) = (RPM * Torque) / 9549.3
             Power (HP) = Power (kW) * 1.34102
         """
+        if rpm is None or actual_torque_percent is None:
+            return None, None, None
+        if not (math.isfinite(rpm) and math.isfinite(actual_torque_percent)):
+            return None, None, None
         if rpm < 0 or actual_torque_percent < -125 or actual_torque_percent > 125:
-            return 0.0, 0.0, 0.0
+            return None, None, None
 
         torque_nm = (actual_torque_percent / 100.0) * nominal_torque_nm
         # Negative torque represents engine braking / retarder

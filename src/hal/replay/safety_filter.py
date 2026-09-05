@@ -194,7 +194,7 @@ class ReplaySafetyFilter:
                 return False, f"BLOCKED_TP_TUNNEL: {pgn} (0x{pgn:05X})"
 
             # ISO-TP / UDS over 29-bit (e.g. 0x18DAxxF1)
-            if pdu_format in {0xDA, 0xDB} and len(frame.data) >= 2:
+            if self.block_diagnostic_write and pdu_format in {0xDA, 0xDB} and len(frame.data) >= 2:
                 sid = self._extract_uds_sid(frame)
                 prohibited = (
                     sid is not None

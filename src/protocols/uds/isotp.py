@@ -15,6 +15,7 @@ Complies with ISO 15765-2:2016, ISO 11898-1:2015, and Phase 1 Architecture.
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -150,7 +151,25 @@ class IsoTpTransport:
         self.rx_block_size = rx_block_size
         self.rx_st_min = rx_st_min
         self.max_buffer_size = max_buffer_size
-        self._rx_session: IsoTpRxSession | None = None
+        self._lock = threading.RLock()
+        self._sessions: dict[tuple[int, str], IsoTpRxSession] = {}
+
+    @property
+    def _rx_session(self) -> IsoTpRxSession | None:
+        """Compatibility property for single-session consumers and test fixtures."""
+        with self._lock:
+            # Return matching session for default rx_id and channel_id, or first available
+            if (self.rx_id, self.channel_id) in self._sessions:
+                return self._sessions[(self.rx_id, self.channel_id)]
+            return next(iter(self._sessions.values()), None)
+
+    @_rx_session.setter
+    def _rx_session(self, val: IsoTpRxSession | None) -> None:
+        with self._lock:
+            if val is None:
+                self._sessions.clear()
+            else:
+                self._sessions[(val.rx_id, val.channel_id)] = val
 
     def segment_message(self, data: bytes, is_fd: bool = False) -> list[CanFrame]:
         """Segment outgoing payload into ISO-TP CAN frames (SF, Standard FF, Extended 32-bit FF, CF)."""
@@ -351,9 +370,8 @@ class IsoTpTransport:
             seq_num = (seq_num + 1) & 0x0F
 
         return frames_classic
-
     def handle_rx_frame(self, frame: CanFrame) -> tuple[bytes | None, CanFrame | None]:
-        """Process incoming CAN frame for ISO-TP reassembly.
+        """Process incoming CAN frame for ISO-TP reassembly (Thread-safe, B-01/CRITICAL-3).
 
         Returns: (CompletedPayload, ResponseFrame)
         """
@@ -362,63 +380,110 @@ class IsoTpTransport:
 
         pci_type = (frame.data[0] >> 4) & 0x0F
         now = time.monotonic()
+        key = (frame.arbitration_id, frame.channel_id)
 
-        # ------------------------------------------------------------------
-        # 1. Single Frame (SF)
-        # ------------------------------------------------------------------
-        if pci_type == PCI_SINGLE_FRAME:
-            if (frame.data[0] & 0x0F) == 0:
-                # If frame is not CAN-FD, SF_DL == 0 is malformed Classic CAN frame
-                if not frame.is_fd:
-                    return None, None
+        with self._lock:
+            # ------------------------------------------------------------------
+            # 1. Single Frame (SF)
+            # ------------------------------------------------------------------
+            if pci_type == PCI_SINGLE_FRAME:
+                if (frame.data[0] & 0x0F) == 0:
+                    # If frame is not CAN-FD, SF_DL == 0 is malformed Classic CAN frame
+                    if not frame.is_fd:
+                        return None, None
 
-                # P2-5: the escape form requires CAN_DL > 8 — an 8-byte FD
-                # frame carrying 00 xx is malformed and must be dropped.
-                if len(frame.data) <= 8:
-                    return None, None
+                    # P2-5: the escape form requires CAN_DL > 8 — an 8-byte FD
+                    # frame carrying 00 xx is malformed and must be dropped.
+                    if len(frame.data) <= 8:
+                        return None, None
 
-                # CAN-FD Extended Single Frame (SF_DL 8..62)
-                if len(frame.data) < 2:
-                    return None, None
-                sf_len = frame.data[1]
-                if sf_len < 8 or sf_len > 62:
-                    return None, None
-                if sf_len <= (len(frame.data) - 2):
-                    self._rx_session = None
-                    return bytes(frame.data[2 : 2 + sf_len]), None
-            else:
-                # Classic CAN Single Frame (SF_DL 1..7)
-                sf_len = frame.data[0] & 0x0F
-                if 1 <= sf_len <= (len(frame.data) - 1):
-                    self._rx_session = None
-                    return bytes(frame.data[1 : 1 + sf_len]), None
-            return None, None
+                    # CAN-FD Extended Single Frame (SF_DL 8..62)
+                    if len(frame.data) < 2:
+                        return None, None
+                    sf_len = frame.data[1]
+                    if sf_len < 8 or sf_len > 62:
+                        return None, None
+                    if sf_len <= (len(frame.data) - 2):
+                        self._sessions.pop(key, None)
+                        return bytes(frame.data[2 : 2 + sf_len]), None
+                else:
+                    # Classic CAN Single Frame (SF_DL 1..7)
+                    sf_len = frame.data[0] & 0x0F
+                    if 1 <= sf_len <= (len(frame.data) - 1):
+                        self._sessions.pop(key, None)
+                        return bytes(frame.data[1 : 1 + sf_len]), None
+                return None, None
 
-        # ------------------------------------------------------------------
-        # 2. First Frame (FF)
-        # ------------------------------------------------------------------
-        if pci_type == PCI_FIRST_FRAME:
-            if len(frame.data) >= 6 and frame.data[0] == 0x10 and frame.data[1] == 0x00:
-                # Extended 32-bit First Frame
-                total_len = int.from_bytes(frame.data[2:6], byteorder="big")
-                if total_len <= 4095:
-                    return None, None
-                header_len = 6
-            else:
-                # Standard 12-bit First Frame
-                total_len = ((frame.data[0] & 0x0F) << 8) | frame.data[1]
-                header_len = 2
+            # ------------------------------------------------------------------
+            # 2. First Frame (FF)
+            # ------------------------------------------------------------------
+            if pci_type == PCI_FIRST_FRAME:
+                if len(frame.data) >= 6 and frame.data[0] == 0x10 and frame.data[1] == 0x00:
+                    # Extended 32-bit First Frame
+                    total_len = int.from_bytes(frame.data[2:6], byteorder="big")
+                    if total_len <= 4095:
+                        return None, None
+                    header_len = 6
+                else:
+                    # Standard 12-bit First Frame
+                    total_len = ((frame.data[0] & 0x0F) << 8) | frame.data[1]
+                    header_len = 2
 
-            # P1: Check buffer size cap (ISO 15765-2 FS_OVERFLOW)
-            if total_len > self.max_buffer_size:
-                logger.warning(
-                    "ISO-TP First Frame length exceeds max buffer size. Emitting FlowControl OVERFLOW.",
-                    extra={"total_len": total_len, "max_buffer_size": self.max_buffer_size},
+                # P1: Check buffer size cap (ISO 15765-2 FS_OVERFLOW)
+                if total_len > self.max_buffer_size:
+                    logger.warning(
+                        "ISO-TP First Frame length exceeds max buffer size. Emitting FlowControl OVERFLOW.",
+                        extra={"total_len": total_len, "max_buffer_size": self.max_buffer_size},
+                    )
+                    self._sessions.pop(key, None)
+                    fc_data = bytearray(8)
+                    fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_OVERFLOW
+                    for i in range(1, 8):
+                        fc_data[i] = 0xCC
+
+                    fc_frame = CanFrame.create(
+                        channel_id=frame.channel_id,
+                        arbitration_id=self.tx_id,
+                        data=bytes(fc_data),
+                        is_extended=frame.is_extended,
+                        is_fd=frame.is_fd,
+                        direction="tx",
+                    )
+                    return None, fc_frame
+
+                first_chunk = frame.data[header_len:]
+                if len(first_chunk) > total_len:
+                    first_chunk = first_chunk[:total_len]
+
+                if key in self._sessions:
+                    logger.warning(
+                        "New ISO-TP First Frame aborts previous incomplete session",
+                        extra={"rx_id": hex(frame.arbitration_id), "channel": frame.channel_id},
+                    )
+
+                new_session = IsoTpRxSession(
+                    rx_id=frame.arbitration_id,
+                    total_bytes=total_len,
+                    expected_sequence_number=1,
+                    received_bytes=bytearray(first_chunk),
+                    last_activity_time=now,
+                    channel_id=frame.channel_id,
+                    is_fd=frame.is_fd,
                 )
-                self._rx_session = None
+                self._sessions[key] = new_session
+
+                # If First Frame already satisfied full payload length (e.g. 62B FD)
+                if len(new_session.received_bytes) >= total_len:
+                    completed = bytes(new_session.received_bytes[:total_len])
+                    self._sessions.pop(key, None)
+                    return completed, None
+
+                # Generate Flow Control (CTS with configured BS/STmin)
                 fc_data = bytearray(8)
-                fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_OVERFLOW
-                for i in range(1, 8):
+                fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
+                fc_data[1] = self.rx_block_size & 0xFF  # Block size (0 = send all)
+                fc_data[2] = self.rx_st_min & 0xFF  # STmin (raw ISO 15765-2 byte)
+                for i in range(3, 8):
                     fc_data[i] = 0xCC
 
                 fc_frame = CanFrame.create(
@@ -431,114 +496,78 @@ class IsoTpTransport:
                 )
                 return None, fc_frame
 
-            first_chunk = frame.data[header_len:]
-            if len(first_chunk) > total_len:
-                first_chunk = first_chunk[:total_len]
+            # ------------------------------------------------------------------
+            # 3. Consecutive Frame (CF)
+            # ------------------------------------------------------------------
+            if pci_type == PCI_CONSECUTIVE_FRAME:
+                session = self._sessions.get(key)
+                if session is None:
+                    return None, None
 
-            self._rx_session = IsoTpRxSession(
-                rx_id=frame.arbitration_id,
-                total_bytes=total_len,
-                expected_sequence_number=1,
-                received_bytes=bytearray(first_chunk),
-                last_activity_time=now,
-                channel_id=frame.channel_id,
-                is_fd=frame.is_fd,
-            )
-
-            # If First Frame already satisfied full payload length (e.g. 62B FD)
-            if len(self._rx_session.received_bytes) >= total_len:
-                completed = bytes(self._rx_session.received_bytes[:total_len])
-                self._rx_session = None
-                return completed, None
-
-            # Generate Flow Control (CTS with configured BS/STmin)
-            fc_data = bytearray(8)
-            fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
-            fc_data[1] = self.rx_block_size & 0xFF  # Block size (0 = send all)
-            fc_data[2] = self.rx_st_min & 0xFF  # STmin (raw ISO 15765-2 byte)
-            for i in range(3, 8):
-                fc_data[i] = 0xCC
-
-            fc_frame = CanFrame.create(
-                channel_id=frame.channel_id,
-                arbitration_id=self.tx_id,
-                data=bytes(fc_data),
-                is_extended=frame.is_extended,
-                is_fd=frame.is_fd,
-                direction="tx",
-            )
-            return None, fc_frame
-
-        # ------------------------------------------------------------------
-        # 3. Consecutive Frame (CF)
-        # ------------------------------------------------------------------
-        if pci_type == PCI_CONSECUTIVE_FRAME:
-            if self._rx_session is None:
-                return None, None
-
-            session = self._rx_session
-
-            # F-20: a CF arriving on a different channel must not corrupt an
-            # in-flight session opened on another bus.
-            if session.channel_id != frame.channel_id:
-                logger.warning(
-                    "ISO-TP CF channel mismatch — ignoring frame",
-                    extra={"session_channel": session.channel_id, "frame_channel": frame.channel_id},
-                )
-                return None, None
-
-            # Check N_Cr timeout
-            if (now - session.last_activity_time) > self.TIMEOUT_SEC:
-                logger.warning("ISO-TP Consecutive Frame timeout", extra={"rx_id": hex(self.rx_id)})
-                self._rx_session = None
-                return None, None
-
-            seq_num = frame.data[0] & 0x0F
-            if seq_num != session.expected_sequence_number:
-                logger.warning(
-                    "ISO-TP Sequence mismatch",
-                    extra={"expected": session.expected_sequence_number, "got": seq_num},
-                )
-                self._rx_session = None
-                return None, None
-
-            needed = session.total_bytes - len(session.received_bytes)
-            available_payload = len(frame.data) - 1
-            chunk_len = min(needed, available_payload)
-            chunk = frame.data[1 : 1 + chunk_len]
-
-            session.received_bytes.extend(chunk)
-            session.expected_sequence_number = (session.expected_sequence_number + 1) & 0x0F
-            session.last_activity_time = now
-
-            if len(session.received_bytes) >= session.total_bytes:
-                completed = bytes(session.received_bytes[: session.total_bytes])
-                self._rx_session = None
-                return completed, None
-
-            # BS windowing: after rx_block_size consecutive frames the sender
-            # needs a fresh FC (CTS) before it may continue transmitting.
-            if self.rx_block_size > 0:
-                session.block_count += 1
-                if session.block_count >= self.rx_block_size:
-                    session.block_count = 0
-                    fc_data = bytearray(8)
-                    fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
-                    fc_data[1] = self.rx_block_size & 0xFF
-                    fc_data[2] = self.rx_st_min & 0xFF
-                    for i in range(3, 8):
-                        fc_data[i] = 0xCC
-                    fc_frame = CanFrame.create(
-                        channel_id=frame.channel_id,
-                        arbitration_id=self.tx_id,
-                        data=bytes(fc_data),
-                        is_extended=frame.is_extended,
-                        is_fd=frame.is_fd,
-                        direction="tx",
+                # F-20: a CF arriving on a different channel must not corrupt an
+                # in-flight session opened on another bus.
+                if session.channel_id != frame.channel_id:
+                    logger.warning(
+                        "ISO-TP CF channel mismatch — ignoring frame",
+                        extra={"session_channel": session.channel_id, "frame_channel": frame.channel_id},
                     )
-                    return None, fc_frame
+                    return None, None
 
-            return None, None
+                # Check N_Cr timeout
+                if (now - session.last_activity_time) > self.TIMEOUT_SEC:
+                    logger.warning("ISO-TP Consecutive Frame timeout", extra={"rx_id": hex(self.rx_id)})
+                    self._sessions.pop(key, None)
+                    return None, None
+
+                seq_num = frame.data[0] & 0x0F
+                if seq_num != session.expected_sequence_number:
+                    logger.warning(
+                        "ISO-TP Sequence mismatch",
+                        extra={"expected": session.expected_sequence_number, "got": seq_num},
+                    )
+                    self._sessions.pop(key, None)
+                    return None, None
+
+                needed = session.total_bytes - len(session.received_bytes)
+                available_payload = len(frame.data) - 1
+                chunk_len = min(needed, available_payload)
+                chunk = frame.data[1 : 1 + chunk_len]
+
+                session.received_bytes.extend(chunk)
+                session.expected_sequence_number = (session.expected_sequence_number + 1) & 0x0F
+                session.last_activity_time = now
+
+                if len(session.received_bytes) >= session.total_bytes:
+                    completed = bytes(session.received_bytes[: session.total_bytes])
+                    self._sessions.pop(key, None)
+                    return completed, None
+
+                # BS windowing: after rx_block_size consecutive frames the sender
+                # needs a fresh FC (CTS) before it may continue transmitting.
+                if self.rx_block_size > 0:
+                    session.block_count += 1
+                    if session.block_count >= self.rx_block_size:
+                        session.block_count = 0
+                        fc_data = bytearray(8)
+                        fc_data[0] = (PCI_FLOW_CONTROL << 4) | FS_CTS
+                        fc_data[1] = self.rx_block_size & 0xFF
+                        fc_data[2] = self.rx_st_min & 0xFF
+                        for i in range(3, 8):
+                            fc_data[i] = 0xCC
+
+                        fc_frame = CanFrame.create(
+                            channel_id=frame.channel_id,
+                            arbitration_id=self.tx_id,
+                            data=bytes(fc_data),
+                            is_extended=frame.is_extended,
+                            is_fd=frame.is_fd,
+                            direction="tx",
+                        )
+                        return None, fc_frame
+
+                return None, None
+
+        return None, None
 
         return None, None
 
@@ -666,10 +695,13 @@ class IsoTpSender:
             delay_s = st_min_byte / 1000.0
             await asyncio.sleep(delay_s)
         elif 0xF1 <= st_min_byte <= 0xF9:
-            # 100..900 us: cooperative sleep; the loop may round up to its
-            # tick granularity — accepted trade-off documented above.
-            delay_s = (st_min_byte - 0xF0) * 100_000 / 1e9
-            await asyncio.sleep(max(delay_s, 0.001))
+            # 100..900 us: high-resolution hybrid wait — short spin-wait to avoid
+            # Windows timer resolution granularity (15.6 ms) blowing STmin past tolerance.
+            delay_us = (st_min_byte - 0xF0) * 100
+            target_ns = time.perf_counter_ns() + (delay_us * 1000)
+            while time.perf_counter_ns() < target_ns:
+                pass
+            return
         else:
             # Reserved range clamped to 127 ms
             await asyncio.sleep(0.127)

@@ -465,22 +465,32 @@ class EcuFlashingEngine:
                 if not resp.is_positive:
                     raise ProtocolError(f"Sağlama toplamı doğrulama başlatılamadı: {resp.nrc_description_tr}")
 
-                # P2: Request Routine Results (0x31 0x03) to ensure ECU validates CRC
-                result_resp = self.uds_client.request_routine_results(routine_id=config.checksum_routine_id)
-                if not result_resp.is_positive:
-                    raise ProtocolError(f"Sağlama toplamı sonuç sorgusu reddedildi: {result_resp.nrc_description_tr}")
+                # P2 & B-17: Request Routine Results (0x31 0x03) to ensure ECU validates CRC
+                # RoutineStatus 0x01 means "routineExecutionInProgress"; wait for completion (0x00, 0x02).
+                deadline = time.monotonic() + 10.0
+                while True:
+                    result_resp = self.uds_client.request_routine_results(routine_id=config.checksum_routine_id)
+                    if not result_resp.is_positive:
+                        raise ProtocolError(f"Sağlama toplamı sonuç sorgusu reddedildi: {result_resp.nrc_description_tr}")
 
-                # P1-7: an empty routineStatusRecord is NOT proof of a valid
-                # image — fail closed. Resetting an unverified (possibly
-                # corrupt) image is the brick path.
-                if not result_resp.data or len(result_resp.data) < 1:
-                    raise ProtocolError(
-                        "ECU sağlama toplamı sonucu boş döndü (routineStatusRecord yok) — "
-                        "doğrulanmamış imaj üzerinde reset atılamaz (fail-closed)"
-                    )
-                status_code = result_resp.data[0]
-                if status_code not in (0x00, 0x01):
-                    raise ProtocolError(f"ECU sağlama toplamı (CRC32) uyumsuzluğu tespit etti (Durum: 0x{status_code:02X})")
+                    if not result_resp.data or len(result_resp.data) < 1:
+                        raise ProtocolError(
+                            "ECU sağlama toplamı sonucu boş döndü (routineStatusRecord yok) — "
+                            "doğrulanmamış imaj üzerinde reset atılamaz (fail-closed)"
+                        )
+
+                    status_code = result_resp.data[0]
+                    if status_code in (0x00, 0x02):
+                        # Correctly completed
+                        break
+                    elif status_code == 0x01:
+                        # In progress
+                        if time.monotonic() > deadline:
+                            raise ProtocolError("ECU CRC doğrulama zaman aşımına uğradı (hâlâ çalışıyor)")
+                        time.sleep(0.1)
+                        continue
+                    else:
+                        raise ProtocolError(f"ECU sağlama toplamı (CRC32) uyumsuzluğu tespit etti (Durum: 0x{status_code:02X})")
 
                 self._log("✅ Sağlama toplamı (CRC32) ECU tarafından başarıyla doğrulandı.", "info")
             else:

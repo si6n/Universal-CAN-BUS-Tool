@@ -50,6 +50,7 @@ Desktop.ini
 reports/*.html
 reports/*.pdf
 !reports/.gitkeep
+exports/
 
 # Secrets & Environment Variables (F-37)
 .env

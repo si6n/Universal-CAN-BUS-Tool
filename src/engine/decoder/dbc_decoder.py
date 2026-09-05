@@ -6,6 +6,7 @@ Complies with Saha Risk Kataloğu v1.2 Sections 12, 13, 30, Risk R-08, R-30.
 from __future__ import annotations
 
 import collections
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -72,17 +73,23 @@ class DbcSignalDecoder:
     def __init__(self, db: Database | None = None, max_cache_size: int = 2048) -> None:
         self.db: Database = db if db is not None else cantools.database.can.Database()
         self.max_cache_size = max_cache_size
-        self._message_cache: collections.OrderedDict[int, Any] = collections.OrderedDict()
+        self._cache_lock = threading.RLock()
+        self._message_cache: collections.OrderedDict[tuple[int, bool], Any] = collections.OrderedDict()
         self._signal_units_cache: dict[int, dict[str, str]] = {}
         self._signal_defs_cache: dict[int, dict[str, Any]] = {}
 
     def _get_signal_metadata(self, msg_def: Any) -> tuple[dict[str, str], dict[str, Any]]:
-        """Fetch pre-cached signal metadata for O(1) lookups."""
+        """Fetch pre-cached signal metadata for O(1) lookups (Thread-safe, C-5)."""
         fid = getattr(msg_def, "frame_id", id(msg_def))
-        if fid not in self._signal_units_cache:
-            self._signal_units_cache[fid] = {s.name: (s.unit or "") for s in msg_def.signals}
-            self._signal_defs_cache[fid] = {s.name: s for s in msg_def.signals}
-        return self._signal_units_cache[fid], self._signal_defs_cache[fid]
+        with self._cache_lock:
+            units = self._signal_units_cache.get(fid)
+            defs = self._signal_defs_cache.get(fid)
+            if units is None or defs is None:
+                units = {s.name: (s.unit or "") for s in msg_def.signals}
+                defs = {s.name: s for s in msg_def.signals}
+                self._signal_defs_cache[fid] = defs
+                self._signal_units_cache[fid] = units
+            return units, defs
 
     @classmethod
     def from_dbc_file(cls, dbc_path: str | Path, max_cache_size: int = 2048) -> DbcSignalDecoder:
@@ -111,12 +118,13 @@ class DbcSignalDecoder:
         if not path.exists():
             raise FileNotFoundError(f"DBC file not found: {path}")
         try:
-            self.db.add_dbc_file(path)
-            # E8: reload can redefine/merge messages — the id()-keyed signal
-            # metadata caches would serve stale definitions, clear all three.
-            self._message_cache.clear()
-            self._signal_units_cache.clear()
-            self._signal_defs_cache.clear()
+            with self._cache_lock:
+                self.db.add_dbc_file(path)
+                # E8: reload can redefine/merge messages — the id()-keyed signal
+                # metadata caches would serve stale definitions, clear all three.
+                self._message_cache.clear()
+                self._signal_units_cache.clear()
+                self._signal_defs_cache.clear()
             logger.info("Added DBC file to decoder", extra={"path": str(path), "total_messages": len(self.db.messages)})
         except Exception as exc:
             raise ProtocolError(
@@ -257,10 +265,12 @@ class DbcSignalDecoder:
             return None
 
     def _lookup_message(self, arbitration_id: int, is_extended: bool) -> Any:
-        """Find matching message definition with J1939 PGN mask support and LRU eviction."""
-        if arbitration_id in self._message_cache:
-            self._message_cache.move_to_end(arbitration_id)
-            return self._message_cache[arbitration_id]
+        """Find matching message definition with J1939 PGN mask support and LRU eviction (Thread-safe, C-5, B-22)."""
+        key = (arbitration_id, is_extended)
+        with self._cache_lock:
+            if key in self._message_cache:
+                self._message_cache.move_to_end(key)
+                return self._message_cache[key]
 
         msg: Any = None
 
@@ -294,8 +304,10 @@ class DbcSignalDecoder:
                     msg = candidate
                     break
 
-        self._message_cache[arbitration_id] = msg
-        if len(self._message_cache) > self.max_cache_size:
-            self._message_cache.popitem(last=False)
+        with self._cache_lock:
+            self._message_cache[key] = msg
+            if len(self._message_cache) > self.max_cache_size:
+                self._message_cache.popitem(last=False)
+            return msg
 
         return msg

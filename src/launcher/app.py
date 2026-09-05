@@ -7,11 +7,14 @@ update validation, and secure execution of the core diagnostic application.
 from __future__ import annotations
 
 import argparse
+import base64
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from src.core.logging import get_logger
 from src.launcher.auth import AuthStatus, LauncherAuthManager
@@ -19,6 +22,8 @@ from src.launcher.prereqs import PrereqChecker, PrereqStatus
 from src.launcher.updater import UpdateInfo, UpdateManager
 
 logger = get_logger("launcher.app")
+
+DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64 = "eX3vJQWpo/pKrkpi5Y+f7m5ooUCRbCyY201DTnAjz/Q="
 
 
 def _dev_override_enabled() -> bool:
@@ -49,7 +54,16 @@ class UniversalCanLauncher:
     def __init__(self, current_version: str = "13.0.0") -> None:
         self.version = current_version
         self.auth_manager = LauncherAuthManager()
-        self.update_manager = UpdateManager(current_version=self.version, cloud_client=self.auth_manager.client)
+        try:
+            pub_bytes = base64.b64decode(DEFAULT_EMBEDDED_CLOUD_PUBLIC_KEY_B64)
+            pub_key = ed25519.Ed25519PublicKey.from_public_bytes(pub_bytes)
+        except Exception:
+            pub_key = None
+        self.update_manager = UpdateManager(
+            current_version=self.version,
+            cloud_client=self.auth_manager.client,
+            public_key=pub_key,
+        )
 
     @classmethod
     def resolve_target_executable(cls) -> Path:
@@ -88,14 +102,21 @@ class UniversalCanLauncher:
         )
 
     def launch_main_app(self, extra_args: list[str] | None = None) -> int:
-        """Spawn the core application executable."""
-        target = self.resolve_target_executable()
+        """Spawn the core application executable with integrity checks."""
+        target = self.resolve_target_executable().resolve()
         args = extra_args or []
+
+        if not target.is_file():
+            logger.error("Target executable not found or not a valid file", extra={"target": str(target)})
+            return 1
 
         if target.suffix == ".py":
             cmd = [sys.executable, str(target)] + args
-        else:
+        elif target.suffix.lower() == ".exe":
             cmd = [str(target)] + args
+        else:
+            logger.error("Refusing to execute unverified binary extension", extra={"target": str(target)})
+            return 1
 
         logger.info("Launching Universal CAN Platform", extra={"target": str(target), "args": args})
         return subprocess.call(cmd)

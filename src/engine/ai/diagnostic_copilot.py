@@ -13,6 +13,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from src.core.logging import get_logger
@@ -630,8 +631,122 @@ EXPERT_KNOWLEDGE_BASE: dict[str, dict[str, Any]] = {
 }
 
 # ============================================================================
+# DYNAMIC DIAGNOSTIC DATABASE LOADER & TELEMETRY ACCESSORS
+# ============================================================================
+
+_EXTERNAL_DATA_DIR: Path = Path(__file__).resolve().parents[3] / "data" / "diagnostics"
+_CACHED_J1939_DB: dict[str, Any] | None = None
+_CACHED_UDS_DID_DB: dict[str, Any] | None = None
+_CACHED_MODE06_DB: dict[str, Any] | None = None
+
+
+def load_external_dtc_database(data_path: Path | str | None = None) -> int:
+    """Dynamically load and merge external DTC catalog into EXPERT_KNOWLEDGE_BASE.
+
+    Preserves hardcoded expert rules (existing entries are never overwritten).
+    Returns the number of new DTC codes merged.
+    """
+    target = Path(data_path) if data_path else _EXTERNAL_DATA_DIR / "dtc_database.json"
+    if not target.exists():
+        logger.debug("External DTC database not found at %s, using built-in rules", target)
+        return 0
+
+    try:
+        content = target.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            logger.warning("External DTC database format invalid (expected dict, got %s)", type(data).__name__)
+            return 0
+
+        added = 0
+        for code, info in data.items():
+            if not isinstance(info, dict):
+                continue
+            # Preserve existing rich hand-crafted rules
+            if code not in EXPERT_KNOWLEDGE_BASE:
+                EXPERT_KNOWLEDGE_BASE[code] = info
+                added += 1
+
+        logger.info("Merged %d external DTC codes into EXPERT_KNOWLEDGE_BASE (total: %d)", added, len(EXPERT_KNOWLEDGE_BASE))
+        return added
+    except Exception as exc:
+        logger.warning("Failed to load external DTC database from %s: %s", target, exc)
+        return 0
+
+
+def get_j1939_spn_database(data_path: Path | str | None = None) -> dict[str, Any]:
+    """Load and return SAE J1939 SPN & FMI fault knowledge base."""
+    global _CACHED_J1939_DB
+    if _CACHED_J1939_DB is not None and data_path is None:
+        return _CACHED_J1939_DB
+
+    target = Path(data_path) if data_path else _EXTERNAL_DATA_DIR / "j1939_spn_fmi_database.json"
+    if not target.exists():
+        return {}
+
+    try:
+        content = target.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(content)
+        if isinstance(data, dict):
+            if data_path is None:
+                _CACHED_J1939_DB = data
+            return data
+    except Exception as exc:
+        logger.warning("Failed to load J1939 database: %s", exc)
+    return {}
+
+
+def get_uds_did_database(data_path: Path | str | None = None) -> dict[str, Any]:
+    """Load and return OEM-specific UDS Data Identifier (DID) telemetry catalog."""
+    global _CACHED_UDS_DID_DB
+    if _CACHED_UDS_DID_DB is not None and data_path is None:
+        return _CACHED_UDS_DID_DB
+
+    target = Path(data_path) if data_path else _EXTERNAL_DATA_DIR / "uds_did_database.json"
+    if not target.exists():
+        return {}
+
+    try:
+        content = target.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(content)
+        if isinstance(data, dict):
+            if data_path is None:
+                _CACHED_UDS_DID_DB = data
+            return data
+    except Exception as exc:
+        logger.warning("Failed to load UDS DID database: %s", exc)
+    return {}
+
+
+def get_mode06_database(data_path: Path | str | None = None) -> dict[str, Any]:
+    """Load and return SAE J1979 Mode $06 On-Board Monitoring Tests database."""
+    global _CACHED_MODE06_DB
+    if _CACHED_MODE06_DB is not None and data_path is None:
+        return _CACHED_MODE06_DB
+
+    target = Path(data_path) if data_path else _EXTERNAL_DATA_DIR / "obd_mode06_database.json"
+    if not target.exists():
+        return {}
+
+    try:
+        content = target.read_text(encoding="utf-8", errors="replace")
+        data = json.loads(content)
+        if isinstance(data, dict):
+            if data_path is None:
+                _CACHED_MODE06_DB = data
+            return data
+    except Exception as exc:
+        logger.warning("Failed to load Mode 06 database: %s", exc)
+    return {}
+
+
+# Auto-load external DTC database on module initialization
+load_external_dtc_database()
+
+# ============================================================================
 # COMPLETE ISO 14229 UDS NEGATIVE RESPONSE CODE (NRC) CATALOG
 # ============================================================================
+
 
 UDS_NRC_CATALOG: dict[str, dict[str, str]] = {
     "0x10": {"name": "generalReject", "cause": "ECU donanımsal meşguliyet veya dahili hata nedeniyle isteği reddetti.", "action": "İsteği 50 ms sonra tekrarlayın veya ECU'ya soft reset atın."},
@@ -918,12 +1033,19 @@ class CausalBayesianInferenceEngine:
         dtc_match = re.search(r"\b([PBUC][0-9A-F]{4})\b", user_query, re.IGNORECASE)
         direct_dtc = dtc_match.group(1).upper() if dtc_match else None
 
-        # 2. Check for SPN numbers (e.g. SPN 100, SPN 102, SPN 3251)
+        # 2. Check for SPN numbers (e.g. SPN 100, SPN 102, SPN 3251, SPN 641)
         spn_match = re.search(r"\bspn\s*([0-9]+)\b", norm_query)
         if spn_match:
-            spn_key = f"SPN{spn_match.group(1)}"
+            spn_num = spn_match.group(1)
+            spn_key = f"SPN{spn_num}"
             if spn_key in EXPERT_KNOWLEDGE_BASE:
                 direct_dtc = spn_key
+            else:
+                j1939_db = get_j1939_spn_database()
+                spn_entry = j1939_db.get("spns", {}).get(f"SPN_{spn_num}")
+                if spn_entry:
+                    return cls._format_j1939_technician_report(spn_entry, norm_query, telemetry)
+
 
         # 3. Check for UDS NRC codes (e.g. NRC 0x22, NRC 0x33, NRC 0x78)
         nrc_match = re.search(r"\b(?:nrc|negatif yanit)\s*(?:0x)?([0-9a-f]{2})\b", norm_query)
@@ -1031,18 +1153,23 @@ class CausalBayesianInferenceEngine:
         boost = telemetry.get("BoostPressure", 0.0)
         temp = telemetry.get("CoolantTemp", 85.0)
 
-        causes_formatted = "\n".join(f"  • {c}" for c in info["causes"])
-        steps_formatted = "\n".join(
-            f"  {idx + 1}. **[{s[2]}]** {s[0]} *(Hedef: {s[1]})*"
-            for idx, s in enumerate(info["steps"])
-        )
+        causes_formatted = "\n".join(f"  • {c}" for c in info.get("causes", [])) or "  • İlgili alt sistem elektriksel veya mekanik parametre sapması."
+        steps_lines: list[str] = []
+        for idx, s in enumerate(info.get("steps", [])):
+            if len(s) >= 3:
+                steps_lines.append(f"  {idx + 1}. **[{s[2]}]** {s[0]} *(Hedef: {s[1]})*")
+            elif len(s) == 2:
+                steps_lines.append(f"  {idx + 1}. {s[0]} *(Hedef: {s[1]})*")
+            elif len(s) == 1:
+                steps_lines.append(f"  {idx + 1}. {s[0]}")
+        steps_formatted = "\n".join(steps_lines) if steps_lines else "  • Standart OEM arıza teşhis adımlarını uygulayın."
 
         measurement_block = info.get("measurement", "Standart OEM elektriksel ve fiziksel toleranslar dahilindedir.")
         routine_block = info.get("uds_routine", "UDS Service 0x14 (DTC Hafızası Sıfırlama)")
 
         return (
-            f"🚨 **[{code}] — {info['title']}**\n"
-            f"🏷️ **Alt Sistem:** {info['subsystem']} | **Öncelik:** {info['severity']}\n"
+            f"🚨 **[{code}] — {info.get('title', code)}**\n"
+            f"🏷️ **Alt Sistem:** {info.get('subsystem', 'Genel Teşhis')} | **Öncelik:** {info.get('severity', 'MEDIUM')}\n"
             f"📊 **Canlı Telemetri Durumu:** {rpm:.0f} RPM | {boost:.2f} Bar | {temp:.1f}°C\n\n"
             f"🔍 **Kök Neden & Arıza Mekanizması:**\n{causes_formatted}\n\n"
             f"📋 **4-AŞAMALI USTA TEKNİSYEN SAHA ONARIM KILAVUZU:**\n\n"
@@ -1054,6 +1181,61 @@ class CausalBayesianInferenceEngine:
             f"🔧 **Aşama 4: Parça Değişim & Adaptasyon Prosedürü:**\n"
             f"  • Arızalı komponenti değiştirdikten sonra kontak `Ignition ON, Engine OFF` konumunda `UDS 0x14 0xFFFFFF` komutu ile arıza hafızasını temizleyin ve 1 sürüş çevrimi (Drive Cycle) gerçekleştirin."
         )
+
+    @classmethod
+    def _format_j1939_technician_report(cls, spn_entry: dict[str, Any], query: str, telemetry: dict[str, float]) -> str:
+        """Format a heavy-duty commercial vehicle J1939 SPN & FMI diagnostic guide."""
+        spn = spn_entry.get("spn", 0)
+        name = spn_entry.get("name", "Bilinmeyen SPN")
+        title_tr = spn_entry.get("title_tr", name)
+        subsystem = spn_entry.get("subsystem", "Ağır Vasıta J1939")
+        pgn = spn_entry.get("associated_pgn", 0)
+        unit = spn_entry.get("unit", "-")
+        desc = spn_entry.get("description", "")
+        range_info = spn_entry.get("range", [spn_entry.get("range_min", 0), spn_entry.get("range_max", 0)])
+        range_str = f"{range_info[0]}..{range_info[1]} {unit}" if isinstance(range_info, list) and len(range_info) >= 2 else f"{range_info} {unit}"
+
+        fmi_match = re.search(r"\bfmi\s*([0-9]+)\b", query)
+        fmi_info_str = ""
+        if fmi_match:
+            fmi_num = fmi_match.group(1)
+            fmi_tree = spn_entry.get("fault_matrix", {}).get(fmi_num)
+            if not fmi_tree:
+                j1939_db = get_j1939_spn_database()
+                fmi_def = j1939_db.get("fmi_definitions", {}).get(fmi_num, {})
+                if fmi_def:
+                    fmi_tree = {
+                        "fmi_name": fmi_def.get("name", ""),
+                        "fault_title": fmi_def.get("description_tr", ""),
+                        "diagnostic_action": fmi_def.get("diagnostic_action", ""),
+                        "severity": "MEDIUM",
+                    }
+            if fmi_tree:
+                fmi_info_str = (
+                    f"\n⚡ **FMI {fmi_num}: {fmi_tree.get('fmi_name', '')}**\n"
+                    f"• **Arıza Başlığı / Modu:** {fmi_tree.get('fault_title', fmi_tree.get('description_tr', ''))}\n"
+                    f"• **Teknisyen Eylemi:** {fmi_tree.get('diagnostic_action', fmi_tree.get('action', ''))}\n"
+                    f"• **Öncelik Seviyesi:** {fmi_tree.get('severity', 'MEDIUM')}\n"
+                )
+
+        rpm = telemetry.get("EngineSpeed", 0.0)
+        boost = telemetry.get("BoostPressure", 0.0)
+        temp = telemetry.get("CoolantTemp", 85.0)
+
+        return (
+            f"🚛 **[SPN {spn}] — {title_tr} ({name})**\n"
+            f"🏷️ **Alt Sistem:** {subsystem} | **İlgili PGN:** {pgn}\n"
+            f"📊 **Birim / Çalışma Aralığı:** {range_str}\n"
+            f"📊 **Canlı Telemetri Durumu:** {rpm:.0f} RPM | {boost:.2f} Bar | {temp:.1f}°C\n"
+            f"📝 **Açıklama:** {desc}\n"
+            f"{fmi_info_str}\n"
+            f"📋 **SAE J1939-73 Saha Teşhis Adımları:**\n"
+            f"1. PGN {pgn} için canlı CAN trafiğini sniffer ekranında filtreleyerek mesaj güncelleme periyodunu doğrulayın.\n"
+            f"2. DM1 (PGN 65226) aktif arıza lambasını (MIL/Amber/Red Stop) teyit edin.\n"
+            f"3. Sensör besleme voltajını ve kablo demetini multimetre ile test edin."
+        )
+
+
 
 
 # ============================================================================
@@ -1284,8 +1466,58 @@ class AiDiagnosticCopilot:
             )
             correlations.append(f"Motor soğutma sıvısı {coolant_temp:.1f}°C sıcaklıkta; kritik hararet eşiğinde!")
 
+        # Identify DTCs already covered by specific hardcoded scenarios above
+        handled_indices: set[int] = set()
+        for idx, d in enumerate(active_dtcs):
+            c_str = str(d.get("code", "")).upper()
+            s_val = d.get("spn")
+            desc_u = str(d.get("description", "")).upper()
+            if s_val == 100:
+                handled_indices.add(idx)
+            elif c_str in {"P0AA6", "P0A0B", "P0A80", "P0A93"}:
+                handled_indices.add(idx)
+            elif isinstance(s_val, int) and 651 <= s_val <= 656:
+                handled_indices.add(idx)
+            elif s_val in {3251, 3719} or "DPF" in desc_u:
+                handled_indices.add(idx)
+            elif c_str.startswith("P030"):
+                handled_indices.add(idx)
+            elif c_str in {"P0234", "P0299"} or s_val == 102:
+                handled_indices.add(idx)
+            elif c_str == "P0115" or s_val == 110:
+                handled_indices.add(idx)
+
+        # Dynamic EXPERT_KNOWLEDGE_BASE lookup for active DTCs not matched by scenarios 1..7
+        for idx, d in enumerate(active_dtcs):
+            if idx in handled_indices:
+                continue
+            code_candidate = str(d.get("code", "")).upper()
+            spn_candidate = f"SPN{d.get('spn')}" if d.get("spn") else ""
+            match_key = code_candidate if code_candidate in EXPERT_KNOWLEDGE_BASE else (spn_candidate if spn_candidate in EXPERT_KNOWLEDGE_BASE else None)
+            if match_key:
+                info = EXPERT_KNOWLEDGE_BASE[match_key]
+                subsys = info.get("subsystem", "Genel Teşhis")
+                if subsys not in affected:
+                    affected.append(subsys)
+                for cause in info.get("causes", []):
+                    if cause not in likely_causes:
+                        likely_causes.append(cause)
+                for s in info.get("steps", []):
+                    if len(steps) < 5:
+                        act = s[0] if len(s) > 0 else "İnceleme yapın"
+                        target_comp = s[1] if len(s) > 1 else "İlgili Komponent"
+                        diff = s[2] if len(s) > 2 else "Orta (Alet Gerekir)"
+                        steps.append(TroubleshootingStep(len(steps) + 1, act, target_comp, diff))
+                sev_str = info.get("severity", "MEDIUM")
+                if sev_str == "CRITICAL_STOP":
+                    severity = FaultSeverity.CRITICAL_STOP
+                elif sev_str == "MEDIUM" and severity != FaultSeverity.CRITICAL_STOP:
+                    severity = FaultSeverity.MEDIUM
+
+
         # Default fallback if no specific rule matched
         if not likely_causes:
+
             if dtc_count > 0:
                 likely_causes.append("CAN veri yolunda aktif diagnostik hata kodları kaydedildi.")
                 steps.append(
@@ -1361,7 +1593,7 @@ class AiDiagnosticCopilot:
                     "x-goog-api-key": self.gemini_api_key.strip(),
                 }
                 req = urllib.request.Request(GEMINI_ENDPOINT, data=data, headers=headers)
-                with urllib.request.urlopen(req, timeout=8.0) as resp:
+                with urllib.request.urlopen(req, timeout=8.0) as resp:  # nosec: B310
                     resp_json = json.loads(resp.read().decode("utf-8"))
                     parts = resp_json.get("candidates", [{}])[0].get("content", {}).get("parts", [])
                     answer = "".join(p.get("text", "") for p in parts if not p.get("thought", False)).strip()
@@ -1417,7 +1649,7 @@ class AiDiagnosticCopilot:
             "x-goog-api-key": self.gemini_api_key.strip(),
         }
         req = urllib.request.Request(GEMINI_ENDPOINT, data=data, headers=headers)
-        with urllib.request.urlopen(req, timeout=10.0) as resp:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:  # nosec: B310
             resp_data = json.loads(resp.read().decode("utf-8"))
             candidate = resp_data["candidates"][0]["content"]["parts"][0]["text"]
             parsed = self._clean_and_parse_json(candidate)
@@ -1490,7 +1722,7 @@ class AiDiagnosticCopilot:
                     "Authorization": f"Bearer {self.openai_api_key.strip()}",
                 }
                 req = urllib.request.Request(url, data=data, headers=headers)
-                with urllib.request.urlopen(req, timeout=12.0) as resp:
+                with urllib.request.urlopen(req, timeout=12.0) as resp:  # nosec: B310
                     resp_data = json.loads(resp.read().decode("utf-8"))
                     content = resp_data["choices"][0]["message"]["content"]
                     parsed = self._clean_and_parse_json(content)

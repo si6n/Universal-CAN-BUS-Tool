@@ -171,16 +171,28 @@ class RP1210Bus(AbstractBus):
             try:
                 raw = self._client.read_message(block=False)
             except HardwareError as exc:
-                # Transient RX errors are logged and treated as "no frame":
-                # one malformed vendor packet must not kill the ingest loop.
-                logger.warning("RP1210 read error; skipping", extra={"error": str(exc)})
-                return None
+                # Transient RX errors are logged and polling continues until deadline (HIGH-2):
+                # one malformed vendor packet must not kill the ingest loop or truncate timeout.
+                logger.warning("RP1210 read error; retrying until deadline", extra={"error": str(exc)})
+                if time.monotonic() >= deadline:
+                    return None
+                time.sleep(poll_interval)
+                poll_interval = min(poll_interval * 2.0, 0.010)
+                continue
 
-            if raw is not None and (len(raw) >= 5 if self._uses_extended_id_layout else len(raw) >= 2):
-                frame = self._decode_rp1210_packet(raw)
-                if frame is not None:
-                    self.metrics.rx_frames += 1
-                    return frame
+            if raw is not None:
+                min_len = 5 if self._uses_extended_id_layout else 2
+                if len(raw) >= min_len:
+                    frame = self._decode_rp1210_packet(raw)
+                    if frame is not None:
+                        self.metrics.rx_frames += 1
+                        return frame
+                else:
+                    logger.warning(
+                        "RP1210 packet shorter than minimum header (runt packet); dropped",
+                        extra={"length": len(raw), "min_required": min_len},
+                    )
+                    self.metrics.dropped_frames += 1
 
             if time.monotonic() >= deadline:
                 return None
@@ -201,6 +213,7 @@ class RP1210Bus(AbstractBus):
                     "RP1210 extended packet shorter than 4+1 header; dropped",
                     extra={"length": len(raw)},
                 )
+                self.metrics.dropped_frames += 1
                 return None
             arb_id = int.from_bytes(raw[0:4], "little") & _EXT_ID_MASK
             dlc = raw[4] & 0x0F
@@ -211,6 +224,7 @@ class RP1210Bus(AbstractBus):
                     "RP1210 packet shorter than declared DLC; dropped",
                     extra={"declared_dlc": dlc, "actual": len(payload)},
                 )
+                self.metrics.dropped_frames += 1
                 return None
 
             return CanFrame(
@@ -227,6 +241,7 @@ class RP1210Bus(AbstractBus):
         # Classic 11-bit layout: 2-byte header (DLC low nibble, ID in bits 4-15).
         if len(raw) < 2:
             logger.warning("RP1210 packet shorter than 2-byte header; dropped", extra={"length": len(raw)})
+            self.metrics.dropped_frames += 1
             return None
 
         header = int.from_bytes(raw[:2], "little")
@@ -239,6 +254,7 @@ class RP1210Bus(AbstractBus):
                 "RP1210 packet shorter than declared DLC; dropped",
                 extra={"declared_dlc": dlc, "actual": len(payload)},
             )
+            self.metrics.dropped_frames += 1
             return None
 
         return CanFrame(
@@ -246,7 +262,7 @@ class RP1210Bus(AbstractBus):
             arbitration_id=arb_id,
             dlc=dlc,
             data=bytes(payload),
-            is_extended=arb_id > 0x7FF,
+            is_extended=False,
             is_fd=False,
             direction="rx",
             timestamp_ns=time.time_ns(),

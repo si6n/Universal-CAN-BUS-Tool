@@ -44,10 +44,15 @@ def _run_powershell(command: str) -> str:
     """
     if sys.platform != "win32":
         return ""
-    # Only plain WMI/CIM read queries are permitted. The char class allows
-    # single quotes (WMI -Filter 'X=Y' clauses) but excludes shell metacharacters
-    # ($ ` ; & > < !), double quotes and newlines, so redirection, chaining and
-    # interpolation cannot reach the interpreter.
+    # MED-1: Strict PowerShell command validation.
+    # WMI/CIM property access like `(Get-CimInstance -ClassName Win32_X).Field` requires
+    # letters, numbers, parentheses, hyphen, space, comma, single quote, pipe, and property dot.
+    # Disallow leading dot or ./ or .\ to prevent dot-sourcing or relative script execution.
+    trimmed = command.strip()
+    if trimmed.startswith(".") or "/." in trimmed or "\\." in trimmed or ".." in trimmed:
+        logger.warning("Rejected potential dot-sourcing PowerShell command", extra={"command": command[:80]})
+        return ""
+
     if not re.fullmatch(r"[A-Za-z0-9_().|,'= \-]+", command) or "\n" in command or '"' in command:
         logger.warning("Rejected non-conforming PowerShell command", extra={"command": command[:80]})
         return ""
@@ -179,3 +184,8 @@ def _compute_hardware_fingerprint() -> str:
 def generate_hardware_fingerprint() -> str:
     """Cached per-process wrapper around the fingerprint computation."""
     return _compute_hardware_fingerprint()
+
+
+def clear_hwid_cache() -> None:
+    """Helper to clear the LRU cache (ADD-2) for testing or hardware refresh."""
+    generate_hardware_fingerprint.cache_clear()

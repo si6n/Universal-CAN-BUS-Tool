@@ -6,6 +6,7 @@ import base64
 import concurrent.futures
 import json
 import math
+import re
 import sys
 import threading
 import time
@@ -70,14 +71,8 @@ class DesktopApiBridge:
         return self.app.query_copilot(query)
 
     def export_logs(self, fmt: str) -> bool:
-        """M-10 (3FABLE): the old stub returned True WITHOUT exporting —
-        the UI showed "exported" and the operator might delete the session
-        believing the evidence was safely on disk (data loss). Return
-        False honestly until a real exporter is wired."""
-        logger.warning(
-            "export_logs requested but no exporter is wired yet (fmt=%s)", fmt
-        )
-        return False
+        """Export current session logs / telemetry frames to disk (LOW-4)."""
+        return self.app.export_logs(fmt)
 
     def save_settings(self, settings: dict[str, Any]) -> None:
         self.app.update_settings(settings)
@@ -205,9 +200,39 @@ class DesktopApiBridge:
         except Exception as exc:
             return {"success": False, "error": str(exc)}
 
+    @staticmethod
+    def _validate_telemetry_upload_path(file_path: str) -> Path:
+        """Validate and sanitize file path for cloud telemetry upload (F-3 / F-4).
+
+        Prevents arbitrary file read/exfiltration from the JS bridge. Only allowed
+        diagnostic formats are accepted, and access to sensitive OS/credentials
+        directories is strictly rejected.
+        """
+        allowed_extensions = frozenset(
+            {".mf4", ".mdf", ".bin", ".asc", ".blf", ".csv", ".json", ".log", ".zst"}
+        )
+        resolved = Path(file_path).resolve()
+        if not resolved.is_file():
+            raise ValueError(f"Dosya bulunamadi veya gecersiz: {file_path}")
+
+        # Reject sensitive path fragments (credentials, ssh, dpapi, windows system)
+        resolved_str = str(resolved).lower()
+        sensitive_fragments = ("secrets", ".dpapi", "machine_seed", ".ssh", "id_rsa", "id_ed25519", "sam", "system32\\config")
+        if any(frag in resolved_str for frag in sensitive_fragments):
+            raise ValueError("Guvenlik politikasi: Bu dosya konumuna erisim engellendi.")
+
+        ext = resolved.suffix.lower()
+        if ext not in allowed_extensions:
+            raise ValueError(
+                f"Izin verilmeyen dosya formati '{ext}'. Sadece telemetri ve log dosyalari yuklenebilir."
+            )
+
+        return resolved
+
     def cloud_upload_session(self, file_path: str, vehicle_vin: str | None = None) -> dict[str, Any]:
         try:
-            result = self.app.telemetry_uploader.upload_file(file_path=file_path, vehicle_vin=vehicle_vin)
+            safe_path = self._validate_telemetry_upload_path(file_path)
+            result = self.app.telemetry_uploader.upload_file(file_path=safe_path, vehicle_vin=vehicle_vin)
             return {
                 "success": True,
                 "sessionId": result.session_id,
@@ -219,7 +244,13 @@ class DesktopApiBridge:
     def cloud_upload_raw_content(self, filename: str, content: str, vehicle_vin: str | None = None) -> dict[str, Any]:
         import tempfile
         try:
-            with tempfile.NamedTemporaryFile(suffix=f"_{filename}", delete=False, mode="wb") as tf:
+            # F-4: Sanitize filename to prevent directory traversal or alternate stream injection
+            clean_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", Path(filename).name).strip("._")
+            if not clean_name:
+                clean_name = "telemetry_upload.bin"
+            safe_suffix = f"_{clean_name}"
+
+            with tempfile.NamedTemporaryFile(suffix=safe_suffix, delete=False, mode="wb") as tf:
                 tf.write(content.encode("utf-8"))
                 temp_path = tf.name
             try:
@@ -312,7 +343,7 @@ class UniversalCanDesktopApp:
         self.ring_buffer = BinaryRingBuffer()
         self.j1939_tp = J1939TransportProtocol(my_address=0xF9, channel_id=self.channel_name)
         self.n2k_fp = Nmea2000FastPacketDecoder()
-        self._rx_sub_id, self._rx_queue = self.router.subscribe(use_queue=True)
+        self._rx_sub_id, self._rx_queue = None, None  # B-09: don't leak unconsumed 10k queue
         self._last_dm1: dict[str, object] = {}
 
         # Initialize to PASSIVE (Listen-Only) by default
@@ -345,6 +376,7 @@ class UniversalCanDesktopApp:
         # One small lock guards writes; reads of single attributes remain
         # lock-free (atomic in CPython).
         self._ui_state_lock = threading.Lock()
+        self._bus_lock = threading.RLock()
 
     def _on_upload_progress(self, progress: UploadProgress) -> None:
         if self._window is None:
@@ -413,8 +445,8 @@ class UniversalCanDesktopApp:
     def reset_estop_with_token(self, token_str: str) -> dict[str, Any]:
         """Cryptographically verify and consume a reset token (multi-operator or local)."""
         try:
-            success = self.estop.reset(token_str.strip())
-            if success:
+            self.estop.reset(token_str.strip())
+            if not self.estop.is_engaged:
                 self._set_ui_state(_is_estop=False)
                 if self.supervisor.is_fault:
                     self.supervisor.transition_to(
@@ -460,8 +492,17 @@ class UniversalCanDesktopApp:
             if token is None:
                 logger.error("E-Stop reset challenge unavailable; refusing to leave FAULT")
                 return
-            self.estop.reset(token)
-        self._set_ui_state(_is_estop=False)
+            try:
+                self.estop.reset(token)
+                if not self.estop.is_engaged:
+                    self._set_ui_state(_is_estop=False)
+                    if self.supervisor.is_fault:
+                        self.supervisor.transition_to(
+                            SafetyState.PASSIVE, reason="E-Stop reset on scenario switch — PASSIVE"
+                        )
+            except Exception as exc:
+                logger.error("Failed to reset E-Stop during scenario switch: %s", exc)
+                return
 
     def set_simulation_speed(self, speed: float) -> None:
         self._set_ui_state(_speed_mult=max(0.25, min(10.0, float(speed))))
@@ -511,6 +552,49 @@ class UniversalCanDesktopApp:
             logger.warning("Copilot query timed out", extra={"query": query[:50]})
             return "⚠️ AI yanıtı zaman aşımına uğradı (15 s). Lütfen tekrar deneyin."
 
+    def export_logs(self, fmt: str) -> bool:
+        """Export session telemetry and frames to disk in JSON or CSV format (LOW-4)."""
+        fmt_clean = fmt.strip().lower()
+        if fmt_clean not in {"json", "csv"}:
+            logger.warning("Unsupported export format requested: %s", fmt)
+            return False
+
+        try:
+            timestamp_str = time.strftime("%Y%m%d_%H%M%S")
+            export_dir = Path("exports")
+            export_dir.mkdir(parents=True, exist_ok=True)
+            export_path = export_dir / f"can_session_{timestamp_str}.{fmt_clean}"
+
+            frames = self.ring_buffer.get_latest_frames(self.ring_buffer.current_size)
+            if fmt_clean == "json":
+                data_to_export = [
+                    {
+                        "channel_id": f.channel_id,
+                        "arbitration_id": hex(f.arbitration_id),
+                        "dlc": f.dlc,
+                        "data": f.data.hex(),
+                        "is_extended": f.is_extended,
+                        "is_fd": f.is_fd,
+                        "timestamp_ns": f.timestamp_ns,
+                    }
+                    for f in frames
+                ]
+                with open(export_path, "w", encoding="utf-8") as out:
+                    json.dump(data_to_export, out, indent=2)
+            elif fmt_clean == "csv":
+                import csv
+                with open(export_path, "w", newline="", encoding="utf-8") as out:
+                    writer = csv.writer(out)
+                    writer.writerow(["channel_id", "arbitration_id", "dlc", "data_hex", "is_extended", "is_fd", "timestamp_ns"])
+                    for f in frames:
+                        writer.writerow([f.channel_id, hex(f.arbitration_id), f.dlc, f.data.hex(), f.is_extended, f.is_fd, f.timestamp_ns])
+
+            logger.info("Session logs successfully exported", extra={"path": str(export_path), "count": len(frames)})
+            return True
+        except Exception as exc:
+            logger.error("Failed to export session logs: %s", exc, exc_info=True)
+            return False
+
     def update_settings(self, settings: dict[str, Any]) -> None:
         reconnect_needed = False
         if "interface" in settings and settings["interface"] != self.interface_val:
@@ -549,44 +633,52 @@ class UniversalCanDesktopApp:
                 self.cloud_client.clear_session_token()
 
     def _reconnect_bus(self) -> None:
-        """Rebind the single bus instance to the new interface/channel/bitrate (F-30).
+        """Rebind the single bus instance to the new interface/channel/bitrate (F-30, B-25, CRITICAL-4).
 
         Driver validation can reject the new combination as early as the
         constructor (e.g. kvaser demands an integer channel); the previous bus
         stays bound in that case so a bad settings change never kills the app.
         K4-a: rp1210 reconnects through the shared build_bus factory.
         """
-        try:
-            self.bus.disconnect()
-        except (OSError, RuntimeError) as exc:
-            logger.debug("Bus disconnect during reconnect failed", extra={"error": str(exc)})
-        try:
-            if self.interface_val == "rp1210":
-                from src.main import build_bus
+        with self._bus_lock:
+            old_bus = self.bus
+            try:
+                old_bus.disconnect()
+            except (OSError, RuntimeError) as exc:
+                logger.debug("Bus disconnect during reconnect failed", extra={"error": str(exc)})
+            try:
+                if self.interface_val == "rp1210":
+                    from src.main import build_bus
 
-                new_bus = build_bus(
-                    interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                    new_bus = build_bus(
+                        interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                    )
+                else:
+                    new_bus = PythonCanBus(
+                        interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                    )
+            except (OSError, RuntimeError, ValueError, PlatformError) as exc:
+                logger.warning(
+                    "CAN bus reconnect rejected the new settings; keeping previous bus",
+                    extra={"interface": self.interface_val, "channel": self.channel_name, "error": str(exc)},
                 )
-            else:
-                new_bus = PythonCanBus(
-                    interface=self.interface_val, channel=self.channel_name, bitrate=self.bitrate_val
+                return
+            self.bus = new_bus
+            self.gateway.bus = self.bus
+
+            # B-25: Reset channel-bound state on bus switch
+            self.ring_buffer.clear()
+            self.j1939_tp = J1939TransportProtocol(my_address=0xF9, channel_id=self.channel_name)
+            self.n2k_fp = Nmea2000FastPacketDecoder()
+
+            try:
+                self.bus.connect()
+                logger.info(
+                    "CAN bus reconnected",
+                    extra={"interface": self.interface_val, "channel": self.channel_name, "bitrate": self.bitrate_val},
                 )
-        except (OSError, RuntimeError, ValueError, PlatformError) as exc:
-            logger.warning(
-                "CAN bus reconnect rejected the new settings; keeping previous bus",
-                extra={"interface": self.interface_val, "channel": self.channel_name, "error": str(exc)},
-            )
-            return
-        self.bus = new_bus
-        self.gateway.bus = self.bus
-        try:
-            self.bus.connect()
-            logger.info(
-                "CAN bus reconnected",
-                extra={"interface": self.interface_val, "channel": self.channel_name, "bitrate": self.bitrate_val},
-            )
-        except (OSError, RuntimeError, PlatformError) as exc:
-            logger.warning("CAN bus reconnect failed; DEMO-only mode", extra={"error": str(exc)})
+            except (OSError, RuntimeError, PlatformError) as exc:
+                logger.warning("CAN bus reconnect failed; DEMO-only mode", extra={"error": str(exc)})
 
     def _decode_j1939_signal(self, frame: object) -> None:
         """Extract live telemetry from a routed J1939 frame (F-28)."""
@@ -597,10 +689,11 @@ class UniversalCanDesktopApp:
             ps = (arb >> 8) & 0xFF
             sa = arb & 0xFF
 
-            # EEC1 (PGN 61444 / PF=0xF0, PS=source): engine speed + torque
+            # EEC1 (PGN 61444 / PF=0xF0, PS=source): engine speed + torque (B-10 sentinel filter)
             if pf == 0xF0 and ps == 0x04 and len(data) >= 5:
                 raw_rpm = data[3] | (data[4] << 8)
-                self._current_rpm = raw_rpm * 0.125
+                if raw_rpm < 0xFE00:  # 0xFE00..0xFFFF = Error / Not Available in J1939-71
+                    self._current_rpm = raw_rpm * 0.125
             # CCVS (PGN 65265 / PF=0xFE, PS=0xF1): vehicle speed (SPN 84)
             # REVIEW.md 1.2: the gateway's speed interlock requires FRESH
             # speed telemetry before any critical command; without this feed
@@ -612,9 +705,11 @@ class UniversalCanDesktopApp:
                 if speed_kmh <= 250.0:  # 0xFFFF/256 ≈ 255.99 → error sentinel
                     self._current_speed_kmh = speed_kmh
                     self.gateway.update_vehicle_speed(speed_kmh)
-            # ET1 (PGN 65249 / PF=0xFE, PS=0xE1): coolant temperature
+            # ET1 (PGN 65249 / PF=0xFE, PS=0xE1): coolant temperature (B-10 sentinel filter)
             elif pf == 0xFE and ps == 0xE1 and len(data) >= 1:
-                self._current_temp = float(data[0]) - 40.0
+                raw_temp = data[0]
+                if raw_temp < 0xFE:  # 0xFE = Error, 0xFF = Not Available
+                    self._current_temp = float(raw_temp) - 40.0
             # DM1 (PGN 65226 / PF=0xFE, PS=0xCA): active diagnostic message
             elif pf == 0xFE and ps == 0xCA and len(data) >= 2:
                 dm = J1939DiagnosticService.parse_dm1_or_dm2(
@@ -636,17 +731,29 @@ class UniversalCanDesktopApp:
         self.ring_buffer.append(frame)  # type: ignore[arg-type]
         self._decode_j1939_signal(frame)
 
-        # J1939 transport protocol reassembly (multi-packet)
-        completed, _ = self.j1939_tp.handle_rx_frame(frame)  # type: ignore[arg-type]
+        # J1939 transport protocol reassembly (multi-packet) (B-12 drain)
+        completed, resp = self.j1939_tp.handle_rx_frame(frame)  # type: ignore[arg-type]
+        if resp is not None:
+            self.router.route_frame(resp)
+        for extra_resp in self.j1939_tp.take_pending_tx_frames():
+            self.router.route_frame(extra_resp)
+
         if completed is not None:
             # Reassembled payloads can exceed a single CAN frame; cap the
             # synthetic frame at 64 bytes with a valid DLC so oversized
             # messages can never crash the telemetry thread.
             synth_data = completed.data[:64]
+            dp = (completed.pgn >> 16) & 0x01
+            pf = (completed.pgn >> 8) & 0xFF
+            if pf < 240:
+                pgn_field = (dp << 16) | (pf << 8) | (completed.destination_address & 0xFF)
+            else:
+                pgn_field = completed.pgn & 0x3FFFF
+            arb_id = (0x18000000 | (pgn_field << 8) | (completed.source_address & 0xFF)) & 0x1FFFFFFF
             try:
                 synth_frame: CanFrame | None = CanFrame(
                     channel_id=completed.channel_id,
-                    arbitration_id=((completed.pgn << 8) | completed.source_address) & 0x1FFFFFFF,
+                    arbitration_id=arb_id,
                     dlc=length_to_dlc(len(synth_data)),
                     data=synth_data,
                     is_extended=True,
@@ -724,17 +831,25 @@ class UniversalCanDesktopApp:
             if self._is_estop:
                 continue
 
-            # ── LIVE path: real frames off the bus (F-28) ──────────────
+            # ── LIVE path: real frames off the bus (F-28, B-07 exception protection) ──
             if not self._is_simulating:
                 drained = 0
                 tick_frames: list[object] = []
-                while drained < 200:
-                    frame = self.bus.recv(timeout_s=0.01)
-                    if frame is None:
-                        break
-                    self._ingest_live_frame(frame)
-                    tick_frames.append(frame)
-                    drained += 1
+                try:
+                    with self._bus_lock:
+                        bus = self.bus
+                    while drained < 200:
+                        frame = bus.recv(timeout_s=0.01)
+                        if frame is None:
+                            break
+                        self._ingest_live_frame(frame)
+                        tick_frames.append(frame)
+                        drained += 1
+                except Exception as exc:  # noqa: BLE001 — loop must NEVER die on bus/driver errors
+                    logger.warning("Telemetry frame ingestion error (recovering)", extra={"error": str(exc)})
+                    time.sleep(0.1)
+                    continue
+
                 if drained == 0:
                     continue
                 # E13: one JS evaluation per tick for the whole batch
@@ -807,19 +922,44 @@ class UniversalCanDesktopApp:
             self._push_telemetry_tick()
 
     def _push_telemetry_tick(self) -> None:
-        """Push the current telemetry snapshot to the frontend (F-28)."""
+        """Push the current telemetry snapshot to the frontend (F-28, HIGH-5)."""
         if self._window is None:
             return
-        t = self._sim_time
+
+        def _safe_float(val: Any, default: float = 0.0) -> float:
+            try:
+                f = float(val)
+                return default if (math.isnan(f) or math.isinf(f)) else round(f, 2)
+            except (TypeError, ValueError):
+                return default
+
+        def _safe_int(val: Any, default: int = 0) -> int:
+            try:
+                f = float(val)
+                return default if (math.isnan(f) or math.isinf(f)) else int(f)
+            except (TypeError, ValueError):
+                return default
+
+        t = _safe_float(self._sim_time)
+        telemetry_payload = {
+            "timeSec": t,
+            "timeFormatted": f"{t:.2f}s",
+            "rpm": _safe_int(self._current_rpm),
+            "turboBoostBar": _safe_float(self._current_boost),
+            "coolantTempC": _safe_int(self._current_temp),
+            "oilPressureBar": 4.2,
+            "busLoadPercent": _safe_int(self._bus_load),
+            "errorCount": _safe_int(self._error_count),
+            "packVoltageV": round(_safe_float(self._pack_voltage), 1),
+            "batterySocPercent": round(_safe_float(self._battery_soc), 1),
+            "packCurrentA": round(_safe_float(self._pack_current), 1),
+            "sogKnots": round(_safe_float(self._sog_knots), 1),
+            "depthMeters": round(_safe_float(self._depth_meters), 1),
+            "propellerSlipPct": round(_safe_float(self._propeller_slip), 1),
+        }
         try:
-            js_code = (
-                f"if (window.onTelemetryTick) window.onTelemetryTick({{"
-                f"timeSec: {t:.2f}, timeFormatted: '{t:.2f}s', rpm: {int(self._current_rpm)}, "
-                f"turboBoostBar: {self._current_boost:.2f}, coolantTempC: {int(self._current_temp)}, "
-                f"oilPressureBar: 4.2, busLoadPercent: {self._bus_load}, errorCount: {self._error_count}, "
-                f"packVoltageV: {self._pack_voltage:.1f}, batterySocPercent: {self._battery_soc:.1f}, packCurrentA: {self._pack_current:.1f}, "
-                f"sogKnots: {self._sog_knots:.1f}, depthMeters: {self._depth_meters:.1f}, propellerSlipPct: {self._propeller_slip:.1f}}});"
-            )
+            payload_json = json.dumps(telemetry_payload)
+            js_code = f"if (window.onTelemetryTick) window.onTelemetryTick({payload_json});"
             self._window.evaluate_js(js_code)
         except (AttributeError, OSError, RuntimeError) as exc:
             logger.warning(

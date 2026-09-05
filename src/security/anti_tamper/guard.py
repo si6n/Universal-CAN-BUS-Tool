@@ -82,16 +82,22 @@ class AntiTamperGuard:
         not trip the anti-tamper path.
         """
         effective_threshold = cls.TIMING_THRESHOLD_MS if threshold_ms is None else threshold_ms
+        measurements: list[float] = []
         for _ in range(2):
             t0 = time.perf_counter_ns()
             for _ in range(200):
                 hashlib.sha256(b"tamper_probe").digest()
             elapsed_ms = (time.perf_counter_ns() - t0) / 1e6
+            measurements.append(elapsed_ms)
             if elapsed_ms <= effective_threshold:
                 return False
         logger.warning(
             "Sustained timing anomaly (2 consecutive probes above threshold)! Possible debugger single-stepping.",
-            extra={"elapsed_ms": elapsed_ms, "threshold_ms": effective_threshold},
+            extra={
+                "elapsed_ms": measurements[-1],
+                "probe_timings_ms": measurements,
+                "threshold_ms": effective_threshold,
+            },
         )
         return True
 

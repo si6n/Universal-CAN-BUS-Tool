@@ -379,14 +379,18 @@ class ReassemblyPipeline:
         src_addr = completed_msg.source_address
         dst_addr = completed_msg.destination_address
 
-        # Reconstruct canonical 29-bit CAN ID
-        target_pf = (target_pgn >> 8) & 0xFF
-        if target_pf < 240:
-            # PDU1: PS byte is destination address
-            arb_id = 0x18000000 | ((target_pgn & 0x3FF00) << 8) | ((dst_addr & 0xFF) << 8) | (src_addr & 0xFF)
+        # Reconstruct canonical 29-bit CAN ID (B-06)
+        dp = (target_pgn >> 16) & 0x01
+        pf = (target_pgn >> 8) & 0xFF
+        if pf < 240:
+            # PDU1: PS is Destination Address
+            pgn_field = (dp << 16) | (pf << 8) | (dst_addr & 0xFF)
         else:
-            # PDU2: Broadcast
-            arb_id = 0x18000000 | ((target_pgn & 0x3FFFF) << 8) | (src_addr & 0xFF)
+            # PDU2: Broadcast PS is already part of PGN
+            pgn_field = target_pgn & 0x3FFFF
+        priority = 6
+        arb_id = ((priority & 0x07) << 26) | (pgn_field << 8) | (src_addr & 0xFF)
+        arb_id &= 0x1FFFFFFF
 
         # Diagnostics / Identification payload parsing
         diagnostics_parsed: Any = None

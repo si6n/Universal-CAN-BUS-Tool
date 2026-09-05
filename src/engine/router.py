@@ -29,6 +29,7 @@ class Subscription:
     frame_queue: queue.Queue[CanFrame] | None = None
     filter_ids: set[int] | None = None  # None = accept all arbitration IDs
     channel_id: str | None = None  # None = accept all channels
+    is_demoted: bool = False
 
 
 class FrameRouter:
@@ -135,6 +136,7 @@ class FrameRouter:
                     with self._lock:
                         if sub.sub_id in self._subscriptions:
                             self._subscriptions[sub.sub_id].callback = None
+                            self._subscriptions[sub.sub_id].is_demoted = True
                             if self._subscriptions[sub.sub_id].frame_queue is None:
                                 # No queue either — create one so the demoted
                                 # subscriber keeps receiving frames.
@@ -171,6 +173,18 @@ class FrameRouter:
                         )
 
         return matched_count
+
+    def restore_callback(
+        self, sub_id: int, callback: Callable[[CanFrame], None]
+    ) -> bool:
+        """Restore or reassign callback on an existing (or demoted) subscription (MED-4)."""
+        with self._lock:
+            sub = self._subscriptions.get(sub_id)
+            if sub is None:
+                return False
+            sub.callback = callback
+            sub.is_demoted = False
+            return True
 
     def clear(self) -> None:
         """Remove all active subscriptions."""

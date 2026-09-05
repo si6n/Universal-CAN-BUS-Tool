@@ -39,6 +39,7 @@ class CloudConfig:
     upload_timeout_seconds: float = 120.0
     max_retries: int = 3
     retry_backoff_seconds: float = 1.5
+    max_retry_backoff_seconds: float = 60.0
     user_agent: str = "UniversalCAN-Desktop/13.0"
     # SEC-C-001: production builds must speak HTTPS. Loopback dev servers are
     # the only permitted plain-HTTP exception (no MITM surface on localhost).
@@ -70,11 +71,10 @@ class CloudConfig:
 
     @staticmethod
     def _is_loopback(url: str) -> bool:
-        """True when the http:// authority targets a loopback host.
+        """True when the http:// authority targets a loopback host (127.0.0.0/8, ::1, localhost).
 
-        L-5 (3FABLE): parse with urlsplit + ipaddress instead of manual
-        splitting — the old parser rejected `http://[::1]:8000` (IPv6
-        brackets broke the naive split) and treated 0.0.0.0 as loopback.
+        L-5 (3FABLE, MED-2): parse with urlsplit + ipaddress instead of manual
+        splitting. Note that 0.0.0.0 is non-loopback (INADDR_ANY) and is strictly rejected.
         """
         try:
             import ipaddress
@@ -143,6 +143,7 @@ class CloudClient:
             upload_timeout_seconds=self.config.upload_timeout_seconds,
             max_retries=self.config.max_retries,
             retry_backoff_seconds=self.config.retry_backoff_seconds,
+            max_retry_backoff_seconds=self.config.max_retry_backoff_seconds,
             user_agent=self.config.user_agent,
             require_https=self.config.require_https,
         )
@@ -233,7 +234,7 @@ class CloudClient:
         for attempt in range(self.config.max_retries + 1):
             try:
                 req = urllib.request.Request(url, data=data, headers=headers, method=method)
-                with urllib.request.urlopen(req, timeout=self.config.timeout_seconds) as resp:
+                with urllib.request.urlopen(req, timeout=self.config.timeout_seconds) as resp:  # nosec: B310
                     return CloudResponse(
                         status=resp.status,
                         body=resp.read(),
@@ -270,6 +271,8 @@ class CloudClient:
                     delay = max(delay, float(retry_after))
                 except (TypeError, ValueError):
                     pass  # non-numeric Retry-After (HTTP-date) — fall back to backoff
+        # SEC-C-007: Cap maximum sleep delay to prevent DoS lockup from malicious/misconfigured server
+        delay = min(delay, self.config.max_retry_backoff_seconds)
         _time.sleep(delay)
         logger.debug("Retrying cloud request", extra={"attempt": attempt + 1, "delay_s": delay})
 
